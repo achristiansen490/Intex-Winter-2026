@@ -1,0 +1,6 @@
+@HirayaHaven.Api_HostAddress = http://localhost:0
+
+GET {{HirayaHaven.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
