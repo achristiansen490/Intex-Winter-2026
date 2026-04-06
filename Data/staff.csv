@@ -1,0 +1,21 @@
+staff_id,staff_code,first_name,last_name,age,email,phone,role,employment_type,specialization,safehouse_id,employment_status,date_hired,date_ended,created_at,updated_at
+1,SW-01,Elena,Santos,31,elena.santos@lighthouseph.org,+63 941 328 3286,Social Worker,Internal,Trafficking,1,Active,2023-02-22,,2023-02-22 00:00:00,2026-04-06 00:00:00
+2,SW-02,Fatima,Cruz,41,fatima.cruz@lighthouseph.org,+63 964 132 1488,Social Worker,Internal,Physical Abuse,2,Active,2018-04-08,,2018-04-08 00:00:00,2026-04-06 00:00:00
+3,SW-03,Angela,Ramos,23,angela.ramos@lighthouseph.org,+63 981 303 9928,Social Worker,Internal,Sexual Abuse,3,Active,2021-04-15,,2021-04-15 00:00:00,2026-04-06 00:00:00
+4,SW-04,Josephine,Gonzalez,23,josephine.gonzalez@lighthouseph.org,+63 930 814 7924,Social Worker,Internal,Child Labor,4,Active,2020-05-05,,2020-05-05 00:00:00,2026-04-06 00:00:00
+5,SW-05,Sofia,Ramirez,26,sofia.ramirez@lighthouseph.org,+63 921 489 2584,Social Worker,Internal,Neglect,5,Active,2020-06-20,,2020-06-20 00:00:00,2026-04-06 00:00:00
+6,SW-06,Teresa,Reyes,37,teresa.reyes@lighthouseph.org,+63 978 227 7201,Social Worker,Internal,OSAEC,6,Active,2018-09-10,,2018-09-10 00:00:00,2026-04-06 00:00:00
+7,SW-07,Beatrice,Hernandez,41,beatrice.hernandez@lighthouseph.org,+63 934 821 2139,Social Worker,Internal,At-Risk Youth,7,Active,2018-11-08,,2018-11-08 00:00:00,2026-04-06 00:00:00
+8,SW-08,Andrea,Cruz,30,andrea.cruz@lighthouseph.org,+63 922 489 5554,Social Worker,Internal,Trauma-Informed Care,8,Active,2021-11-27,,2021-11-27 00:00:00,2026-04-06 00:00:00
+9,SW-09,Monica,Flores,34,monica.flores@lighthouseph.org,+63 955 314 5374,Case Manager,Internal,Trafficking,9,Active,2023-11-21,,2023-11-21 00:00:00,2026-04-06 00:00:00
+10,SW-10,Rosa,Ramos,43,rosa.ramos@lighthouseph.org,+63 931 646 5010,Case Manager,Internal,Sexual Abuse,10,Active,2019-08-13,,2019-08-13 00:00:00,2026-04-06 00:00:00
+11,SW-11,Teresa,Mendoza,30,teresa.mendoza@lighthouseph.org,+63 997 432 1916,Case Manager,Internal,Neglect,1,Active,2019-01-26,,2019-01-26 00:00:00,2026-04-06 00:00:00
+12,SW-12,Patricia,Diaz,31,patricia.diaz@lighthouseph.org,+63 918 316 6155,Case Manager,Internal,Physical Abuse,2,Active,2019-11-16,,2019-11-16 00:00:00,2026-04-06 00:00:00
+13,SW-13,Diana,Aquino,27,diana.aquino@lighthouseph.org,+63 943 242 5040,Case Manager,Internal,At-Risk Youth,3,Active,2023-09-18,,2023-09-18 00:00:00,2026-04-06 00:00:00
+14,SW-14,Teresa,Castillo,36,teresa.castillo@lighthouseph.org,+63 984 508 6930,Case Manager,Internal,OSAEC,4,Active,2019-03-17,,2019-03-17 00:00:00,2026-04-06 00:00:00
+15,SW-15,Cristina,Cruz,24,cristina.cruz@lighthouseph.org,+63 924 256 3621,Supervisor,Internal,General Supervision,1,Active,2023-07-20,,2023-07-20 00:00:00,2026-04-06 00:00:00
+16,SW-16,Rosa,Diaz,35,rosa.diaz@lighthouseph.org,+63 986 579 9669,Supervisor,Internal,General Supervision,2,Active,2020-09-28,,2020-09-28 00:00:00,2026-04-06 00:00:00
+17,SW-17,Maria,Garcia,44,maria.garcia@lighthouseph.org,+63 978 868 5371,Field Worker,Contracted,Trauma-Informed Care,,Active,2023-06-04,,2023-06-04 00:00:00,2026-04-06 00:00:00
+18,SW-18,Andrea,Morales,28,andrea.morales@lighthouseph.org,+63 968 103 5315,Field Worker,Contracted,Child Labor,,Active,2022-03-17,,2022-03-17 00:00:00,2026-04-06 00:00:00
+19,SW-19,Elena,Martinez,43,elena.martinez@lighthouseph.org,+63 974 723 4258,Field Worker,Contracted,Neglect,,Active,2019-06-25,,2019-06-25 00:00:00,2026-04-06 00:00:00
+20,SW-20,Isabel,Mendoza,39,isabel.mendoza@lighthouseph.org,+63 910 713 6310,Field Worker,Contracted,At-Risk Youth,,Active,2021-01-04,,2021-01-04 00:00:00,2026-04-06 00:00:00
