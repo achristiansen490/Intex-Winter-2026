@@ -1,3 +1,35 @@
-.venv/
+# Visual Studio / VS Code / Rider
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.dll
+*.pdb
+*.cache
+
+# NuGet
+*.nupkg
+**/packages/
+
+# SQLite sidecar files (often created while DB is open)
 *.db-shm
 *.db-wal
+
+# Optional: uncomment to avoid committing the database file itself
+# Data/hiraya.db
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
