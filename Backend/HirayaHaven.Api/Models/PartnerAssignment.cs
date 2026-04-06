@@ -8,8 +8,9 @@ public class PartnerAssignment
     public string? ProgramArea { get; set; }
     public string? AssignmentStart { get; set; }
     public string? AssignmentEnd { get; set; }
-    public string? Status { get; set; }
+    public string? ResponsibilityNotes { get; set; }
     public bool? IsPrimary { get; set; }
+    public string? Status { get; set; }
 
     public Partner? Partner { get; set; }
     public Safehouse? Safehouse { get; set; }

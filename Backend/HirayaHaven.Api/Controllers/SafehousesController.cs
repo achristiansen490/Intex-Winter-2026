@@ -1,40 +1,18 @@
 using HirayaHaven.Api.Data;
+using HirayaHaven.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class SafehousesController(HirayaContext context) : ControllerBase
+public class SafehousesController(HirayaContext db) : CrudControllerBase<Safehouse>(db)
 {
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var safehouses = await context.Safehouses
-            .AsNoTracking()
-            .OrderBy(s => s.SafehouseCode)
-            .Select(s => new
-            {
-                s.SafehouseId,
-                s.SafehouseCode,
-                s.Name,
-                s.Region,
-                s.City,
-                s.Province,
-                s.Status,
-                s.CapacityGirls,
-                s.CurrentOccupancy
-            })
-            .ToListAsync();
-
-        return Ok(safehouses);
-    }
+    protected override DbSet<Safehouse> Entities => Db.Safehouses;
 
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    public override async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct)
     {
-        var safehouse = await context.Safehouses
+        var row = await Db.Safehouses
             .AsNoTracking()
             .Where(s => s.SafehouseId == id)
             .Select(s => new
@@ -46,13 +24,16 @@ public class SafehousesController(HirayaContext context) : ControllerBase
                 s.City,
                 s.Province,
                 s.Country,
+                s.OpenDate,
                 s.Status,
                 s.CapacityGirls,
+                s.CapacityStaff,
                 s.CurrentOccupancy,
-                ActiveResidents = context.Residents.Count(r => r.SafehouseId == s.SafehouseId && r.CaseStatus == "Active")
+                s.Notes,
+                ActiveResidents = Db.Residents.Count(r => r.SafehouseId == s.SafehouseId && r.CaseStatus == "Active")
             })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
-        return safehouse is null ? NotFound() : Ok(safehouse);
+        return row is null ? NotFound() : Ok(row);
     }
 }

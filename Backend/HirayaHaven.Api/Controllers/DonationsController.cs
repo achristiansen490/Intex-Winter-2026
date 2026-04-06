@@ -1,51 +1,25 @@
 using HirayaHaven.Api.Data;
+using HirayaHaven.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class DonationsController(HirayaContext context) : ControllerBase
+public class DonationsController(HirayaContext db) : CrudControllerBase<Donation>(db)
 {
-    [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int take = 100)
-    {
-        take = Math.Clamp(take, 1, 500);
-
-        var donations = await context.Donations
-            .AsNoTracking()
-            .OrderByDescending(d => d.DonationDate)
-            .Take(take)
-            .Select(d => new
-            {
-                d.DonationId,
-                d.DonationDate,
-                d.DonationType,
-                d.ChannelSource,
-                d.CampaignName,
-                d.CurrencyCode,
-                d.Amount,
-                d.EstimatedValue,
-                d.ImpactUnit,
-                SupporterName = d.Supporter != null ? d.Supporter.DisplayName : null
-            })
-            .ToListAsync();
-
-        return Ok(donations);
-    }
+    protected override DbSet<Donation> Entities => Db.Donations;
 
     [HttpGet("summary")]
-    public async Task<IActionResult> GetSummary()
+    public async Task<IActionResult> GetSummary(CancellationToken ct)
     {
-        var totalDonationRows = await context.Donations.CountAsync();
-        var totalMonetaryAmount = await context.Donations
+        var totalDonationRows = await Db.Donations.CountAsync(ct);
+        var totalMonetaryAmount = await Db.Donations
             .Where(d => d.DonationType == "Monetary")
-            .SumAsync(d => d.Amount ?? 0);
+            .SumAsync(d => d.Amount ?? 0, ct);
 
-        var totalEstimatedValue = await context.Donations.SumAsync(d => d.EstimatedValue ?? 0);
+        var totalEstimatedValue = await Db.Donations.SumAsync(d => d.EstimatedValue ?? 0, ct);
 
-        var byType = await context.Donations
+        var byType = await Db.Donations
             .GroupBy(d => d.DonationType)
             .Select(g => new
             {
@@ -55,7 +29,7 @@ public class DonationsController(HirayaContext context) : ControllerBase
                 TotalEstimatedValue = g.Sum(x => x.EstimatedValue ?? 0)
             })
             .OrderByDescending(x => x.TotalEstimatedValue)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return Ok(new
         {

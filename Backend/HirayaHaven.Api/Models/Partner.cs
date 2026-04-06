@@ -11,6 +11,9 @@ public class Partner
     public string? Phone { get; set; }
     public string? Region { get; set; }
     public string? Status { get; set; }
+    public string? StartDate { get; set; }
+    public string? EndDate { get; set; }
+    public string? Notes { get; set; }
 
     public ICollection<PartnerAssignment> PartnerAssignments { get; set; } = new List<PartnerAssignment>();
 }

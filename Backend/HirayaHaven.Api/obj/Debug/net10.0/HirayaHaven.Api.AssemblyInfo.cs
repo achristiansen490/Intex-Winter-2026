@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HirayaHaven.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b68f98c2608747eca1d2b20f4c6db759f846071d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8db9e5b56d911c75b9bf1c1ce8895e4627508f71")]
 [assembly: System.Reflection.AssemblyProductAttribute("HirayaHaven.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HirayaHaven.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

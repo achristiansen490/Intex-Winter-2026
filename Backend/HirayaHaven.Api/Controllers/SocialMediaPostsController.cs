@@ -1,40 +1,26 @@
 using HirayaHaven.Api.Data;
+using HirayaHaven.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class SocialMediaPostsController(HirayaContext context) : ControllerBase
+public class SocialMediaPostsController(HirayaContext db) : CrudControllerBase<SocialMediaPost>(db)
 {
-    [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int take = 100)
-    {
-        take = Math.Clamp(take, 1, 500);
+    protected override DbSet<SocialMediaPost> Entities => Db.SocialMediaPosts;
 
-        var posts = await context.SocialMediaPosts
+    [HttpGet]
+    public override async Task<IActionResult> GetAll(CancellationToken ct)
+    {
+        var take = 500;
+        if (HttpContext.Request.Query.TryGetValue("take", out var raw) && int.TryParse(raw, out var t))
+            take = Math.Clamp(t, 1, 500);
+
+        var posts = await Db.SocialMediaPosts
             .AsNoTracking()
             .OrderByDescending(p => p.CreatedAt)
             .Take(take)
-            .Select(p => new
-            {
-                p.PostId,
-                p.Platform,
-                p.CreatedAt,
-                p.PostType,
-                p.ContentTopic,
-                p.CampaignName,
-                p.Impressions,
-                p.Reach,
-                p.Likes,
-                p.Comments,
-                p.Shares,
-                p.EngagementRate,
-                p.DonationReferrals,
-                p.EstimatedDonationValuePhp
-            })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return Ok(posts);
     }
