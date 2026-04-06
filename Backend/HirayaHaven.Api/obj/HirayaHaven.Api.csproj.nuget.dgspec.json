@@ -1,25 +1,31 @@
 {
   "format": 1,
   "restore": {
-    "/Users/alexander.christiansen490/Desktop/Intex Winter 2026/Intex-Winter-2026/Backend/HirayaHaven.Api/HirayaHaven.Api.csproj": {}
+    "C:\\Users\\bayou\\source\\repos\\INTEX II\\Intex-Winter-2026\\Backend\\HirayaHaven.Api\\HirayaHaven.Api.csproj": {}
   },
   "projects": {
-    "/Users/alexander.christiansen490/Desktop/Intex Winter 2026/Intex-Winter-2026/Backend/HirayaHaven.Api/HirayaHaven.Api.csproj": {
+    "C:\\Users\\bayou\\source\\repos\\INTEX II\\Intex-Winter-2026\\Backend\\HirayaHaven.Api\\HirayaHaven.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/alexander.christiansen490/Desktop/Intex Winter 2026/Intex-Winter-2026/Backend/HirayaHaven.Api/HirayaHaven.Api.csproj",
+        "projectUniqueName": "C:\\Users\\bayou\\source\\repos\\INTEX II\\Intex-Winter-2026\\Backend\\HirayaHaven.Api\\HirayaHaven.Api.csproj",
         "projectName": "HirayaHaven.Api",
-        "projectPath": "/Users/alexander.christiansen490/Desktop/Intex Winter 2026/Intex-Winter-2026/Backend/HirayaHaven.Api/HirayaHaven.Api.csproj",
-        "packagesPath": "/Users/alexander.christiansen490/.nuget/packages/",
-        "outputPath": "/Users/alexander.christiansen490/Desktop/Intex Winter 2026/Intex-Winter-2026/Backend/HirayaHaven.Api/obj/",
+        "projectPath": "C:\\Users\\bayou\\source\\repos\\INTEX II\\Intex-Winter-2026\\Backend\\HirayaHaven.Api\\HirayaHaven.Api.csproj",
+        "packagesPath": "C:\\Users\\bayou\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\bayou\\source\\repos\\INTEX II\\Intex-Winter-2026\\Backend\\HirayaHaven.Api\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/Users/alexander.christiansen490/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\bayou\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -38,7 +44,7 @@
           "auditLevel": "low",
           "auditMode": "all"
         },
-        "SdkAnalysisLevel": "10.0.100"
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net10.0": {
@@ -78,7 +84,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

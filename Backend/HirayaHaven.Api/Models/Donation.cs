@@ -13,8 +13,11 @@ public class Donation
     public decimal? Amount { get; set; }
     public decimal? EstimatedValue { get; set; }
     public string? ImpactUnit { get; set; }
+    public string? Notes { get; set; }
     public int? ReferralPostId { get; set; }
 
     public Supporter? Supporter { get; set; }
     public SocialMediaPost? ReferralPost { get; set; }
+    public ICollection<InKindDonationItem> InKindDonationItems { get; set; } = new List<InKindDonationItem>();
+    public ICollection<DonationAllocation> DonationAllocations { get; set; } = new List<DonationAllocation>();
 }

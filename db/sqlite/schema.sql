@@ -4,6 +4,12 @@ PRAGMA foreign_keys = ON;
 -- - This schema is aligned to the *actual CSV headers* in Data/*.csv.
 -- - SQLite types are intentionally simple for easy migration to PostgreSQL later.
 
+DROP TABLE IF EXISTS organization;
+
+DROP TABLE IF EXISTS program_areas;
+
+DROP TABLE IF EXISTS roles_permissions;
+
 DROP TABLE IF EXISTS donation_allocations;
 DROP TABLE IF EXISTS in_kind_donation_items;
 DROP TABLE IF EXISTS donations;
@@ -23,7 +29,56 @@ DROP TABLE IF EXISTS residents;
 DROP TABLE IF EXISTS safehouse_monthly_metrics;
 DROP TABLE IF EXISTS public_impact_snapshots;
 DROP TABLE IF EXISTS social_media_posts;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS staff;
 DROP TABLE IF EXISTS safehouses;
+
+CREATE TABLE organization (
+  org_id INTEGER PRIMARY KEY,
+  org_name TEXT,
+  legal_name TEXT,
+  org_type TEXT,
+  ein TEXT,
+  country_of_registration TEXT,
+  operations_country TEXT,
+  address_line1 TEXT,
+  address_line2 TEXT,
+  city TEXT,
+  state TEXT,
+  zip_code TEXT,
+  country TEXT,
+  phone TEXT,
+  email TEXT,
+  website TEXT,
+  logo_url TEXT,
+  mission_statement TEXT,
+  founded_year INTEGER,
+  fiscal_year_start TEXT,
+  fiscal_year_end TEXT,
+  currency_primary TEXT,
+  currency_reporting TEXT,
+  created_at TEXT,
+  updated_at TEXT
+);
+
+CREATE TABLE program_areas (
+  program_area_id INTEGER PRIMARY KEY,
+  area_code TEXT,
+  area_name TEXT,
+  description TEXT,
+  applies_to TEXT,
+  is_active INTEGER CHECK (is_active IN (0, 1))
+);
+
+CREATE TABLE roles_permissions (
+  permission_id INTEGER PRIMARY KEY,
+  role TEXT,
+  resource TEXT,
+  action TEXT,
+  is_allowed INTEGER CHECK (is_allowed IN (0, 1)),
+  scope_note TEXT
+);
 
 CREATE TABLE safehouses (
   safehouse_id INTEGER PRIMARY KEY,
@@ -39,6 +94,26 @@ CREATE TABLE safehouses (
   capacity_staff INTEGER,
   current_occupancy INTEGER,
   notes TEXT
+);
+
+CREATE TABLE staff (
+  staff_id INTEGER PRIMARY KEY,
+  staff_code TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  age INTEGER,
+  email TEXT,
+  phone TEXT,
+  role TEXT,
+  employment_type TEXT,
+  specialization TEXT,
+  safehouse_id INTEGER,
+  employment_status TEXT,
+  date_hired TEXT,
+  date_ended TEXT,
+  created_at TEXT,
+  updated_at TEXT,
+  FOREIGN KEY (safehouse_id) REFERENCES safehouses(safehouse_id)
 );
 
 CREATE TABLE partners (
@@ -224,6 +299,58 @@ CREATE TABLE residents (
   created_at TEXT,
   notes_restricted TEXT,
   FOREIGN KEY (safehouse_id) REFERENCES safehouses(safehouse_id)
+);
+
+CREATE TABLE users (
+  user_id INTEGER PRIMARY KEY,
+  user_type TEXT,
+  staff_id INTEGER,
+  resident_id INTEGER,
+  supporter_id INTEGER,
+  username TEXT,
+  email TEXT,
+  password_hash TEXT,
+  role TEXT,
+  is_active INTEGER CHECK (is_active IN (0, 1)),
+  is_approved INTEGER CHECK (is_approved IN (0, 1)),
+  approved_by INTEGER,
+  approved_at TEXT,
+  last_login TEXT,
+  failed_login_attempts INTEGER,
+  locked_until TEXT,
+  mfa_enabled INTEGER CHECK (mfa_enabled IN (0, 1)),
+  mfa_secret TEXT,
+  password_reset_token TEXT,
+  password_reset_expires TEXT,
+  reset_initiated_by INTEGER,
+  created_by INTEGER,
+  created_at TEXT,
+  updated_at TEXT,
+  FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+  FOREIGN KEY (resident_id) REFERENCES residents(resident_id),
+  FOREIGN KEY (supporter_id) REFERENCES supporters(supporter_id),
+  FOREIGN KEY (approved_by) REFERENCES users(user_id),
+  FOREIGN KEY (created_by) REFERENCES users(user_id),
+  FOREIGN KEY (reset_initiated_by) REFERENCES users(user_id)
+);
+
+CREATE TABLE audit_log (
+  audit_id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  action TEXT,
+  resource TEXT,
+  record_id INTEGER,
+  old_value TEXT,
+  new_value TEXT,
+  requires_approval INTEGER CHECK (requires_approval IN (0, 1)),
+  approval_status TEXT,
+  approved_by INTEGER,
+  approved_at TEXT,
+  ip_address TEXT,
+  timestamp TEXT,
+  notes TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(user_id),
+  FOREIGN KEY (approved_by) REFERENCES users(user_id)
 );
 
 CREATE TABLE process_recordings (

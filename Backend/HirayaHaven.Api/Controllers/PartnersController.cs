@@ -1,19 +1,21 @@
 using HirayaHaven.Api.Data;
+using HirayaHaven.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class PartnersController(HirayaContext context) : ControllerBase
+public class PartnersController(HirayaContext db) : CrudControllerBase<Partner>(db)
 {
-    [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] bool activeOnly = false)
-    {
-        var query = context.Partners.AsNoTracking();
+    protected override DbSet<Partner> Entities => Db.Partners;
 
-        if (activeOnly)
+    [HttpGet]
+    public override async Task<IActionResult> GetAll(CancellationToken ct)
+    {
+        var query = Db.Partners.AsNoTracking();
+        if (HttpContext.Request.Query.TryGetValue("activeOnly", out var raw)
+            && bool.TryParse(raw, out var activeOnly)
+            && activeOnly)
         {
             query = query.Where(p => p.Status == "Active");
         }
@@ -30,15 +32,15 @@ public class PartnersController(HirayaContext context) : ControllerBase
                 p.Status,
                 Assignments = p.PartnerAssignments.Count
             })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return Ok(partners);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    public override async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct)
     {
-        var partner = await context.Partners
+        var partner = await Db.Partners
             .AsNoTracking()
             .Where(p => p.PartnerId == id)
             .Select(p => new
@@ -52,6 +54,9 @@ public class PartnersController(HirayaContext context) : ControllerBase
                 p.Phone,
                 p.Region,
                 p.Status,
+                p.StartDate,
+                p.EndDate,
+                p.Notes,
                 Assignments = p.PartnerAssignments
                     .Select(a => new
                     {
@@ -66,7 +71,7 @@ public class PartnersController(HirayaContext context) : ControllerBase
                     })
                     .ToList()
             })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
         return partner is null ? NotFound() : Ok(partner);
     }
