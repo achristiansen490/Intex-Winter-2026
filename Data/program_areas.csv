@@ -1,0 +1,9 @@
+program_area_id,area_code,area_name,description,applies_to,is_active
+1,EDU,Education,"Covers schooling, vocational training, enrollment support, and academic progress tracking for residents.","donations, intervention_plans",True
+2,OPS,Operations,"General safehouse operations including staffing, utilities, and day-to-day management.","donations, partner_assignments",True
+3,OUT,Outreach,"Community outreach, awareness campaigns, and external engagement activities.","donations, partner_assignments",True
+4,PHY,Physical Health,"Medical checkups, dental care, nutrition, and physical wellbeing services for residents.","donations, intervention_plans",True
+5,SAF,Safety,"Safety planning, risk assessment, and protective measures for residents.","donations, intervention_plans",True
+6,TRN,Transport,"Transportation costs for residents, home visitations, court appearances, and medical appointments.",donations,True
+7,WEL,Wellbeing,"Psychological counseling, therapeutic sessions, and emotional support services.","donations, intervention_plans",True
+8,MNT,Maintenance,"Safehouse facility maintenance, repairs, and upkeep.","donations, partner_assignments",True
