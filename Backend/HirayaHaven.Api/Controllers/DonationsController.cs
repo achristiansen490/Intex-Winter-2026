@@ -1,13 +1,38 @@
+using System.Security.Claims;
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-public class DonationsController(HirayaContext db) : CrudControllerBase<Donation>(db)
+public class DonationsController(HirayaContext db, UserManager<AppUser> userManager)
+    : CrudControllerBase<Donation>(db)
 {
     protected override DbSet<Donation> Entities => Db.Donations;
+
+    [Authorize(Roles = "Admin,Donor")]
+    [HttpGet]
+    public override async Task<IActionResult> GetAll(CancellationToken ct)
+    {
+        if (User.IsInRole("Admin"))
+        {
+            var all = await Db.Donations.AsNoTracking().ToListAsync(ct);
+            return Ok(all);
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var user = await userManager.FindByIdAsync(userId!);
+        if (user?.SupporterId is null) return Forbid();
+
+        var donations = await Db.Donations
+            .Where(d => d.SupporterId == user.SupporterId)
+            .AsNoTracking()
+            .ToListAsync(ct);
+        return Ok(donations);
+    }
 
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(CancellationToken ct)

@@ -1,4 +1,5 @@
 using HirayaHaven.Api.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -8,6 +9,41 @@ public partial class HirayaContext
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasOne(e => e.Staff)
+                .WithMany()
+                .HasForeignKey(e => e.StaffId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Resident)
+                .WithMany()
+                .HasForeignKey(e => e.ResidentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Supporter)
+                .WithMany()
+                .HasForeignKey(e => e.SupporterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ApprovedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ApprovedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ResetInitiatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ResetInitiatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<Organization>(entity =>
         {
             entity.ToTable("organization");
@@ -106,66 +142,6 @@ public partial class HirayaContext
             entity.HasOne(e => e.Safehouse)
                 .WithMany(s => s.StaffMembers)
                 .HasForeignKey(e => e.SafehouseId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.ToTable("users");
-            entity.HasKey(e => e.UserId);
-            entity.Property(e => e.UserId).HasColumnName("user_id").ValueGeneratedOnAdd();
-            MapText(entity, e => e.UserType, "user_type");
-            entity.Property(e => e.StaffId).HasColumnName("staff_id");
-            entity.Property(e => e.ResidentId).HasColumnName("resident_id");
-            entity.Property(e => e.SupporterId).HasColumnName("supporter_id");
-            MapText(entity, e => e.Username, "username");
-            MapText(entity, e => e.Email, "email");
-            MapText(entity, e => e.PasswordHash, "password_hash");
-            MapText(entity, e => e.Role, "role");
-            MapBool(entity, e => e.IsActive, "is_active");
-            MapBool(entity, e => e.IsApproved, "is_approved");
-            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
-            MapText(entity, e => e.ApprovedAt, "approved_at");
-            MapText(entity, e => e.LastLogin, "last_login");
-            entity.Property(e => e.FailedLoginAttempts).HasColumnName("failed_login_attempts");
-            MapText(entity, e => e.LockedUntil, "locked_until");
-            MapBool(entity, e => e.MfaEnabled, "mfa_enabled");
-            MapText(entity, e => e.MfaSecret, "mfa_secret");
-            MapText(entity, e => e.PasswordResetToken, "password_reset_token");
-            MapText(entity, e => e.PasswordResetExpires, "password_reset_expires");
-            entity.Property(e => e.ResetInitiatedBy).HasColumnName("reset_initiated_by");
-            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
-            MapText(entity, e => e.CreatedAt, "created_at");
-            MapText(entity, e => e.UpdatedAt, "updated_at");
-
-            entity.HasOne(e => e.Staff)
-                .WithMany()
-                .HasForeignKey(e => e.StaffId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.Resident)
-                .WithMany()
-                .HasForeignKey(e => e.ResidentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.Supporter)
-                .WithMany()
-                .HasForeignKey(e => e.SupporterId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.ApprovedByUser)
-                .WithMany()
-                .HasForeignKey(e => e.ApprovedBy)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.CreatedByUser)
-                .WithMany()
-                .HasForeignKey(e => e.CreatedBy)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.ResetInitiatedByUser)
-                .WithMany()
-                .HasForeignKey(e => e.ResetInitiatedBy)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

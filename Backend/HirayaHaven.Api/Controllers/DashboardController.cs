@@ -1,4 +1,5 @@
 using HirayaHaven.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace HirayaHaven.Api.Controllers;
 [Route("api/[controller]")]
 public class DashboardController(HirayaContext context) : ControllerBase
 {
+    [AllowAnonymous]
     [HttpGet("overview")]
     public async Task<IActionResult> GetOverview()
     {
