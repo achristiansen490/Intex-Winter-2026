@@ -1,16 +1,18 @@
 using HirayaHaven.Api.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Data;
 
-public partial class HirayaContext(DbContextOptions<HirayaContext> options) : DbContext(options)
+public partial class HirayaContext(DbContextOptions<HirayaContext> options)
+    : IdentityDbContext<AppUser, IdentityRole<int>, int>(options)
 {
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<ProgramArea> ProgramAreas => Set<ProgramArea>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<Safehouse> Safehouses => Set<Safehouse>();
     public DbSet<Staff> Staff => Set<Staff>();
-    public DbSet<User> Users => Set<User>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Partner> Partners => Set<Partner>();
     public DbSet<PartnerAssignment> PartnerAssignments => Set<PartnerAssignment>();

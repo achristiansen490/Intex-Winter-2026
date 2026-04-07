@@ -17,6 +17,6 @@ public class AuditLog
     public string? Timestamp { get; set; }
     public string? Notes { get; set; }
 
-    public User? User { get; set; }
-    public User? ApprovedByUser { get; set; }
+    public AppUser? User { get; set; }
+    public AppUser? ApprovedByUser { get; set; }
 }

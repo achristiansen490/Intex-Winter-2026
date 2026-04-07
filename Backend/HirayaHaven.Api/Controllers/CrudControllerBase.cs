@@ -1,4 +1,5 @@
 using HirayaHaven.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +7,7 @@ namespace HirayaHaven.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public abstract class CrudControllerBase<TEntity> : ControllerBase where TEntity : class
 {
     protected readonly HirayaContext Db;
@@ -28,6 +30,7 @@ public abstract class CrudControllerBase<TEntity> : ControllerBase where TEntity
         return entity is null ? NotFound() : Ok(entity);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public virtual async Task<IActionResult> Create([FromBody] TEntity entity, CancellationToken ct)
     {
@@ -37,6 +40,7 @@ public abstract class CrudControllerBase<TEntity> : ControllerBase where TEntity
         return CreatedAtAction(nameof(GetById), new { id }, entity);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public virtual async Task<IActionResult> Update([FromRoute] int id, [FromBody] TEntity entity, CancellationToken ct)
     {
@@ -47,6 +51,7 @@ public abstract class CrudControllerBase<TEntity> : ControllerBase where TEntity
         return NoContent();
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public virtual async Task<IActionResult> Delete([FromRoute] int id, CancellationToken ct)
     {

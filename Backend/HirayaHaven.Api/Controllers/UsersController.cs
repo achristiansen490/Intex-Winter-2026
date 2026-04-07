@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-public class UsersController(HirayaContext db) : CrudControllerBase<User>(db)
+public class UsersController(HirayaContext db) : CrudControllerBase<AppUser>(db)
 {
-    protected override DbSet<User> Entities => Db.Users;
+    protected override DbSet<AppUser> Entities => Db.Users;
 }
