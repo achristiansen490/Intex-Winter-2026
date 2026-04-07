@@ -55,5 +55,8 @@ Here is a full list of all the api routes
 /api/rolepermissions
 /api/auditlogs
 /api/dashboard (custom — not CRUD base)
+/api/auth/register	
+/api/auth/login	
+/api/auth/me	
 
 CORS is already configured to allow localhost:5173 and localhost:4173 (Vite dev and preview ports), so your React frontend can call it directly during development.
