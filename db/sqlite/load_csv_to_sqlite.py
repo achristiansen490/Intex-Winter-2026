@@ -601,21 +601,27 @@ def main() -> None:
 
     conn = sqlite3.connect(db_path)
     try:
-        conn.execute("PRAGMA foreign_keys = ON;")
+        conn.execute("PRAGMA foreign_keys = OFF;")
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA synchronous = NORMAL;")
 
         if args.overwrite:
             _exec_schema(conn, schema_path)
+            conn.execute("PRAGMA foreign_keys = OFF;")
         else:
-            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("PRAGMA foreign_keys = OFF;")
 
         conn.execute("BEGIN;")
         inserted_counts: Dict[str, int] = {}
         for table in load_order:
-            inserted = _insert_table(conn, table, csv_paths[table], types[table])
+            try:
+                inserted = _insert_table(conn, table, csv_paths[table], types[table])
+            except Exception as e:
+                raise RuntimeError(f"Failed while loading table: {table}") from e
             inserted_counts[table] = inserted
         conn.commit()
+
+        conn.execute("PRAGMA foreign_keys = ON;")
 
         if args.verify:
             for table in load_order:
@@ -638,4 +644,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
