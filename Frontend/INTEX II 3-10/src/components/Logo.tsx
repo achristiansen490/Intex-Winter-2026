@@ -11,10 +11,9 @@ export function Logo({ light = false }: { light?: boolean }) {
         alt=""
         aria-hidden="true"
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          objectFit: 'cover',
+          width: 64,
+          height: 40,
+          objectFit: 'contain',
           flexShrink: 0,
         }}
       />
