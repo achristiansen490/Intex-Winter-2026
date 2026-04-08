@@ -123,6 +123,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Apply pending EF migrations before seeding (avoids "no such table" after pulling new migrations).
+await using (var migrateScope = app.Services.CreateAsyncScope())
+{
+    var migrateDb = migrateScope.ServiceProvider.GetRequiredService<HirayaContext>();
+    await migrateDb.Database.MigrateAsync();
+}
+
 await SeedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
