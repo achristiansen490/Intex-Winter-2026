@@ -22,7 +22,7 @@
 *.db-wal
 
 # Optional: uncomment to avoid committing the database file itself
-# Data/hiraya.db
+Data/hiraya.db
 
 # OS
 Thumbs.db
