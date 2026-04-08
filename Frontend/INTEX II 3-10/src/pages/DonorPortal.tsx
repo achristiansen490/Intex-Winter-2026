@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+
+const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
+const MonthlyLineChart = lazy(() => import('../components/charts/MonthlyLineChart'));
 
 const c = {
   ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
@@ -177,6 +180,8 @@ function ActiveCampaigns() {
   const [snapshots, setSnapshots] = useState<Record<string, unknown>[]>([]);
   const [campaigns, setCampaigns] = useState<Record<string, unknown>[]>([]);
   const [monthly, setMonthly] = useState<Record<string, unknown>[]>([]);
+  const [campaignTake, setCampaignTake] = useState(10);
+  const [monthlyTake, setMonthlyTake] = useState(12);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -185,8 +190,8 @@ function ActiveCampaigns() {
     try {
       const [snaps, camps, mon] = await Promise.all([
         fetch('/api/publicimpactsnapshots').then(r => r.json()),
-        api('/api/insights/donations/by-campaign?take=10').then(r => r.json()),
-        api('/api/insights/donations/monthly').then(r => r.json()),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
+        api(`/api/insights/donations/monthly?take=${monthlyTake}`).then(r => r.json()),
       ]);
       setSnapshots(Array.isArray(snaps) ? snaps : []);
       setCampaigns(Array.isArray(camps) ? camps : []);
@@ -194,19 +199,53 @@ function ActiveCampaigns() {
     }
     catch { setError('Failed to load campaigns.'); }
     finally { setLoading(false); }
-  }, []);
+  }, [campaignTake, monthlyTake]);
 
   useEffect(() => { load(); }, [load]);
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
+  const campaignChartData = (campaigns as any[]).map((r) => ({
+    name: String(r.campaignName ?? '(none)'),
+    total: Number(r.totalValuePhp ?? 0),
+  }));
+  const monthlyChartData = (monthly as any[]).map((r) => ({
+    month: r.month ? new Date(String(r.month)).toLocaleDateString('en-US', { year: '2-digit', month: 'short' }) : '—',
+    total: Number(r.totalValuePhp ?? 0),
+    donations: Number(r.donationCount ?? 0),
+  }));
+
   return (
     <div>
       <SectionTitle>Campaign effectiveness (live)</SectionTitle>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Top campaigns:
+          <select value={campaignTake} onChange={(e) => setCampaignTake(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.goldLight}`, background: c.white }}>
+            {[5, 10, 15, 25].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Months:
+          <select value={monthlyTake} onChange={(e) => setMonthlyTake(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.goldLight}`, background: c.white }}>
+            {[6, 12, 18, 24, 36].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 14 }}>
         Top campaigns by total donation value (amount, falling back to estimated value). Source: <code>/api/insights/donations/by-campaign</code>
       </p>
 
+      {campaignChartData.length > 0 && (
+        <div style={{ background: c.white, border: `1px solid ${c.goldLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Top campaigns (total PHP)</p>
+          <Suspense fallback={<p style={{ fontSize: 12, color: c.muted }}>Loading chart…</p>}>
+            <CampaignBarChart data={campaignChartData} barColor={c.gold} />
+          </Suspense>
+        </div>
+      )}
       {campaigns.length === 0 ? (
         <p style={{ fontSize: 13, color: c.muted }}>No campaign data yet.</p>
       ) : (
@@ -241,6 +280,15 @@ function ActiveCampaigns() {
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 14 }}>
         Source: <code>/api/insights/donations/monthly</code>
       </p>
+
+      {monthlyChartData.length > 0 && (
+        <div style={{ background: c.white, border: `1px solid ${c.goldLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Monthly totals (PHP)</p>
+          <Suspense fallback={<p style={{ fontSize: 12, color: c.muted }}>Loading chart…</p>}>
+            <MonthlyLineChart data={monthlyChartData} lineColor={c.forest} />
+          </Suspense>
+        </div>
+      )}
       <div style={{ overflowX: 'auto', marginBottom: 24 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
