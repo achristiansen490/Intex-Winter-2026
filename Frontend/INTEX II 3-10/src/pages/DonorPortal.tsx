@@ -27,7 +27,7 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 15, fontWeight: 600, color: c.forest, marginBottom: 12, marginTop: 0, paddingBottom: 6, borderBottom: `1px solid ${c.goldLight}` }}>{children}</h2>;
 }
 
@@ -175,12 +175,23 @@ function DonationHistory() {
 
 function ActiveCampaigns() {
   const [snapshots, setSnapshots] = useState<Record<string, unknown>[]>([]);
+  const [campaigns, setCampaigns] = useState<Record<string, unknown>[]>([]);
+  const [monthly, setMonthly] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const d = await fetch('/api/publicimpactsnapshots').then(r => r.json()); setSnapshots(Array.isArray(d) ? d : []); }
+    try {
+      const [snaps, camps, mon] = await Promise.all([
+        fetch('/api/publicimpactsnapshots').then(r => r.json()),
+        api('/api/insights/donations/by-campaign?take=10').then(r => r.json()),
+        api('/api/insights/donations/monthly').then(r => r.json()),
+      ]);
+      setSnapshots(Array.isArray(snaps) ? snaps : []);
+      setCampaigns(Array.isArray(camps) ? camps : []);
+      setMonthly(Array.isArray(mon) ? mon : []);
+    }
     catch { setError('Failed to load campaigns.'); }
     finally { setLoading(false); }
   }, []);
@@ -191,7 +202,67 @@ function ActiveCampaigns() {
 
   return (
     <div>
-      <SectionTitle>Impact Snapshots & Campaigns</SectionTitle>
+      <SectionTitle>Campaign effectiveness (live)</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 14 }}>
+        Top campaigns by total donation value (amount, falling back to estimated value). Source: <code>/api/insights/donations/by-campaign</code>
+      </p>
+
+      {campaigns.length === 0 ? (
+        <p style={{ fontSize: 13, color: c.muted }}>No campaign data yet.</p>
+      ) : (
+        <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: c.goldLight }}>
+                {['Campaign', 'Donations', 'Total (PHP)', 'Avg (PHP)'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(campaigns as any[]).map((row, i) => (
+                <tr key={`${row.campaignName}-${i}`} style={{ borderBottom: `1px solid ${c.goldLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                  <td style={{ padding: '8px 12px', color: c.text }}>{row.campaignName ?? '—'}</td>
+                  <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationCount ?? '—'}</td>
+                  <td style={{ padding: '8px 12px', color: c.forest, fontWeight: 700 }}>
+                    {row.totalValuePhp != null ? `₱${Number(row.totalValuePhp).toLocaleString()}` : '—'}
+                  </td>
+                  <td style={{ padding: '8px 12px', color: c.muted }}>
+                    {row.avgValuePhp != null ? `₱${Number(row.avgValuePhp).toFixed(0)}` : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <SectionTitle>Monthly giving trend (last 12 months)</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 14 }}>
+        Source: <code>/api/insights/donations/monthly</code>
+      </p>
+      <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: c.goldLight }}>
+              {['Month', 'Donations', 'Total (PHP)'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(monthly as any[]).slice(-12).map((row, i) => (
+              <tr key={`${row.month}-${i}`} style={{ borderBottom: `1px solid ${c.goldLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px' }}>{row.month ? new Date(row.month).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationCount ?? '—'}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 700 }}>{row.totalValuePhp != null ? `₱${Number(row.totalValuePhp).toLocaleString()}` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <SectionTitle>Impact snapshots</SectionTitle>
       {snapshots.length === 0 ? (
         <p style={{ fontSize: 13, color: c.muted }}>No published snapshots yet.</p>
       ) : (
@@ -256,7 +327,9 @@ function MyProfile() {
           <div style={{ background: c.white, border: `1px solid ${c.goldLight}`, borderRadius: 12, padding: '1.5rem', maxWidth: 480 }}>
             {field('Display Name', supporter.displayName)}
             {field('Type', supporter.supporterType)}
-            {supporter.organizationName && field('Organization', supporter.organizationName)}
+            {supporter.organizationName != null && String(supporter.organizationName).trim() !== ''
+              ? field('Organization', supporter.organizationName)
+              : null}
             {field('First Name', supporter.firstName)}
             {field('Last Name', supporter.lastName)}
             {field('Country', supporter.country)}

@@ -36,7 +36,7 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 15, fontWeight: 600, color: c.forest, marginBottom: 12, marginTop: 0, paddingBottom: 6, borderBottom: `1px solid ${c.sageLight}` }}>{children}</h2>;
 }
 
@@ -144,6 +144,128 @@ function StaffDashboard({ role }: { role: string | null }) {
   );
 }
 
+// ── Reports (pipelines) ───────────────────────────────────────────────────────
+
+type InsightDonationMonthlyRow = { month: string; totalValuePhp: number; donationCount: number };
+type InsightDonationByCampaignRow = { campaignName: string; totalValuePhp: number; donationCount: number; avgValuePhp: number };
+type InsightBridgeRow = {
+  month: string;
+  posts_n: number;
+  click_throughs: number;
+  donation_referrals: number;
+  donation_total_php: number;
+  donation_n: number;
+  incidents: number;
+  avg_edu_progress: number;
+  avg_health: number;
+};
+
+function StaffReports() {
+  const [bridge, setBridge] = useState<InsightBridgeRow[]>([]);
+  const [campaigns, setCampaigns] = useState<InsightDonationByCampaignRow[]>([]);
+  const [monthly, setMonthly] = useState<InsightDonationMonthlyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [b, c, m] = await Promise.all([
+        api('/api/insights/bridge/monthly').then(r => r.json()),
+        api('/api/insights/donations/by-campaign?take=12').then(r => r.json()),
+        api('/api/insights/donations/monthly').then(r => r.json()),
+      ]);
+      setBridge(Array.isArray(b) ? b : []);
+      setCampaigns(Array.isArray(c) ? c : []);
+      setMonthly(Array.isArray(m) ? m : []);
+    } catch { setError('Failed to load reports.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  const last = bridge.length ? bridge[bridge.length - 1] : null;
+
+  return (
+    <div>
+      <SectionTitle>Reports (ML pipelines)</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
+        These are aggregate, planning-focused indicators (not causal claims). Source: <code>/api/insights/*</code>
+      </p>
+
+      {last && (
+        <>
+          <SectionTitle>Latest month snapshot</SectionTitle>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 22 }}>
+            <StatCard label="Month" value={new Date(last.month).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })} />
+            <StatCard label="Donation total" value={`₱${Number(last.donation_total_php).toLocaleString()}`} accent={c.goldLight} />
+            <StatCard label="Donation referrals" value={last.donation_referrals} accent={c.roseLight} />
+            <StatCard label="Incidents" value={last.incidents} accent={c.roseLight} />
+          </div>
+        </>
+      )}
+
+      <SectionTitle>Campaign effectiveness (top by total PHP)</SectionTitle>
+      <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['Campaign', 'Donations', 'Total (PHP)', 'Avg (PHP)'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {campaigns.map((row, i) => (
+              <tr key={`${row.campaignName}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px' }}>{row.campaignName}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationCount}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{`₱${Number(row.totalValuePhp).toLocaleString()}`}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{`₱${Number(row.avgValuePhp).toFixed(0)}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <SectionTitle>Outreach ↔ Money ↔ Outcomes (monthly bridge)</SectionTitle>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Avg Edu', 'Avg Health'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {bridge.slice(-18).map((row, i) => (
+              <tr key={`${row.month}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px' }}>{new Date(row.month).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.posts_n}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.click_throughs}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.donation_referrals}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{`₱${Number(row.donation_total_php).toLocaleString()}`}</td>
+                <td style={{ padding: '8px 12px', color: c.rose }}>{row.incidents}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{Number(row.avg_edu_progress).toFixed(1)}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{Number(row.avg_health).toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {monthly.length === 0 && (
+        <p style={{ fontSize: 12, color: c.muted, marginTop: 12 }}>
+          Note: donations/monthly returned 0 rows. Verify donations exist and donation_date is populated.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Pending Approvals (Supervisor) ────────────────────────────────────────────
 
 function StaffPendingApprovals() {
@@ -188,12 +310,14 @@ function StaffPendingApprovals() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{String(item.resource ?? '—')} #{String(item.recordId ?? '—')}</p>
-                  {item.notes && <p style={{ fontSize: 12, color: c.muted, marginTop: 3 }}>{String(item.notes)}</p>}
+                  {item.notes != null && String(item.notes).trim() !== '' && (
+                    <p style={{ fontSize: 12, color: c.muted, marginTop: 3 }}>{String(item.notes)}</p>
+                  )}
                   <p style={{ fontSize: 11, color: c.muted, marginTop: 4 }}>{item.timestamp ? new Date(String(item.timestamp)).toLocaleString() : '—'}</p>
-                  {(item.oldValue || item.newValue) && (
+                  {(item.oldValue != null || item.newValue != null) && (
                     <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      {item.oldValue && <span style={{ background: c.roseLight, color: c.rose, borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>Before: {String(item.oldValue)}</span>}
-                      {item.newValue && <span style={{ background: c.sageLight, color: '#1B5E20', borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>After: {String(item.newValue)}</span>}
+                      {item.oldValue != null && <span style={{ background: c.roseLight, color: c.rose, borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>Before: {String(item.oldValue)}</span>}
+                      {item.newValue != null && <span style={{ background: c.sageLight, color: '#1B5E20', borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>After: {String(item.newValue)}</span>}
                     </div>
                   )}
                 </div>
@@ -303,7 +427,7 @@ export default function StaffPortal() {
           { key: 'firstDonationDate', label: 'First Donation' }, { key: 'acquisitionChannel', label: 'Channel' },
         ]} />;
 
-      case 'Reports': return <StaffDashboard role={role} />;
+      case 'Reports': return <StaffReports />;
       case 'Pending Approvals': return <StaffPendingApprovals />;
 
       default: return <p style={{ fontSize: 14, color: c.muted }}>{activeNav} — coming soon</p>;
