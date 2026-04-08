@@ -13,10 +13,12 @@ interface SidebarProps {
   active: string;
   setActive: (item: string) => void;
   user: string;
+  onLogout?: () => void;
 }
 
-export function Sidebar({ id, items, active, setActive, user }: SidebarProps) {
+export function Sidebar({ id, items, active, setActive, user, onLogout }: SidebarProps) {
   const [open, setOpen] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   return (
     <>
@@ -93,15 +95,20 @@ export function Sidebar({ id, items, active, setActive, user }: SidebarProps) {
             <li key={item}>
               <button
                 onClick={() => { setActive(item); setOpen(false); }}
+                onMouseEnter={() => setHoveredItem(item)}
+                onMouseLeave={() => setHoveredItem(null)}
                 aria-current={active === item ? 'page' : undefined}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
-                  padding: '10px 1rem', fontSize: 13,
+                  padding: '10px 1rem', fontSize: hoveredItem === item ? 14 : 13,
                   background: active === item ? 'rgba(212,164,76,0.18)' : 'none',
-                  color: active === item ? c.gold : 'rgba(251,248,242,0.65)',
+                  color: active === item ? c.gold : hoveredItem === item ? c.ivory : 'rgba(251,248,242,0.65)',
                   borderLeft: `3px solid ${active === item ? c.gold : 'transparent'}`,
                   border: 'none', borderRight: 'none', borderTop: 'none', borderBottom: 'none',
                   cursor: 'pointer',
+                  transform: hoveredItem === item ? 'scale(1.03)' : 'scale(1)',
+                  transformOrigin: 'left center',
+                  transition: 'transform 0.15s ease, color 0.15s ease, font-size 0.15s ease',
                 }}
               >
                 {item}
@@ -116,8 +123,29 @@ export function Sidebar({ id, items, active, setActive, user }: SidebarProps) {
             borderTop: '0.5px solid rgba(255,255,255,0.1)',
             fontSize: 12,
             color: 'rgba(251,248,242,0.5)',
+            textAlign: 'center',
           }}
         >
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              style={{
+                width: '100%',
+                marginBottom: 8,
+                textAlign: 'center',
+                background: 'rgba(251,248,242,0.08)',
+                color: c.ivory,
+                border: '1px solid rgba(251,248,242,0.28)',
+                borderRadius: 8,
+                padding: '7px 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Log Out
+            </button>
+          )}
           {user}
         </div>
       </nav>
