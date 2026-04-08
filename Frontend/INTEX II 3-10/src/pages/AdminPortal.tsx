@@ -352,9 +352,16 @@ type InsightBridgeRow = {
   avg_health: number;
 };
 
+type EngagementVsVanitySummary = {
+  totalPosts: number;
+  thresholds: { engagementScoreP75: number; donationReferralsP75: number };
+  segments: { segment: string; postCount: number }[];
+};
+
 function AdminReports() {
   const [bridge, setBridge] = useState<InsightBridgeRow[]>([]);
   const [campaigns, setCampaigns] = useState<InsightDonationByCampaignRow[]>([]);
+  const [evSummary, setEvSummary] = useState<EngagementVsVanitySummary | null>(null);
   const [campaignTake, setCampaignTake] = useState(15);
   const [bridgeTake, setBridgeTake] = useState(24);
   const [loading, setLoading] = useState(true);
@@ -363,12 +370,14 @@ function AdminReports() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [b, c] = await Promise.all([
+      const [b, c, ev] = await Promise.all([
         api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(r => r.json()),
         api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
+        api('/api/insights/social/engagement-vs-vanity').then(r => r.json()),
       ]);
       setBridge(Array.isArray(b) ? b : []);
       setCampaigns(Array.isArray(c) ? c : []);
+      setEvSummary(ev && typeof ev === 'object' && 'segments' in ev ? ev as EngagementVsVanitySummary : null);
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
   }, [bridgeTake, campaignTake]);
@@ -507,7 +516,54 @@ function AdminReports() {
             { key: 'boostedRate', label: 'Boosted rate' },
           ]}
         />
+
+        <DataPanel
+          title="Safehouse strain (latest month; stress z + forecast heuristic)"
+          url="/api/insights/safehouses/strain/latest?take=25"
+          keyField="safehouseId"
+          columns={[
+            { key: 'safehouseName', label: 'Safehouse' },
+            { key: 'month', label: 'Month' },
+            { key: 'stressIndexZ', label: 'Stress (z)' },
+            { key: 'forecastNextMonthIncidents', label: 'Forecast next incidents' },
+            { key: 'incidentCount', label: 'Incidents' },
+            { key: 'incidentLag1', label: 'Incidents lag1' },
+            { key: 'activeResidents', label: 'Active residents' },
+          ]}
+        />
       </div>
+
+      {evSummary && (
+        <div style={{ marginTop: 22 }}>
+          <SectionTitle>Engagement vs vanity (segment mix)</SectionTitle>
+          <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+            High engagement = likes+comments+shares at or above P75; high donation = referrals at or above P75. Associations only — not causal.{' '}
+            <code>/api/insights/social/engagement-vs-vanity</code>
+          </p>
+          <p style={{ fontSize: 12, color: c.muted, marginBottom: 10 }}>
+            P75 thresholds: engagement score {Number(evSummary.thresholds.engagementScoreP75).toFixed(1)}, donation referrals {Number(evSummary.thresholds.donationReferralsP75).toFixed(1)} · {evSummary.totalPosts} posts
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: c.sageLight }}>
+                  {['Segment', 'Posts'].map(h => (
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {evSummary.segments.map((row, i) => (
+                  <tr key={row.segment} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                    <td style={{ padding: '8px 12px' }}>{row.segment.replace(/_/g, ' ')}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.postCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
