@@ -197,7 +197,15 @@ function ActiveCampaigns() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {snapshots.map((s: any) => (
-            <div key={s.snapshotId} style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1.25rem 1.5rem', borderLeft: `4px solid ${c.gold}` }}>
+            <div key={s.snapshotId} style={{
+              background: c.white,
+              borderTop: `1px solid ${c.sageLight}`,
+              borderRight: `1px solid ${c.sageLight}`,
+              borderBottom: `1px solid ${c.sageLight}`,
+              borderLeft: `4px solid ${c.gold}`,
+              borderRadius: 12,
+              padding: '1.25rem 1.5rem',
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 600, color: c.forest, margin: 0, fontFamily: 'Georgia, serif' }}>{s.headline ?? 'Impact Update'}</h3>
                 <span style={{ fontSize: 11, color: c.muted }}>{s.snapshotDate ? new Date(s.snapshotDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : '—'}</span>
