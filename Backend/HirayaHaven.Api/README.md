@@ -54,6 +54,24 @@ Generate SQL script for deployment:
 dotnet ef migrations script -o migrations.sql
 ```
 
+## SQL Server (Azure) migration commands
+SQL Server migrations are kept separate from SQLite migrations.
+
+Create a SQL Server migration:
+```bash
+dotnet ef migrations add <Name> --context HirayaSqlServerContext --output-dir Migrations/SqlServer
+```
+
+Apply SQL Server migrations:
+```bash
+dotnet ef database update --context HirayaSqlServerContext
+```
+
+Generate SQL script:
+```bash
+dotnet ef migrations script --context HirayaSqlServerContext --output Migrations/SqlServer/InitialAzureSql.sql
+```
+
 ## Azure transition notes
 1. Add `Microsoft.EntityFrameworkCore.SqlServer` package.
 2. Change provider in `Program.cs` to `UseSqlServer(...)` for production.
