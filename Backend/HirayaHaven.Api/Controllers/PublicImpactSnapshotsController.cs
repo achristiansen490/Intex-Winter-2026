@@ -1,12 +1,14 @@
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
-using Microsoft.AspNetCore.Authorization;
+using HirayaHaven.Api.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-public class PublicImpactSnapshotsController(HirayaContext db) : CrudControllerBase<PublicImpactSnapshot>(db)
+public class PublicImpactSnapshotsController(HirayaContext db, IPermissionService permissions, UserManager<AppUser> userManager)
+    : CrudControllerBase<PublicImpactSnapshot>(db, permissions, userManager)
 {
     protected override DbSet<PublicImpactSnapshot> Entities => Db.PublicImpactSnapshots;
 
