@@ -1,4 +1,5 @@
-PRAGMA foreign_keys = ON;
+-- FK checks off for DROP/CREATE so mixed DBs (e.g. EF Identity + these tables) can reset cleanly.
+PRAGMA foreign_keys = OFF;
 
 -- NOTE:
 -- - This schema is aligned to the *actual CSV headers* in Data/*.csv.
@@ -478,3 +479,5 @@ CREATE TABLE public_impact_snapshots (
   is_published INTEGER CHECK (is_published IN (0, 1)),
   published_at TEXT
 );
+
+PRAGMA foreign_keys = ON;

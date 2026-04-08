@@ -8,3 +8,4 @@ safehouse_id,safehouse_code,name,region,city,province,country,open_date,status,c
 7,SH07,Lighthouse Safehouse 7,Visayas,Bacolod,Negros Occidental,Philippines,2022-09-28,Active,12,4,12,
 8,SH08,Lighthouse Safehouse 8,Visayas,Tacloban,Leyte,Philippines,2022-11-12,Active,9,7,7,
 9,SH09,Lighthouse Safehouse 9,Mindanao,General Santos,South Cotabato,Philippines,2022-12-27,Active,6,3,6,
+10,SH10,Lighthouse Safehouse 10,Luzon,Manila,Metro Manila,Philippines,2023-01-15,Active,10,4,9,
