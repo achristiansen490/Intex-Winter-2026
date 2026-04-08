@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import "./polished.css";
 
 type Page = "landing" | "impact" | "contributions" | "login";
+type UiMode = "classic" | "polished";
 type SetPage = (page: Page) => void;
 
 type SampaguitaIconProps = {
@@ -12,7 +14,7 @@ type SampaguitaIconProps = {
 
 type LogoProps = { light?: boolean };
 
-type NavBarProps = { setPage: SetPage };
+type NavBarProps = { setPage: SetPage; uiMode: UiMode; onToggleUiMode: () => void };
 
 type MetricCardProps = {
   label: string;
@@ -271,8 +273,10 @@ const c = {
 };
 
 const SHARED_HERO_IMG = 'url("/Smiles under the sun.png")';
-const HERO_BG = `linear-gradient(135deg,rgba(42,74,53,0.56) 0%,rgba(196,134,122,0.34) 58%,rgba(212,164,76,0.22) 100%), ${SHARED_HERO_IMG} center top/cover no-repeat`;
+const HERO_BG = `linear-gradient(135deg,rgba(42,74,53,0.56) 0%,rgba(196,134,122,0.34) 58%,rgba(212,164,76,0.22) 100%), ${SHARED_HERO_IMG} center 14px/cover no-repeat`;
 const DASH_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.74) 0%,rgba(196,134,122,0.44) 100%), ${SHARED_HERO_IMG} center/cover no-repeat`;
+const POLISHED_HERO_BG = `linear-gradient(135deg,rgba(32,58,46,0.52) 0%,rgba(111,159,131,0.22) 42%,rgba(232,218,190,0.18) 100%), url("/images/reallyhappy.jpeg") center/cover no-repeat`;
+const POLISHED_BANNER_BG = `linear-gradient(130deg,rgba(24,45,37,0.6) 0%,rgba(111,159,131,0.35) 55%,rgba(170,206,190,0.2) 100%), url("/images/study.webp") center/cover no-repeat`;
 
 function formatInt(value: number | undefined | null) {
   const n = typeof value === "number" ? value : 0;
@@ -413,7 +417,7 @@ function Logo({ light = false }: LogoProps) {
   );
 }
 
-function NavBar({ setPage }: NavBarProps) {
+function NavBar({ setPage, uiMode, onToggleUiMode }: NavBarProps) {
   const [open, setOpen] = useState(false);
   const links: { label: string; page: Page }[] = [
     { label: "Home", page: "landing" },
@@ -473,6 +477,21 @@ function NavBar({ setPage }: NavBarProps) {
                   {label}
                 </button>
               ))}
+              <button
+                onClick={onToggleUiMode}
+                style={{
+                  background: c.white,
+                  color: c.forest,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "7px 12px",
+                  borderRadius: 18,
+                  border: "0.5px solid rgba(42,74,53,0.35)",
+                  cursor: "pointer",
+                }}
+              >
+                {uiMode === "polished" ? "Default UI" : "Alternate UI"}
+              </button>
               <button
                 onClick={() => setPage("contributions")}
                 style={{
@@ -544,6 +563,22 @@ function NavBar({ setPage }: NavBarProps) {
                 {label}
               </button>
             ))}
+            <button
+              role="menuitem"
+              onClick={onToggleUiMode}
+              style={{
+                fontSize: 15,
+                color: c.text,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+                padding: "10px 0",
+                borderBottom: "0.5px solid rgba(44,43,40,0.08)",
+              }}
+            >
+              {uiMode === "polished" ? "Switch to default UI" : "Switch to alternate UI"}
+            </button>
           </div>
         </nav>
       </header>
@@ -634,29 +669,15 @@ function MetricCard({ label, value, sub, accent }: MetricCardProps) {
   );
 }
 
-function LandingPage({ setPage, overview, organization, snapshot, isLoading, error, onRetry }: LandingPageProps) {
-  const heroTitle = snapshot?.headline || "Healing hearts, rebuilding futures.";
-  const heroCopy = snapshot?.summaryText || organization?.missionStatement || "We provide safe homes and comprehensive rehabilitation for girls who are survivors of abuse and trafficking in the Philippines.";
+function LandingPage({ setPage, overview, organization, snapshot: _snapshot, isLoading, error, onRetry }: LandingPageProps) {
+  const heroTitle = "Hiraya Haven: Hope Becoming Real";
+  const heroCopy = organization?.missionStatement
+    ? `Hiraya means dreams made real. ${organization.missionStatement}`
+    : "Hiraya means dreams made real. We walk with survivors toward safety, healing, education, and a future they can choose with dignity.";
 
   return (
     <main id="main-content">
       <section aria-labelledby="hero-heading" className="hero-section" style={{ background: HERO_BG, padding: "5rem 2.5rem 4rem" }}>
-        <p
-          aria-hidden="true"
-          style={{
-            display: "inline-block",
-            background: "rgba(255,255,255,0.15)",
-            color: c.sageLight,
-            fontSize: 12,
-            letterSpacing: "0.12em",
-            padding: "5px 14px",
-            borderRadius: 20,
-            marginBottom: "1.5rem",
-            textTransform: "uppercase",
-          }}
-        >
-          Live impact data
-        </p>
         <h1
           id="hero-heading"
           style={{
@@ -1237,8 +1258,457 @@ function AdminLoginPage() {
     </main>
   );
 }
+
+function getInitialUiMode(): UiMode {
+  const query = new URLSearchParams(window.location.search).get("ui");
+  if (query === "polished" || query === "classic") return query;
+  const persisted = localStorage.getItem("hiraya_ui_mode");
+  return persisted === "polished" ? "polished" : "classic";
+}
+
+function PolishedNavBar({
+  setPage,
+  onToggleUiMode,
+}: {
+  setPage: SetPage;
+  onToggleUiMode: () => void;
+}) {
+  const links: { label: string; page: Page }[] = [
+    { label: "Home", page: "landing" },
+    { label: "Impact", page: "impact" },
+    { label: "Donors & Contributions", page: "contributions" },
+    { label: "Admin Login", page: "login" },
+  ];
+
+  return (
+    <header className="polished-header">
+      <nav className="polished-nav" aria-label="Main navigation">
+        <button className="polished-logo-btn" onClick={() => setPage("landing")} aria-label="Hiraya Haven — return to home page">
+          <Logo />
+        </button>
+        <div className="polished-links">
+          {links.map(({ label, page }) => (
+            <button key={label} className="polished-link" onClick={() => setPage(page)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="polished-actions">
+          <button className="polished-secondary-btn" onClick={onToggleUiMode}>
+            Default UI
+          </button>
+          <button className="polished-primary-btn" onClick={() => setPage("contributions")}>
+            Give Hope
+          </button>
+        </div>
+      </nav>
+    </header>
+  );
+}
+
+function PolishedNotice({ isLoading, error, onRetry }: { isLoading: boolean; error: string | null; onRetry: () => void }) {
+  if (!isLoading && !error) return null;
+  return (
+    <div className={`polished-notice ${error ? "is-error" : "is-info"}`}>
+      <span>{isLoading ? "Loading live data from API..." : error}</span>
+      {error && (
+        <button onClick={onRetry} className="polished-inline-btn">
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
+function PolishedMetric({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: "gold" | "sage" | "forest";
+}) {
+  return (
+    <article className={`polished-metric ${accent ? `accent-${accent}` : ""}`}>
+      <p className="polished-metric-label">{label}</p>
+      <p className="polished-metric-value">{value}</p>
+      {sub ? <p className="polished-metric-sub">{sub}</p> : null}
+    </article>
+  );
+}
+
+function PolishedLandingPage({
+  setPage,
+  overview,
+  summary,
+  organization,
+  snapshot: _snapshot,
+  isLoading,
+  error,
+  onRetry,
+}: LandingPageProps & { summary: DonationSummary | null }) {
+  const heroTitle = "Hiraya Haven: Hope Becoming Real";
+  const heroCopy = organization?.missionStatement
+    ? `Hiraya means dreams made real. ${organization.missionStatement}`
+    : "Hiraya means dreams made real. We walk with survivors toward safety, healing, education, and a future they can choose with dignity.";
+
+  return (
+    <main id="main-content" className="polished-main">
+      <section className="polished-hero" style={{ background: POLISHED_HERO_BG }}>
+        <h1>{heroTitle}</h1>
+        <p>{heroCopy}</p>
+        <div className="polished-hero-actions">
+          <button className="polished-primary-btn" onClick={() => setPage("contributions")}>
+            View Contributions
+          </button>
+          <button className="polished-ghost-btn" onClick={() => setPage("impact")}>
+            Open Impact Dashboard
+          </button>
+        </div>
+      </section>
+
+      <PolishedNotice isLoading={isLoading} error={error} onRetry={onRetry} />
+
+      <section className="polished-metric-grid">
+        <PolishedMetric label="Active residents" value={formatInt(overview?.activeResidentCount)} />
+        <PolishedMetric label="Active safehouses" value={formatInt(overview?.safehouseCount)} accent="sage" />
+        <PolishedMetric label="Active partners" value={formatInt(overview?.partnerCount)} />
+        <PolishedMetric label="Monetary donations" value={formatMoney(summary?.totalMonetaryAmount ?? overview?.totalMonetaryAmount, "PHP")} accent="gold" />
+      </section>
+
+      <section className="polished-two-col">
+        <article className="polished-panel">
+          <h2>Mission & Scope</h2>
+          <p>{organization?.missionStatement || "Trauma-informed residential care and reintegration support."}</p>
+          <ul className="polished-list">
+            <li>Organization: {organization?.orgName || organization?.legalName || "Hiraya Haven"}</li>
+            <li>Country of operations: {organization?.operationsCountry || "Philippines"}</li>
+            <li>Website: {organization?.website || "Not listed"}</li>
+          </ul>
+        </article>
+        <article className="polished-panel">
+          <h2>Public transparency snapshot</h2>
+          <p>Data source: live backend endpoints</p>
+          <div className="polished-kpi-stack">
+            <div>
+              <span>Donation rows</span>
+              <strong>{formatInt(summary?.totalDonationRows)}</strong>
+            </div>
+            <div>
+              <span>Estimated value</span>
+              <strong>{formatMoney(summary?.totalEstimatedValue, "PHP")}</strong>
+            </div>
+            <div>
+              <span>Last snapshot</span>
+              <strong>{formatDate(_snapshot?.publishedAt || _snapshot?.snapshotDate)}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="polished-photo-strip" aria-label="Community story photos">
+        <article className="polished-photo-feature">
+          <img src="/images/philipines.jpg" alt="Girls in school uniforms standing together in a community program setting." />
+          <div>
+            <h2>Dignity, safety, and belonging</h2>
+            <p>
+              Every contribution supports stable housing, trauma-informed care, education continuity, and reintegration planning.
+            </p>
+          </div>
+        </article>
+        <div className="polished-photo-grid">
+          <img src="/images/happy.jpg" alt="Children playing and running together outdoors in the Philippines." />
+          <img src="/images/philipinesgirl.jpg" alt="Close-up portrait of a young girl looking up with a calm expression." />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function PolishedImpactPage({ overview, summary, kpis, posts, isLoading, error, onRetry }: ImpactDashboardProps) {
+  const topCampaigns = posts
+    .filter((post) => post.postId > 0 && (post.campaignName || post.platform || hasPositive(post.reach)))
+    .slice(0, 6);
+  const donationTypeRows = (summary?.byType || []).filter((row) => row.count > 0 || hasPositive(row.totalEstimatedValue));
+
+  return (
+    <main id="main-content" className="polished-main">
+      <section className="polished-banner" style={{ background: POLISHED_BANNER_BG }}>
+        <p>Impact dashboard</p>
+        <h1>Real-time program and donor outcomes</h1>
+        <small>Connected to live backend endpoints</small>
+      </section>
+
+      <PolishedNotice isLoading={isLoading} error={error} onRetry={onRetry} />
+
+      <section className="polished-metric-grid">
+        <PolishedMetric label="Residents in care" value={formatInt(kpis?.operations.activeResidents ?? overview?.activeResidentCount)} accent="forest" />
+        <PolishedMetric label="Safehouses in operation" value={formatInt(overview?.safehouseCount)} accent="sage" />
+        <PolishedMetric label="High-risk residents" value={formatInt(kpis?.operations.highRiskResidents)} />
+        <PolishedMetric label="Outreach reach" value={formatInt(kpis?.outreach.totalReach)} accent="gold" />
+      </section>
+
+      <section className="polished-two-col">
+        <article className="polished-panel">
+          <h2>Top social campaigns</h2>
+          <p>Source: `/api/socialmediaposts?take=8`</p>
+          <ul className="polished-list">
+            {topCampaigns.length === 0 && <li>No campaign data available.</li>}
+            {topCampaigns.map((row) => (
+              <li key={row.postId}>
+                <span>{row.campaignName || row.platform || "Campaign"}</span>
+                <strong>
+                  Reach {formatInt(row.reach)} · Referrals {formatInt(row.donationReferrals)}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        </article>
+        <article className="polished-panel">
+          <h2>Donation mix by type</h2>
+          <p>Source: `/api/donations/summary`</p>
+          <ul className="polished-list">
+            {donationTypeRows.length === 0 && <li>No donation summary data available.</li>}
+            {donationTypeRows.map((row) => (
+              <li key={row.donationType || "Unknown"}>
+                <span>{row.donationType || "Unknown"}</span>
+                <strong>
+                  {formatInt(row.count)} records · {formatMoney(row.totalEstimatedValue, "PHP")}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        </article>
+      </section>
+    </main>
+  );
+}
+
+function PolishedDonorsPage({ summary, kpis, recentDonations, supporters, isLoading, error, onRetry }: ContributionsPageProps) {
+  const activeSupporters = useMemo(
+    () => supporters.filter((s) => (s.status || "").toLowerCase() === "active").length,
+    [supporters],
+  );
+  const validDonations = useMemo(
+    () =>
+      recentDonations.filter(
+        (row) => row.donationId > 0 && (hasPositive(row.amount) || hasPositive(row.estimatedValue) || !!row.campaignName),
+      ),
+    [recentDonations],
+  );
+
+  return (
+    <main id="main-content" className="polished-main">
+      <section className="polished-section-head">
+        <h1>Donors & Contributions</h1>
+        <p>Public financial transparency tied to live backend records.</p>
+      </section>
+
+      <PolishedNotice isLoading={isLoading} error={error} onRetry={onRetry} />
+
+      <section className="polished-metric-grid">
+        <PolishedMetric label="Total donations" value={formatInt(kpis?.donor.totalDonations ?? summary?.totalDonationRows)} />
+        <PolishedMetric label="Monetary total" value={formatMoney(kpis?.donor.totalMonetaryAmount ?? summary?.totalMonetaryAmount, "PHP")} accent="sage" />
+        <PolishedMetric label="Estimated value" value={formatMoney(summary?.totalEstimatedValue, "PHP")} accent="gold" />
+        <PolishedMetric label="Active supporters" value={formatInt(kpis?.donor.activeSupporters ?? activeSupporters)} />
+      </section>
+
+      <section className="polished-two-col">
+        <article className="polished-panel">
+          <h2>Recent contribution entries</h2>
+          <p>Source: `/api/donations/public?take=12`</p>
+          <ul className="polished-list">
+            {validDonations.length === 0 && <li>No recent donations found.</li>}
+            {validDonations.map((row) => (
+              <li key={row.donationId}>
+                <span>{row.campaignName || "General contribution"} · {formatDate(row.donationDate)}</span>
+                <strong>{formatMoney(row.amount ?? row.estimatedValue, row.currencyCode || "PHP")}</strong>
+              </li>
+            ))}
+          </ul>
+        </article>
+        <article className="polished-panel">
+          <h2>Donor quality indicators</h2>
+          <p>Core KPI checks that matter for fundraising continuity.</p>
+          <div className="polished-kpi-stack">
+            <div>
+              <span>Unique donors</span>
+              <strong>{formatInt(kpis?.donor.uniqueDonors)}</strong>
+            </div>
+            <div>
+              <span>Repeat donor rate</span>
+              <strong>{formatPercent(kpis?.donor.repeatDonorRate)}</strong>
+            </div>
+            <div>
+              <span>Recurring gift rate</span>
+              <strong>{formatPercent(kpis?.donor.recurringDonationRate)}</strong>
+            </div>
+            <div>
+              <span>Average monetary gift</span>
+              <strong>{formatMoney(kpis?.donor.avgMonetaryDonation, "PHP")}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  );
+}
+
+function PolishedAdminLoginPage() {
+  const [email, setEmail] = useState("admin@hirayahaven.org");
+  const [password, setPassword] = useState("");
+  const [token, setToken] = useState<string | null>(localStorage.getItem("hiraya_token"));
+  const [profile, setProfile] = useState<AuthMe | null>(null);
+  const [adminProof, setAdminProof] = useState<AdminProofResponse | null>(null);
+  const [adminProofError, setAdminProofError] = useState<string | null>(null);
+  const [isCheckingAdminProof, setIsCheckingAdminProof] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!token) {
+        setProfile(null);
+        setAdminProof(null);
+        setAdminProofError(null);
+        return;
+      }
+
+      try {
+        const me = await apiGet<AuthMe>("/api/auth/me", token);
+        setProfile(me);
+        setError(null);
+
+        setIsCheckingAdminProof(true);
+        const proof = await apiGet<AdminProofResponse>("/api/dashboard/admin-proof", token);
+        setAdminProof(proof);
+        setAdminProofError(null);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Session invalid.";
+        if (message.includes("403") || message.toLowerCase().includes("forbidden")) {
+          setAdminProof(null);
+          setAdminProofError("Signed in, but this account is not authorized for admin-only dashboard proof.");
+        } else {
+          localStorage.removeItem("hiraya_token");
+          setToken(null);
+          setProfile(null);
+          setAdminProof(null);
+          setError(message);
+        }
+      } finally {
+        setIsCheckingAdminProof(false);
+      }
+    };
+
+    void loadProfile();
+  }, [token]);
+
+  const runAdminProofCheck = async () => {
+    if (!token) return;
+    setIsCheckingAdminProof(true);
+    setAdminProofError(null);
+
+    try {
+      const proof = await apiGet<AdminProofResponse>("/api/dashboard/admin-proof", token);
+      setAdminProof(proof);
+    } catch (err) {
+      setAdminProof(null);
+      setAdminProofError(err instanceof Error ? err.message : "Admin proof check failed.");
+    } finally {
+      setIsCheckingAdminProof(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem("hiraya_token");
+    setToken(null);
+    setProfile(null);
+    setAdminProof(null);
+    setAdminProofError(null);
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    setAdminProof(null);
+    setAdminProofError(null);
+
+    try {
+      const result = await apiPost<{ token: string }>("/api/auth/login", { email, password });
+      localStorage.setItem("hiraya_token", result.token);
+      setToken(result.token);
+      setPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <main id="main-content" className="polished-main">
+      <section className="polished-login-card">
+        <h1>Admin Login</h1>
+        <p>Uses `/api/auth/login`, `/api/auth/me`, and protected `/api/dashboard/admin-proof`.</p>
+
+        <form onSubmit={handleSubmit} className="polished-form">
+          <label>
+            Email
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+          </label>
+          <label>
+            Password
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
+          </label>
+          <button type="submit" className="polished-primary-btn" disabled={isSubmitting}>
+            {isSubmitting ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+
+        {error ? <p className="polished-error">{error}</p> : null}
+
+        {profile ? (
+          <div className="polished-auth-block">
+            <p>
+              Signed in as <strong>{profile.userName}</strong> ({profile.email})
+            </p>
+            <p>Roles: {profile.roles.join(", ")}</p>
+            <div className="polished-auth-actions">
+              <button onClick={() => void runAdminProofCheck()} className="polished-secondary-btn" disabled={isCheckingAdminProof}>
+                {isCheckingAdminProof ? "Checking admin proof..." : "Run admin proof check"}
+              </button>
+              <button onClick={handleSignOut} className="polished-secondary-btn danger">
+                Sign out
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {adminProof ? (
+          <div className="polished-proof">
+            <p>
+              <strong>Admin proof passed:</strong> {adminProof.message}
+            </p>
+            <p>
+              {formatDate(adminProof.check.generatedAtUtc)} · Donations: {formatInt(adminProof.check.donations)} · Supporters:{" "}
+              {formatInt(adminProof.check.supporters)} · Residents: {formatInt(adminProof.check.residents)} · Safehouses:{" "}
+              {formatInt(adminProof.check.safehouses)} · Social posts: {formatInt(adminProof.check.socialPosts)}
+            </p>
+          </div>
+        ) : null}
+
+        {adminProofError ? <p className="polished-error">{adminProofError}</p> : null}
+      </section>
+    </main>
+  );
+}
 export default function App() {
   const [page, setPage] = useState<Page>("landing");
+  const [uiMode, setUiMode] = useState<UiMode>(() => getInitialUiMode());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -1296,50 +1766,95 @@ export default function App() {
   const organization = data.organizations[0] ?? null;
 
   const retryLoad = () => setReloadKey((v) => v + 1);
+  const toggleUiMode = () => {
+    setUiMode((prev) => (prev === "classic" ? "polished" : "classic"));
+  };
+
+  useEffect(() => {
+    localStorage.setItem("hiraya_ui_mode", uiMode);
+  }, [uiMode]);
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-      <div style={{ minHeight: "100vh", background: c.ivory }}>
-        <NavBar setPage={setPage} />
-
-        {page === "landing" && (
-          <LandingPage
-            setPage={setPage}
-            overview={data.overview}
-            organization={organization}
-            snapshot={publishedSnapshot}
-            isLoading={isLoading}
-            error={error}
-            onRetry={retryLoad}
-          />
+      <div style={{ minHeight: "100vh", background: uiMode === "classic" ? c.ivory : "#F3F6F2" }} className={uiMode === "polished" ? "polished-app" : ""}>
+        {uiMode === "classic" ? (
+          <NavBar setPage={setPage} uiMode={uiMode} onToggleUiMode={toggleUiMode} />
+        ) : (
+          <PolishedNavBar setPage={setPage} onToggleUiMode={toggleUiMode} />
         )}
 
-        {page === "impact" && (
-          <ImpactDashboard
-            overview={data.overview}
-            summary={data.summary}
-            kpis={data.kpis}
-            posts={data.posts}
-            isLoading={isLoading}
-            error={error}
-            onRetry={retryLoad}
-          />
-        )}
+        {page === "landing" &&
+          (uiMode === "classic" ? (
+            <LandingPage
+              setPage={setPage}
+              overview={data.overview}
+              organization={organization}
+              snapshot={publishedSnapshot}
+              isLoading={isLoading}
+              error={error}
+              onRetry={retryLoad}
+            />
+          ) : (
+            <PolishedLandingPage
+              setPage={setPage}
+              overview={data.overview}
+              summary={data.summary}
+              organization={organization}
+              snapshot={publishedSnapshot}
+              isLoading={isLoading}
+              error={error}
+              onRetry={retryLoad}
+            />
+          ))}
 
-        {page === "contributions" && (
-          <DonorsContributionsPage
-            summary={data.summary}
-            kpis={data.kpis}
-            recentDonations={data.recentDonations}
-            supporters={data.supporters}
-            isLoading={isLoading}
-            error={error}
-            onRetry={retryLoad}
-          />
-        )}
+        {page === "impact" &&
+          (uiMode === "classic" ? (
+            <ImpactDashboard
+              overview={data.overview}
+              summary={data.summary}
+              kpis={data.kpis}
+              posts={data.posts}
+              isLoading={isLoading}
+              error={error}
+              onRetry={retryLoad}
+            />
+          ) : (
+            <PolishedImpactPage
+              overview={data.overview}
+              summary={data.summary}
+              kpis={data.kpis}
+              posts={data.posts}
+              isLoading={isLoading}
+              error={error}
+              onRetry={retryLoad}
+            />
+          ))}
 
-        {page === "login" && <AdminLoginPage />}
+        {page === "contributions" &&
+          (uiMode === "classic" ? (
+            <DonorsContributionsPage
+              summary={data.summary}
+              kpis={data.kpis}
+              recentDonations={data.recentDonations}
+              supporters={data.supporters}
+              isLoading={isLoading}
+              error={error}
+              onRetry={retryLoad}
+            />
+          ) : (
+            <PolishedDonorsPage
+              summary={data.summary}
+              kpis={data.kpis}
+              recentDonations={data.recentDonations}
+              supporters={data.supporters}
+              isLoading={isLoading}
+              error={error}
+              onRetry={retryLoad}
+            />
+          ))}
+
+        {page === "login" && (uiMode === "classic" ? <AdminLoginPage /> : <PolishedAdminLoginPage />)}
       </div>
     </>
   );
