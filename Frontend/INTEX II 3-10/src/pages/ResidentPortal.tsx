@@ -210,7 +210,7 @@ function MyProgress({ residentId }: { residentId: number | null }) {
         <Field label="Date of Admission" value={resident.dateOfAdmission} />
         <Field label="Length of Stay" value={resident.lengthOfStay} />
         <Field label="Date Enrolled" value={resident.dateEnrolled} />
-        {resident.dateClosed != null && String(resident.dateClosed) !== '' ? (
+        {resident.dateClosed != null && String(resident.dateClosed).trim() !== '' ? (
           <Field label="Date Closed" value={resident.dateClosed} />
         ) : null}
         <Field label="Initial Risk Level" value={resident.initialRiskLevel} />

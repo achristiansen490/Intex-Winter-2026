@@ -249,27 +249,27 @@ static async Task SeedAsync(IServiceProvider services)
 
     var defaultPassword = config["Seed:DefaultPassword"] ?? "HirayaDev@2025!";
 
-    var seedAccounts = new[]
-    {
-        new { Key = "Seed:AdminPassword",  Email = config["Seed:AdminEmail"] ?? "admin@hirayahaven.org", UserName = "admin",       Role = "Admin"       },
-        new { Key = (string?)null,         Email = "supervisor@hirayahaven.org",                         UserName = "supervisor",  Role = "Supervisor"  },
-        new { Key = (string?)null,         Email = "casemanager@hirayahaven.org",                        UserName = "casemanager", Role = "CaseManager" },
-        new { Key = (string?)null,         Email = "socialworker@hirayahaven.org",                       UserName = "socialworker",Role = "SocialWorker"},
-        new { Key = (string?)null,         Email = "fieldworker@hirayahaven.org",                        UserName = "fieldworker", Role = "FieldWorker" },
-        new { Key = (string?)null,         Email = "resident@hirayahaven.org",                           UserName = "resident",    Role = "Resident"    },
-        new { Key = (string?)null,         Email = "donor@hirayahaven.org",                              UserName = "donor",       Role = "Donor"       },
-    };
+    (string? PasswordConfigKey, string Email, string UserName, string Role)[] seedAccounts =
+    [
+        ("Seed:AdminPassword", config["Seed:AdminEmail"] ?? "admin@hirayahaven.org", "admin", "Admin"),
+        (null, "supervisor@hirayahaven.org", "supervisor", "Supervisor"),
+        (null, "casemanager@hirayahaven.org", "casemanager", "CaseManager"),
+        (null, "socialworker@hirayahaven.org", "socialworker", "SocialWorker"),
+        (null, "fieldworker@hirayahaven.org", "fieldworker", "FieldWorker"),
+        (null, "resident@hirayahaven.org", "resident", "Resident"),
+        (null, "donor@hirayahaven.org", "donor", "Donor"),
+    ];
 
     foreach (var acct in seedAccounts)
     {
         if (await userManager.FindByEmailAsync(acct.Email) is not null) continue;
 
         string password;
-        if (acct.Key is not null)
+        if (acct.PasswordConfigKey is not null)
         {
-            password = config[acct.Key]
+            password = config[acct.PasswordConfigKey]
                 ?? throw new InvalidOperationException(
-                    $"Admin seed password not configured. Run: dotnet user-secrets set \"{acct.Key}\" \"<password>\"");
+                    $"Admin seed password not configured. Set Seed:AdminPassword in appsettings.Development.json, user-secrets, or .env (see .env.example).");
         }
         else
         {

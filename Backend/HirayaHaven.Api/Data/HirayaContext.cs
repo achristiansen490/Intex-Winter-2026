@@ -53,7 +53,11 @@ public partial class HirayaContext : IdentityDbContext<AppUser, IdentityRole<int
             ipAddress = ctx.Connection.RemoteIpAddress?.ToString();
         }
 
-        var auditEntries = AuditInterceptor.GetAuditEntries(ChangeTracker, userId, ipAddress);
+        // Registration and other anonymous flows don't have a valid user FK for audit_log.user_id.
+        // Skip automatic audit rows unless we have an authenticated user id.
+        var auditEntries = userId.HasValue
+            ? AuditInterceptor.GetAuditEntries(ChangeTracker, userId, ipAddress)
+            : [];
 
         var result = await base.SaveChangesAsync(cancellationToken);
 
