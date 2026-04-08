@@ -17,7 +17,7 @@ const api = (url: string) =>
 
 // ── Shared UI ────────────────────────────────────────────────────────────────
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 15, fontWeight: 600, color: c.forest, marginBottom: 12, marginTop: 0, paddingBottom: 6, borderBottom: `1px solid ${c.sageLight}` }}>{children}</h2>;
 }
 
@@ -163,7 +163,9 @@ function MyProgress({ residentId }: { residentId: number | null }) {
         <Field label="Date of Admission" value={resident.dateOfAdmission} />
         <Field label="Length of Stay" value={resident.lengthOfStay} />
         <Field label="Date Enrolled" value={resident.dateEnrolled} />
-        {resident.dateClosed && <Field label="Date Closed" value={resident.dateClosed} />}
+        {resident.dateClosed != null && String(resident.dateClosed).trim() !== '' ? (
+          <Field label="Date Closed" value={resident.dateClosed} />
+        ) : null}
         <Field label="Initial Risk Level" value={resident.initialRiskLevel} />
         <Field label="Initial Assessment" value={resident.initialCaseAssessment} fullWidth />
       </div>

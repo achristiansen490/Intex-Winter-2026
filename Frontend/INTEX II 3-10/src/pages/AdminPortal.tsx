@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+
+const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
+const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
 
 const c = {
   ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
@@ -27,7 +30,7 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 15, fontWeight: 600, color: c.forest, marginBottom: 12, marginTop: 24, paddingBottom: 6, borderBottom: `1px solid ${c.sageLight}` }}>{children}</h2>;
 }
 
@@ -276,15 +279,17 @@ function AdminPendingApprovals() {
                   <p style={{ fontSize: 13, fontWeight: 600, color: c.text }}>
                     {String(item.resource ?? '—')} #{String(item.recordId ?? '—')} — {String(item.action ?? '—')}
                   </p>
-                  {item.notes && <p style={{ fontSize: 12, color: c.muted, marginTop: 3 }}>{String(item.notes)}</p>}
+                  {item.notes != null && String(item.notes).trim() !== '' && (
+                    <p style={{ fontSize: 12, color: c.muted, marginTop: 3 }}>{String(item.notes)}</p>
+                  )}
                   <p style={{ fontSize: 11, color: c.muted, marginTop: 4 }}>
                     {item.timestamp ? new Date(String(item.timestamp)).toLocaleString() : '—'}
                     {' · '}User #{String(item.userId)}
                   </p>
-                  {(item.oldValue || item.newValue) && (
+                  {(item.oldValue != null || item.newValue != null) && (
                     <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      {item.oldValue && <span style={{ background: c.roseLight, color: c.rose, borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>Before: {String(item.oldValue)}</span>}
-                      {item.newValue && <span style={{ background: c.sageLight, color: '#1B5E20', borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>After: {String(item.newValue)}</span>}
+                      {item.oldValue != null && <span style={{ background: c.roseLight, color: c.rose, borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>Before: {String(item.oldValue)}</span>}
+                      {item.newValue != null && <span style={{ background: c.sageLight, color: '#1B5E20', borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>After: {String(item.newValue)}</span>}
                     </div>
                   )}
                 </div>
@@ -334,6 +339,278 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
 }
 
 // ── Portal component ──────────────────────────────────────────────────────────
+
+type InsightDonationByCampaignRow = { campaignName: string; totalValuePhp: number; donationCount: number; avgValuePhp: number };
+type InsightBridgeRow = {
+  month: string;
+  posts_n: number;
+  click_throughs: number;
+  donation_referrals: number;
+  donation_total_php: number;
+  incidents: number;
+  avg_edu_progress: number;
+  avg_health: number;
+};
+
+type EngagementVsVanitySummary = {
+  totalPosts: number;
+  thresholds: { engagementScoreP75: number; donationReferralsP75: number };
+  segments: { segment: string; postCount: number }[];
+};
+
+function AdminReports() {
+  const [bridge, setBridge] = useState<InsightBridgeRow[]>([]);
+  const [campaigns, setCampaigns] = useState<InsightDonationByCampaignRow[]>([]);
+  const [evSummary, setEvSummary] = useState<EngagementVsVanitySummary | null>(null);
+  const [campaignTake, setCampaignTake] = useState(15);
+  const [bridgeTake, setBridgeTake] = useState(24);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [b, c, ev] = await Promise.all([
+        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(r => r.json()),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
+        api('/api/insights/social/engagement-vs-vanity').then(r => r.json()),
+      ]);
+      setBridge(Array.isArray(b) ? b : []);
+      setCampaigns(Array.isArray(c) ? c : []);
+      setEvSummary(ev && typeof ev === 'object' && 'segments' in ev ? ev as EngagementVsVanitySummary : null);
+    } catch { setError('Failed to load reports.'); }
+    finally { setLoading(false); }
+  }, [bridgeTake, campaignTake]);
+
+  useEffect(() => { load(); }, [load]);
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  const campaignChartData = campaigns.map((r) => ({ name: r.campaignName, total: Number(r.totalValuePhp ?? 0) }));
+  const bridgeChartData = bridge.map((r) => ({
+    month: new Date(r.month).toLocaleDateString('en-US', { year: '2-digit', month: 'short' }),
+    donations: Number(r.donation_total_php ?? 0),
+    referrals: Number(r.donation_referrals ?? 0),
+    incidents: Number(r.incidents ?? 0),
+  }));
+  return (
+    <div>
+      <SectionTitle>Reports (pipelines)</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
+        Aggregate analytics for planning. Source: <code>/api/insights/*</code>
+      </p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Top campaigns:
+          <select value={campaignTake} onChange={(e) => setCampaignTake(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {[5, 10, 15, 25].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Bridge months:
+          <select value={bridgeTake} onChange={(e) => setBridgeTake(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {[12, 18, 24, 36, 60, 120].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <SectionTitle>Top campaigns by total PHP</SectionTitle>
+      {campaignChartData.length > 0 && (
+        <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Top campaigns (total PHP)</p>
+          <Suspense fallback={<p style={{ fontSize: 12, color: c.muted }}>Loading chart…</p>}>
+            <CampaignBarChart data={campaignChartData} barColor={c.gold} gridColor="rgba(44,43,40,0.08)" />
+          </Suspense>
+        </div>
+      )}
+      <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['Campaign', 'Donations', 'Total (PHP)', 'Avg (PHP)'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {campaigns.map((row, i) => (
+              <tr key={`${row.campaignName}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px' }}>{row.campaignName}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationCount}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{`₱${Number(row.totalValuePhp).toLocaleString()}`}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{`₱${Number(row.avgValuePhp).toFixed(0)}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <SectionTitle>Monthly bridge (last 18 months)</SectionTitle>
+      {bridgeChartData.length > 0 && (
+        <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Donations vs referrals (last 24 months)</p>
+          <Suspense fallback={<p style={{ fontSize: 12, color: c.muted }}>Loading chart…</p>}>
+            <BridgeLineChart
+              data={bridgeChartData}
+              donationsColor={c.forest}
+              referralsColor={c.rose}
+              incidentsColor={c.gold}
+              gridColor="rgba(44,43,40,0.08)"
+            />
+          </Suspense>
+        </div>
+      )}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Avg Edu', 'Avg Health'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {bridge.slice(-18).map((row, i) => (
+              <tr key={`${row.month}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px' }}>{new Date(row.month).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.posts_n}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.click_throughs}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.donation_referrals}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{`₱${Number(row.donation_total_php).toLocaleString()}`}</td>
+                <td style={{ padding: '8px 12px', color: c.rose }}>{row.incidents}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{Number(row.avg_edu_progress).toFixed(1)}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{Number(row.avg_health).toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18, marginTop: 22 }}>
+        <DataPanel
+          title="Donor upgrade candidates (expected next gift size)"
+          url="/api/insights/donors/upgrade-candidates?take=25"
+          keyField="supporterId"
+          columns={[
+            { key: 'supporterName', label: 'Supporter' },
+            { key: 'expectedNextValuePhp', label: 'Expected next (PHP)' },
+            { key: 'recencyDays', label: 'Recency (days)' },
+            { key: 'donationCount', label: 'Donations' },
+            { key: 'lastValuePhp', label: 'Last gift (PHP)' },
+            { key: 'lastDonationDate', label: 'Last date' },
+          ]}
+        />
+
+        <DataPanel
+          title="Post → donation linkage (top groups by estimated value)"
+          url="/api/insights/posts/donation-linkage/by-group?group=platform&take=12"
+          keyField="key"
+          columns={[
+            { key: 'key', label: 'Platform' },
+            { key: 'postCount', label: 'Posts' },
+            { key: 'willReferRate', label: 'Refer rate' },
+            { key: 'avgReferrals', label: 'Avg referrals' },
+            { key: 'totalEstimatedValuePhp', label: 'Total est. PHP' },
+            { key: 'boostedRate', label: 'Boosted rate' },
+          ]}
+        />
+
+        <DataPanel
+          title="Safehouse strain (latest month; stress z + forecast heuristic)"
+          url="/api/insights/safehouses/strain/latest?take=25"
+          keyField="safehouseId"
+          columns={[
+            { key: 'safehouseName', label: 'Safehouse' },
+            { key: 'month', label: 'Month' },
+            { key: 'stressIndexZ', label: 'Stress (z)' },
+            { key: 'forecastNextMonthIncidents', label: 'Forecast next incidents' },
+            { key: 'incidentCount', label: 'Incidents' },
+            { key: 'incidentLag1', label: 'Incidents lag1' },
+            { key: 'activeResidents', label: 'Active residents' },
+          ]}
+        />
+
+        <DataPanel
+          title="Intervention effectiveness (plan category vs latest outcomes)"
+          url="/api/insights/interventions/by-category"
+          keyField="planCategory"
+          columns={[
+            { key: 'planCategory', label: 'Category' },
+            { key: 'planCount', label: 'Plans' },
+            { key: 'residentCount', label: 'Residents' },
+            { key: 'avgLatestProgressPercent', label: 'Avg progress %' },
+            { key: 'avgLatestHealthScore', label: 'Avg health' },
+          ]}
+        />
+
+        <DataPanel
+          title="Resident risk flags (90-day heuristic; staff triage)"
+          url="/api/insights/residents/risk-flags?take=40"
+          keyField="residentId"
+          columns={[
+            { key: 'residentLabel', label: 'Resident' },
+            { key: 'riskBand', label: 'Band' },
+            { key: 'riskScore', label: 'Score' },
+            { key: 'incidents90d', label: 'Incidents 90d' },
+            { key: 'concernSessions90d', label: 'Concern sessions 90d' },
+            { key: 'safetyVisitFlags90d', label: 'Safety flags 90d' },
+            { key: 'currentRiskLevel', label: 'Current risk' },
+            { key: 'safehouseId', label: 'Safehouse' },
+          ]}
+        />
+
+        <DataPanel
+          title="Reintegration readiness (heuristic score; not a decision)"
+          url="/api/insights/residents/reintegration-readiness?take=40"
+          keyField="residentId"
+          columns={[
+            { key: 'residentLabel', label: 'Resident' },
+            { key: 'readinessScore', label: 'Readiness' },
+            { key: 'reintegrationStatus', label: 'Status' },
+            { key: 'latestProgressPercent', label: 'Progress %' },
+            { key: 'latestHealthScore', label: 'Health' },
+            { key: 'incidentsLast365d', label: 'Incidents 365d' },
+            { key: 'homeVisitsLast180d', label: 'Visits 180d' },
+          ]}
+        />
+      </div>
+
+      {evSummary && (
+        <div style={{ marginTop: 22 }}>
+          <SectionTitle>Engagement vs vanity (segment mix)</SectionTitle>
+          <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+            High engagement = likes+comments+shares at or above P75; high donation = referrals at or above P75. Associations only — not causal.{' '}
+            <code>/api/insights/social/engagement-vs-vanity</code>
+          </p>
+          <p style={{ fontSize: 12, color: c.muted, marginBottom: 10 }}>
+            P75 thresholds: engagement score {Number(evSummary.thresholds.engagementScoreP75).toFixed(1)}, donation referrals {Number(evSummary.thresholds.donationReferralsP75).toFixed(1)} · {evSummary.totalPosts} posts
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: c.sageLight }}>
+                  {['Segment', 'Posts'].map(h => (
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {evSummary.segments.map((row, i) => (
+                  <tr key={row.segment} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                    <td style={{ padding: '8px 12px' }}>{row.segment.replace(/_/g, ' ')}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.postCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminPortal() {
   const { user, logout } = useAuth();
@@ -387,7 +664,7 @@ export default function AdminPortal() {
           { key: 'resource', label: 'Resource' }, { key: 'recordId', label: 'Record' },
           { key: 'ipAddress', label: 'IP' }, { key: 'approvalStatus', label: 'Approval' },
         ]} />;
-      case 'Reports': return <AdminDashboard />;
+      case 'Reports': return <AdminReports />;
       case 'Settings':
         return (
           <div>

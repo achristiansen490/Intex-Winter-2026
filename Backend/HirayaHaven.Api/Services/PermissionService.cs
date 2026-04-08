@@ -9,6 +9,23 @@ public class PermissionService(HirayaContext db) : IPermissionService
     private static Dictionary<string, (bool allowed, string? scope)>? _cache;
     private static readonly SemaphoreSlim _lock = new(1, 1);
 
+    private static string NormalizeAction(string action)
+    {
+        var a = action.Trim().ToLowerInvariant();
+        return a switch
+        {
+            "view" => "read",
+            "read" => "read",
+            "edit" => "update",
+            "update" => "update",
+            "create" => "create",
+            "add" => "create",
+            "delete" => "delete",
+            "remove" => "delete",
+            _ => a
+        };
+    }
+
     private async Task<Dictionary<string, (bool allowed, string? scope)>> GetCacheAsync()
     {
         if (_cache is not null) return _cache;
@@ -24,7 +41,7 @@ public class PermissionService(HirayaContext db) : IPermissionService
                 .ToListAsync();
 
             _cache = perms.ToDictionary(
-                p => $"{p.Role}:{p.Resource}:{p.Action}".ToLowerInvariant(),
+                p => $"{p.Role}:{p.Resource}:{NormalizeAction(p.Action ?? string.Empty)}".ToLowerInvariant(),
                 p => (p.IsAllowed ?? false, p.ScopeNote));
 
             return _cache;
@@ -55,27 +72,15 @@ public class PermissionService(HirayaContext db) : IPermissionService
     public async Task<bool> CanAsync(string role, string resource, string action)
     {
         var cache = await GetCacheAsync();
-        var r = role.Trim().ToLowerInvariant();
-        var res = resource.Trim().ToLowerInvariant();
-        foreach (var alias in ActionAliases(action))
-        {
-            var key = $"{r}:{res}:{alias}";
-            if (cache.ContainsKey(key)) return true;
-        }
-        return false;
+        var key = $"{role}:{resource}:{NormalizeAction(action)}".ToLowerInvariant();
+        return cache.ContainsKey(key);
     }
 
     public async Task<string?> GetScopeNoteAsync(string role, string resource, string action)
     {
         var cache = await GetCacheAsync();
-        var r = role.Trim().ToLowerInvariant();
-        var res = resource.Trim().ToLowerInvariant();
-        foreach (var alias in ActionAliases(action))
-        {
-            var key = $"{r}:{res}:{alias}";
-            if (cache.TryGetValue(key, out var entry)) return entry.scope;
-        }
-        return null;
+        var key = $"{role}:{resource}:{NormalizeAction(action)}".ToLowerInvariant();
+        return cache.TryGetValue(key, out var entry) ? entry.scope : null;
     }
 
     /// <summary>
