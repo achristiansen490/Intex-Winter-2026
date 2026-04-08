@@ -7,9 +7,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Data;
 
-public partial class HirayaContext(DbContextOptions<HirayaContext> options, IHttpContextAccessor? httpContextAccessor = null)
-    : IdentityDbContext<AppUser, IdentityRole<int>, int>(options)
+public partial class HirayaContext : IdentityDbContext<AppUser, IdentityRole<int>, int>
 {
+    protected readonly IHttpContextAccessor? HttpContextAccessor;
+
+    public HirayaContext(DbContextOptions<HirayaContext> options, IHttpContextAccessor? httpContextAccessor = null)
+        : base(options) { HttpContextAccessor = httpContextAccessor; }
+
+    // Protected ctor for derived contexts (e.g. HirayaSqlServerContext)
+    protected HirayaContext(DbContextOptions options, IHttpContextAccessor? httpContextAccessor = null)
+        : base(options) { HttpContextAccessor = httpContextAccessor; }
+
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<ProgramArea> ProgramAreas => Set<ProgramArea>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
@@ -38,7 +46,7 @@ public partial class HirayaContext(DbContextOptions<HirayaContext> options, IHtt
         int? userId = null;
         string? ipAddress = null;
 
-        if (httpContextAccessor?.HttpContext is { } ctx)
+        if (HttpContextAccessor?.HttpContext is { } ctx)
         {
             var userIdClaim = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (int.TryParse(userIdClaim, out var uid)) userId = uid;

@@ -1,6 +1,7 @@
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
 using HirayaHaven.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,6 @@ public class DonationsController(HirayaContext db, IPermissionService permission
     protected override DbSet<Donation> Entities => Db.Donations;
 
     [HttpGet("summary")]
-    [AllowAnonymous]
     public async Task<IActionResult> GetSummary(CancellationToken ct)
     {
         var role = await GetUserRoleAsync();

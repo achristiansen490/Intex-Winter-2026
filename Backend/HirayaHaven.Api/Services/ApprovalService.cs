@@ -1,3 +1,4 @@
+using System.Text.Json;
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -6,41 +7,33 @@ namespace HirayaHaven.Api.Services;
 
 public class ApprovalService(HirayaContext db) : IApprovalService
 {
-    /// <summary>
-    /// Map of resource → fields that require approval when changed.
-    /// Based on Section 5 of the authorization doc.
-    /// </summary>
-    private static readonly Dictionary<string, HashSet<string>> SensitiveFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["residents"] = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, HashSet<string>> SensitiveFields =
+        new(StringComparer.OrdinalIgnoreCase)
         {
-            "CurrentRiskLevel",
-            "CaseStatus",
-            "ReintegrationStatus",
-            "DateClosed"
-        },
-        ["intervention_plans"] = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "Status"
-        }
-    };
+            ["residents"] = new(StringComparer.OrdinalIgnoreCase)
+                { "CurrentRiskLevel", "CaseStatus", "ReintegrationStatus", "DateClosed" },
+            ["intervention_plans"] = new(StringComparer.OrdinalIgnoreCase)
+                { "Status" },
+        };
 
     public bool RequiresApproval(string resource, string fieldName)
-    {
-        return SensitiveFields.TryGetValue(resource, out var fields) && fields.Contains(fieldName);
-    }
+        => SensitiveFields.TryGetValue(resource, out var fields) && fields.Contains(fieldName);
 
     public async Task<AuditLog> QueueForApprovalAsync(int userId, string resource, int recordId,
         string fieldName, string? oldValue, string? newValue, string? ipAddress)
     {
+        // Bug fix: use JsonSerializer instead of string interpolation to avoid JSON injection
+        var oldJson = JsonSerializer.Serialize(new Dictionary<string, string?> { [fieldName] = oldValue });
+        var newJson = JsonSerializer.Serialize(new Dictionary<string, string?> { [fieldName] = newValue });
+
         var entry = new AuditLog
         {
             UserId = userId,
             Action = "UPDATE",
             Resource = resource,
             RecordId = recordId,
-            OldValue = $"{{\"{fieldName}\": \"{oldValue}\"}}",
-            NewValue = $"{{\"{fieldName}\": \"{newValue}\"}}",
+            OldValue = oldJson,
+            NewValue = newJson,
             RequiresApproval = true,
             ApprovalStatus = "Pending",
             IpAddress = ipAddress,
@@ -63,7 +56,6 @@ public class ApprovalService(HirayaContext db) : IApprovalService
         entry.ApprovedBy = approverId;
         entry.ApprovedAt = DateTime.UtcNow.ToString("o");
 
-        // Apply the change to the actual record
         var applied = await ApplyChangeAsync(entry);
         if (!applied) return false;
 
@@ -90,35 +82,74 @@ public class ApprovalService(HirayaContext db) : IApprovalService
         if (entry.Resource is null || entry.RecordId is null || entry.NewValue is null)
             return false;
 
-        // Parse the field name and new value from JSON
-        // Format: {"FieldName": "value"}
-        var newValueJson = System.Text.Json.JsonDocument.Parse(entry.NewValue);
-        var prop = newValueJson.RootElement.EnumerateObject().FirstOrDefault();
+        JsonDocument doc;
+        try { doc = JsonDocument.Parse(entry.NewValue); }
+        catch { return false; }
+
+        var prop = doc.RootElement.EnumerateObject().FirstOrDefault();
         var fieldName = prop.Name;
-        var newValue = prop.Value.GetString();
+        var newStringValue = prop.Value.GetString();
 
         switch (entry.Resource.ToLowerInvariant())
         {
             case "residents":
                 var resident = await db.Residents.FindAsync(entry.RecordId.Value);
                 if (resident is null) return false;
-                var resProp = typeof(Resident).GetProperty(fieldName);
-                if (resProp is null) return false;
-                resProp.SetValue(resident, newValue);
+                if (!SetTypedProperty(resident, fieldName, newStringValue)) return false;
                 break;
 
             case "intervention_plans":
                 var plan = await db.InterventionPlans.FindAsync(entry.RecordId.Value);
                 if (plan is null) return false;
-                var planProp = typeof(InterventionPlan).GetProperty(fieldName);
-                if (planProp is null) return false;
-                planProp.SetValue(plan, newValue);
+                if (!SetTypedProperty(plan, fieldName, newStringValue)) return false;
                 break;
 
             default:
+                // Unknown resource — log warning but don't silently succeed
+                Console.Error.WriteLine($"[ApprovalService] ApplyChangeAsync: unhandled resource '{entry.Resource}'");
                 return false;
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Sets a property on an object, converting the string value to the correct CLR type.
+    /// All sensitive fields on Resident and InterventionPlan are string?, so this is safe,
+    /// but the conversion guard is here for future-proofing.
+    /// </summary>
+    private static bool SetTypedProperty(object target, string propertyName, string? value)
+    {
+        var prop = target.GetType().GetProperty(propertyName);
+        if (prop is null || !prop.CanWrite) return false;
+
+        var targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+
+        try
+        {
+            object? converted = targetType switch
+            {
+                _ when targetType == typeof(string) => value,
+                _ when targetType == typeof(bool) => bool.Parse(value!),
+                _ when targetType == typeof(int) => int.Parse(value!),
+                _ when targetType == typeof(decimal) => decimal.Parse(value!),
+                _ when targetType == typeof(double) => double.Parse(value!),
+                _ when targetType == typeof(DateTime) => DateTime.Parse(value!),
+                _ => Convert.ChangeType(value, targetType)
+            };
+
+            // Handle nullable — if value is null and type is nullable, set null
+            if (value is null && prop.PropertyType.IsGenericType &&
+                prop.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                converted = null;
+
+            prop.SetValue(target, converted);
+            return true;
+        }
+        catch
+        {
+            Console.Error.WriteLine($"[ApprovalService] Failed to convert '{value}' to {targetType.Name} for property '{propertyName}'");
+            return false;
+        }
     }
 }

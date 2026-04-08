@@ -1,20 +1,32 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, type Role } from '../context/AuthContext';
 import { Logo } from '../components/Logo';
 
 const c = {
   ivory: '#FBF8F2',
   forest: '#2A4A35',
   gold: '#D4A44C',
-  rose: '#C4867A',
   text: '#2C2B28',
   muted: '#7A786F',
   white: '#FFFFFF',
 };
 
+function getDashboardPath(role: Role | null): string {
+  switch (role) {
+    case 'Admin': return '/admin';
+    case 'Supervisor':
+    case 'CaseManager':
+    case 'SocialWorker':
+    case 'FieldWorker': return '/staff';
+    case 'Resident': return '/resident';
+    case 'Donor': return '/donor';
+    default: return '/';
+  }
+}
+
 export default function LoginPage() {
-  const { login, role } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -22,30 +34,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  function getDashboardPath(r: string | null) {
-    switch (r) {
-      case 'Admin': return '/admin';
-      case 'Supervisor':
-      case 'CaseManager':
-      case 'SocialWorker':
-      case 'FieldWorker': return '/staff';
-      case 'Resident': return '/resident';
-      case 'Donor': return '/donor';
-      default: return '/';
-    }
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      // role is updated async after /me fetch; navigate after a tick
-      setTimeout(() => {
-        const storedRole = role;
-        navigate(getDashboardPath(storedRole), { replace: true });
-      }, 100);
+      // login() now resolves after /me completes and returns the role directly
+      const resolvedRole = await login(email, password);
+      navigate(getDashboardPath(resolvedRole), { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

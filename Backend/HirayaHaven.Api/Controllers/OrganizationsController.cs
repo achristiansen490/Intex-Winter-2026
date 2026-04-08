@@ -1,6 +1,7 @@
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
 using HirayaHaven.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,7 @@ public class OrganizationsController(HirayaContext db, IPermissionService permis
 {
     protected override DbSet<Organization> Entities => Db.Organizations;
 
+    /// <summary>Basic org info is public — used on the landing page.</summary>
     [AllowAnonymous]
     [HttpGet]
     public override async Task<IActionResult> GetAll(CancellationToken ct)

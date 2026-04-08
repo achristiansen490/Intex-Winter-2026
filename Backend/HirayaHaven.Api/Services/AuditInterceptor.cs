@@ -81,7 +81,7 @@ public static class AuditInterceptor
 
             entries.Add(new AuditLog
             {
-                UserId = userId ?? 0,
+                UserId = userId ?? -1, // -1 = system/unauthenticated action
                 Action = action,
                 Resource = tableName,
                 RecordId = recordId,

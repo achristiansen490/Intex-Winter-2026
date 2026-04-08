@@ -23,10 +23,6 @@ public abstract class CrudControllerBase<TEntity>(
 
     protected abstract DbSet<TEntity> Entities { get; }
 
-    /// <summary>
-    /// The resource name used for permission lookups (matches the keys in the RolePermission table).
-    /// Override in derived controllers if the default convention doesn't match.
-    /// </summary>
     protected virtual string ResourceName => typeof(TEntity).Name.ToLowerInvariant() switch
     {
         "resident" => "residents",
@@ -47,9 +43,16 @@ public abstract class CrudControllerBase<TEntity>(
         _ => typeof(TEntity).Name.ToLowerInvariant()
     };
 
-    /// <summary>
-    /// Gets the primary role of the current user.
-    /// </summary>
+    /// <summary>Sensitive fields per resource that require approval instead of immediate save.</summary>
+    private static readonly Dictionary<string, HashSet<string>> SensitiveFields =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["residents"] = new(StringComparer.OrdinalIgnoreCase)
+                { "CurrentRiskLevel", "CaseStatus", "ReintegrationStatus", "DateClosed" },
+            ["intervention_plans"] = new(StringComparer.OrdinalIgnoreCase)
+                { "Status" },
+        };
+
     protected async Task<string?> GetUserRoleAsync()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -57,15 +60,11 @@ public abstract class CrudControllerBase<TEntity>(
         var user = await UserManager.FindByIdAsync(userId);
         if (user is null) return null;
         var roles = await UserManager.GetRolesAsync(user);
-        // Return the highest-privilege role
         foreach (var r in new[] { "Admin", "Supervisor", "CaseManager", "SocialWorker", "FieldWorker", "Resident", "Donor" })
             if (roles.Contains(r)) return r;
         return roles.FirstOrDefault();
     }
 
-    /// <summary>
-    /// Gets the current AppUser with their linked Staff/Resident/Supporter IDs.
-    /// </summary>
     protected async Task<AppUser?> GetCurrentUserAsync()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -74,74 +73,69 @@ public abstract class CrudControllerBase<TEntity>(
     }
 
     /// <summary>
-    /// Applies data scoping (safehouse, own-records) to a query based on the user's role.
-    /// Override in derived controllers for resource-specific scoping.
+    /// Returns the safehouse ID for the current staff user.
+    /// Returns null if the user has no StaffId or the Staff record isn't found.
+    /// Callers that need scoping must treat null as "no access".
     /// </summary>
-    protected virtual async Task<IQueryable<TEntity>> ApplyScopingAsync(IQueryable<TEntity> query, AppUser user, string role)
+    protected async Task<int?> GetUserSafehouseIdAsync(AppUser user)
     {
-        // Staff roles: scope by safehouse
+        if (!user.StaffId.HasValue) return null;
+        var staff = await Db.Staff.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.StaffId == user.StaffId.Value);
+        return staff?.SafehouseId;
+    }
+
+    protected virtual async Task<IQueryable<TEntity>> ApplyScopingAsync(
+        IQueryable<TEntity> query, AppUser user, string role)
+    {
+        // Staff roles: MUST be scoped to their safehouse
         if (role is "Supervisor" or "CaseManager" or "SocialWorker" or "FieldWorker")
         {
-            var safehouseId = user.StaffId.HasValue
-                ? (await Db.Staff.AsNoTracking().FirstOrDefaultAsync(s => s.StaffId == user.StaffId))?.SafehouseId
-                : null;
+            var safehouseId = await GetUserSafehouseIdAsync(user);
 
-            if (safehouseId.HasValue)
+            // Bug fix: if we can't determine their safehouse, deny all records
+            if (!safehouseId.HasValue)
+                return query.Where(_ => false);
+
+            var hasSafehouseId = typeof(TEntity).GetProperty("SafehouseId") is not null;
+            var hasResidentId = typeof(TEntity).GetProperty("ResidentId") is not null;
+
+            if (hasSafehouseId)
             {
-                // Check if TEntity has a SafehouseId property
-                var prop = typeof(TEntity).GetProperty("SafehouseId");
-                if (prop is not null)
-                {
-                    query = query.Where(e => EF.Property<int?>(e, "SafehouseId") == safehouseId.Value);
-                }
-
-                // For records tied to residents, scope through resident's safehouse
-                var residentIdProp = typeof(TEntity).GetProperty("ResidentId");
-                if (residentIdProp is not null && prop is null)
-                {
-                    var safehouseResidentIds = Db.Residents
-                        .Where(r => r.SafehouseId == safehouseId.Value)
-                        .Select(r => r.ResidentId);
-                    query = query.Where(e => safehouseResidentIds.Contains(EF.Property<int>(e, "ResidentId")));
-                }
+                query = query.Where(e => EF.Property<int?>(e, "SafehouseId") == safehouseId.Value);
             }
+            else if (hasResidentId)
+            {
+                // Scope through the resident's safehouse
+                var safehouseResidentIds = Db.Residents
+                    .Where(r => r.SafehouseId == safehouseId.Value)
+                    .Select(r => r.ResidentId);
+                query = query.Where(e => safehouseResidentIds.Contains(EF.Property<int>(e, "ResidentId")));
+            }
+            // If the entity has neither property (e.g. Safehouse itself), no additional filter needed
         }
 
         // Resident: own records only
         if (role == "Resident" && user.ResidentId.HasValue)
         {
-            var residentIdProp = typeof(TEntity).GetProperty("ResidentId");
-            if (residentIdProp is not null)
-            {
+            if (typeof(TEntity).GetProperty("ResidentId") is not null)
                 query = query.Where(e => EF.Property<int>(e, "ResidentId") == user.ResidentId.Value);
-            }
-            // If entity IS Resident, filter by PK
             else if (typeof(TEntity) == typeof(Resident))
-            {
                 query = query.Where(e => EF.Property<int>(e, "ResidentId") == user.ResidentId.Value);
-            }
         }
 
         // Donor: own records only
         if (role == "Donor" && user.SupporterId.HasValue)
         {
-            var supporterIdProp = typeof(TEntity).GetProperty("SupporterId");
-            if (supporterIdProp is not null)
-            {
+            if (typeof(TEntity).GetProperty("SupporterId") is not null)
                 query = query.Where(e => EF.Property<int>(e, "SupporterId") == user.SupporterId.Value);
-            }
         }
 
         return query;
     }
 
-    /// <summary>
-    /// Strips restricted fields from entities before returning them.
-    /// Override in derived controllers for resource-specific redaction.
-    /// </summary>
     protected virtual void RedactForRole(TEntity entity, string role)
     {
-        // Hide NotesRestricted from Residents (and anyone below Supervisor)
         if (role is not "Admin" and not "Supervisor")
         {
             var notesProp = typeof(TEntity).GetProperty("NotesRestricted");
@@ -178,7 +172,6 @@ public abstract class CrudControllerBase<TEntity>(
         var user = await GetCurrentUserAsync();
         if (user is null) return Forbid();
 
-        // Apply scoping to make sure the user can access this specific record
         var query = Entities.AsQueryable();
         query = await ApplyScopingAsync(query, user, role);
 
@@ -220,6 +213,47 @@ public abstract class CrudControllerBase<TEntity>(
         var existing = await query.FirstOrDefaultAsync(e => EF.Property<int>(e, pkName) == id, ct);
         if (existing is null) return NotFound();
 
+        // Check if any sensitive fields are being changed and user's role requires approval
+        if (role is "SocialWorker" or "CaseManager" or "FieldWorker"
+            && SensitiveFields.TryGetValue(ResourceName, out var sensitiveSet))
+        {
+            var approval = HttpContext.RequestServices.GetService<IApprovalService>();
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var pendingApprovals = new List<string>();
+
+            foreach (var fieldName in sensitiveSet)
+            {
+                var prop = typeof(TEntity).GetProperty(fieldName);
+                if (prop is null) continue;
+
+                var oldVal = prop.GetValue(existing)?.ToString();
+                var newVal = prop.GetValue(entity)?.ToString();
+
+                if (oldVal == newVal) continue; // Not changed
+
+                // Queue for approval instead of saving
+                if (approval is not null)
+                    await approval.QueueForApprovalAsync(userId, ResourceName, id, fieldName, oldVal, newVal, ip);
+
+                // Reset the field on the incoming entity so it doesn't get saved
+                prop.SetValue(entity, prop.GetValue(existing));
+                pendingApprovals.Add(fieldName);
+            }
+
+            if (pendingApprovals.Count > 0)
+            {
+                // Save any non-sensitive field changes, then return a partial-success response
+                Db.Entry(existing).CurrentValues.SetValues(entity);
+                await Db.SaveChangesAsync(ct);
+                return Accepted(new
+                {
+                    message = "Update saved. The following fields require supervisor approval before taking effect.",
+                    pendingApproval = pendingApprovals
+                });
+            }
+        }
+
         Db.Entry(existing).CurrentValues.SetValues(entity);
         await Db.SaveChangesAsync(ct);
         return NoContent();
@@ -232,8 +266,16 @@ public abstract class CrudControllerBase<TEntity>(
         if (role is null) return Forbid();
         if (!await Permissions.CanAsync(role, ResourceName, "Delete")) return Forbid();
 
-        var entity = await Entities.FindAsync([id], ct);
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Forbid();
+
+        // Bug fix: apply scoping to delete — user can only delete records they own/can see
+        var query = Entities.AsQueryable();
+        query = await ApplyScopingAsync(query, user, role);
+        var pkName = Db.Model.FindEntityType(typeof(TEntity))!.FindPrimaryKey()!.Properties[0].Name;
+        var entity = await query.FirstOrDefaultAsync(e => EF.Property<int>(e, pkName) == id, ct);
         if (entity is null) return NotFound();
+
         Entities.Remove(entity);
         await Db.SaveChangesAsync(ct);
         return NoContent();
