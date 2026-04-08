@@ -39,9 +39,11 @@ Install tool if needed:
 dotnet tool install --global dotnet-ef
 ```
 
+SQLite migrations use `HirayaContext` via [`Data/HirayaContextFactory.cs`](Data/HirayaContextFactory.cs) at design time so `dotnet ef` does not pick `HirayaSqlServerContext` by mistake.
+
 Create migration:
 ```bash
-dotnet ef migrations add InitialCreate
+dotnet ef migrations add InitialCreate --context HirayaContext
 ```
 
 Apply migration:

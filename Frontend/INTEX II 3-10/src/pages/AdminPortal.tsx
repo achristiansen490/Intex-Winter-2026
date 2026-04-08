@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { ADMIN_NAV_ITEMS } from '../admin/constants';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
@@ -12,7 +13,7 @@ const c = {
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
 const ADMIN_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.82) 0%,rgba(196,134,122,0.38) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
-const navItems = ['Dashboard', 'Users', 'Pending Approvals', 'Residents', 'Staff', 'Safehouses', 'Donations', 'Audit Log', 'Reports', 'Settings'];
+const navItems = [...ADMIN_NAV_ITEMS];
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
@@ -615,7 +616,17 @@ function AdminReports() {
 export default function AdminPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeNav, setActiveNav] = useState('Dashboard');
+
+  useEffect(() => {
+    const st = location.state as { nav?: string } | null | undefined;
+    const nav = st?.nav;
+    if (nav && (ADMIN_NAV_ITEMS as readonly string[]).includes(nav)) {
+      setActiveNav(nav);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -678,8 +689,17 @@ export default function AdminPortal() {
 
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="admin-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
-        user={`${user?.userName ?? 'Admin'} · Admin`} onLogout={handleLogout} />
+      <Sidebar
+        id="admin-sidebar"
+        items={navItems}
+        active={activeNav}
+        onSelectNavItem={(item) => {
+          if (item === 'Pipelines') navigate('/admin/pipelines');
+          else setActiveNav(item);
+        }}
+        user={`${user?.userName ?? 'Admin'} · Admin`}
+        onLogout={handleLogout}
+      />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Admin dashboard"
           style={{ background: ADMIN_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>

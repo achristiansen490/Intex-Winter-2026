@@ -11,12 +11,15 @@ interface SidebarProps {
   id: string;
   items: string[];
   active: string;
-  setActive: (item: string) => void;
+  /** Used when <code>onSelectNavItem</code> is not provided. */
+  setActive?: (item: string) => void;
+  /** When set, called instead of <code>setActive</code> (for cross-route admin navigation). */
+  onSelectNavItem?: (item: string) => void;
   user: string;
   onLogout?: () => void;
 }
 
-export function Sidebar({ id, items, active, setActive, user, onLogout }: SidebarProps) {
+export function Sidebar({ id, items, active, setActive, onSelectNavItem, user, onLogout }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
@@ -94,7 +97,11 @@ export function Sidebar({ id, items, active, setActive, user, onLogout }: Sideba
           {items.map((item) => (
             <li key={item}>
               <button
-                onClick={() => { setActive(item); setOpen(false); }}
+                onClick={() => {
+                  if (onSelectNavItem) onSelectNavItem(item);
+                  else setActive?.(item);
+                  setOpen(false);
+                }}
                 onMouseEnter={() => setHoveredItem(item)}
                 onMouseLeave={() => setHoveredItem(null)}
                 aria-current={active === item ? 'page' : undefined}

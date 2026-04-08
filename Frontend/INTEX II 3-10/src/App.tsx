@@ -13,6 +13,8 @@ import DonorPortal from './pages/DonorPortal';
 import StaffPortal from './pages/StaffPortal';
 import ResidentPortal from './pages/ResidentPortal';
 import AdminPortal from './pages/AdminPortal';
+import AdminPipelineDashboard from './pages/AdminPipelineDashboard';
+import AdminPipelineDetail from './pages/AdminPipelineDetail';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -69,6 +71,8 @@ function AppRoutes() {
         {/* Protected: Admin */}
         <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/admin/pipelines" element={<AdminPipelineDashboard />} />
+          <Route path="/admin/pipelines/:pipelineId" element={<AdminPipelineDetail />} />
         </Route>
 
         {/* 404 */}
