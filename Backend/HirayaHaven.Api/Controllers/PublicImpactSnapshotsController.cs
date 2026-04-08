@@ -11,4 +11,17 @@ public class PublicImpactSnapshotsController(HirayaContext db, IPermissionServic
     : CrudControllerBase<PublicImpactSnapshot>(db, permissions, userManager)
 {
     protected override DbSet<PublicImpactSnapshot> Entities => Db.PublicImpactSnapshots;
+
+    [AllowAnonymous]
+    [HttpGet]
+    public override async Task<IActionResult> GetAll(CancellationToken ct)
+    {
+        var snapshots = await Db.PublicImpactSnapshots
+            .AsNoTracking()
+            .OrderByDescending(s => s.PublishedAt)
+            .ThenByDescending(s => s.SnapshotDate)
+            .ToListAsync(ct);
+
+        return Ok(snapshots);
+    }
 }

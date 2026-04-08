@@ -12,6 +12,7 @@ public class SocialMediaPostsController(HirayaContext db, IPermissionService per
 {
     protected override DbSet<SocialMediaPost> Entities => Db.SocialMediaPosts;
 
+    [AllowAnonymous]
     [HttpGet]
     public override async Task<IActionResult> GetAll(CancellationToken ct)
     {

@@ -11,4 +11,12 @@ public class SupportersController(HirayaContext db, IPermissionService permissio
     : CrudControllerBase<Supporter>(db, permissions, userManager)
 {
     protected override DbSet<Supporter> Entities => Db.Supporters;
+
+    [AllowAnonymous]
+    [HttpGet]
+    public override async Task<IActionResult> GetAll(CancellationToken ct)
+    {
+        var supporters = await Db.Supporters.AsNoTracking().ToListAsync(ct);
+        return Ok(supporters);
+    }
 }

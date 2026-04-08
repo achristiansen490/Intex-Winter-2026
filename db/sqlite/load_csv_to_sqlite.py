@@ -75,9 +75,10 @@ def _read_csv_rows(csv_path: Path) -> Tuple[List[str], Iterable[Dict[str, str]]]
 
 
 def _exec_schema(conn: sqlite3.Connection, schema_path: Path) -> None:
-    conn.execute("PRAGMA foreign_keys = ON;")
+    # schema.sql toggles foreign_keys OFF during DROP/CREATE, ON at end.
     schema_sql = schema_path.read_text(encoding="utf-8")
     conn.executescript(schema_sql)
+    conn.execute("PRAGMA foreign_keys = ON;")
 
 
 def _insert_table(
@@ -125,6 +126,22 @@ def _foreign_key_check(conn: sqlite3.Connection) -> List[Tuple[Any, ...]]:
     return list(conn.execute("PRAGMA foreign_key_check;").fetchall())
 
 
+def _discover_csv_files(csv_dir: Path, *, recursive: bool) -> Dict[str, Path]:
+    """Return mapping table_name -> path for each *.csv (table name = filename stem, lowercased)."""
+    pattern = "**/*.csv" if recursive else "*.csv"
+    by_table: Dict[str, Path] = {}
+    for path in sorted(csv_dir.glob(pattern)):
+        if not path.is_file():
+            continue
+        key = path.stem.lower()
+        if key in by_table:
+            raise SystemExit(
+                f"Two CSV files map to the same table {key!r}:\n  {by_table[key]}\n  {path}"
+            )
+        by_table[key] = path
+    return by_table
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Load Intex2 CSVs into SQLite.")
     parser.add_argument("--csv-dir", required=True, type=Path)
@@ -144,6 +161,21 @@ def main() -> None:
         action="store_true",
         help="Print row counts and run foreign key check.",
     )
+    parser.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Also load *.csv files in subfolders of --csv-dir (default: only top-level).",
+    )
+    parser.add_argument(
+        "--skip-missing-csv",
+        action="store_true",
+        help="If a table in the load order has no matching CSV, skip it (0 rows) instead of failing.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="List discovered CSV files and planned load order, then exit without writing the DB.",
+    )
     args = parser.parse_args()
 
     csv_dir: Path = args.csv_dir
@@ -155,12 +187,7 @@ def main() -> None:
     if not schema_path.exists():
         raise SystemExit(f"Schema file not found: {schema_path}")
 
-    if db_path.exists() and not args.overwrite:
-        raise SystemExit(
-            f"DB already exists at {db_path}. Re-run with --overwrite to recreate."
-        )
-
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+    discovered = _discover_csv_files(csv_dir, recursive=args.recursive)
 
     # Column type map (must match db/sqlite/schema.sql)
     BOOL = "BOOL"
@@ -568,6 +595,7 @@ def main() -> None:
         },
     }
 
+    # FK-safe insert order (parents before children). Must match tables in schema.sql / types.
     load_order = [
         "organization",
         "program_areas",
@@ -594,28 +622,92 @@ def main() -> None:
         "public_impact_snapshots",
     ]
 
-    csv_paths = {t: csv_dir / f"{t}.csv" for t in load_order}
-    missing_csv = [str(p) for p in csv_paths.values() if not p.exists()]
-    if missing_csv:
-        raise SystemExit(f"Missing CSV files:\n- " + "\n- ".join(missing_csv))
+    known_tables = set(types.keys())
+    if set(load_order) != known_tables:
+        raise RuntimeError(
+            "load_order and types keys are out of sync; fix load_csv_to_sqlite.py."
+        )
+
+    # Every *.csv in the directory must correspond to a known table (avoids silently ignoring new files).
+    extra_csv = sorted(set(discovered) - known_tables)
+    if extra_csv:
+        raise SystemExit(
+            "Unknown CSV file(s) (no column type map in this script). "
+            "Add them to `types`, schema.sql, and load_order, or remove the file(s):\n- "
+            + "\n- ".join(discovered[t].name for t in extra_csv)
+        )
+
+    csv_paths: Dict[str, Path] = {}
+    missing_tables: List[str] = []
+    for t in load_order:
+        if t in discovered:
+            csv_paths[t] = discovered[t]
+        else:
+            missing_tables.append(t)
+
+    if missing_tables:
+        if args.skip_missing_csv:
+            print(
+                "WARNING: Missing CSV for table(s) (loading 0 rows for each):\n- "
+                + "\n- ".join(missing_tables)
+            )
+        else:
+            hint = (
+                f"{csv_dir / (missing_tables[0] + '.csv')!s} "
+                f"(expected filename matches table name, e.g. donations.csv)"
+            )
+            raise SystemExit(
+                "Missing CSV file(s) for required table(s):\n- "
+                + "\n- ".join(missing_tables)
+                + f"\n\nExpected paths look like: {hint}\n"
+                "Or re-run with --skip-missing-csv to leave those tables empty."
+            )
+
+    if args.dry_run:
+        print(f"CSV directory: {csv_dir.resolve()} ({len(discovered)} file(s) found)")
+        for t in load_order:
+            p = csv_paths.get(t)
+            status = str(p.resolve()) if p else "(skipped — no CSV)"
+            print(f"  {t}: {status}")
+        print("\nDry run: no database written.")
+        raise SystemExit(0)
+
+    if db_path.exists() and not args.overwrite:
+        raise SystemExit(
+            f"DB already exists at {db_path}. Re-run with --overwrite to recreate."
+        )
+
+    db_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(db_path)
     try:
-        conn.execute("PRAGMA foreign_keys = ON;")
+        conn.execute("PRAGMA foreign_keys = OFF;")
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA synchronous = NORMAL;")
 
         if args.overwrite:
             _exec_schema(conn, schema_path)
+            conn.execute("PRAGMA foreign_keys = OFF;")
         else:
-            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("PRAGMA foreign_keys = OFF;")
 
         conn.execute("BEGIN;")
         inserted_counts: Dict[str, int] = {}
         for table in load_order:
-            inserted = _insert_table(conn, table, csv_paths[table], types[table])
+            path = csv_paths.get(table)
+            if path is None:
+                inserted_counts[table] = 0
+                continue
+            try:
+                inserted = _insert_table(conn, table, path, types[table])
+            except sqlite3.IntegrityError as e:
+                raise SystemExit(
+                    f"SQLite constraint failed while loading table {table!r} from {path}.\n{e}"
+                ) from e
             inserted_counts[table] = inserted
         conn.commit()
+
+        conn.execute("PRAGMA foreign_keys = ON;")
 
         if args.verify:
             for table in load_order:
@@ -638,4 +730,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

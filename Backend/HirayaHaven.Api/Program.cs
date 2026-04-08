@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using HirayaHaven.Api.Services;
 
+LoadDotEnvIfPresent(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
@@ -15,10 +17,28 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+var dbProvider = (builder.Configuration["Database:Provider"] ?? "sqlite").Trim().ToLowerInvariant();
+var sqliteConnection = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=../../Data/hiraya.db";
+var azureSqlConnection = builder.Configuration.GetConnectionString("AzureSqlConnection");
 
-builder.Services.AddDbContext<HirayaContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<HirayaContext>(options =>
+{
+    if (dbProvider == "sqlserver")
+    {
+        if (string.IsNullOrWhiteSpace(azureSqlConnection))
+        {
+            throw new InvalidOperationException(
+                "Database provider is set to sqlserver, but ConnectionStrings:AzureSqlConnection is missing.");
+        }
+
+        options.UseSqlServer(azureSqlConnection);
+    }
+    else
+    {
+        options.UseSqlite(sqliteConnection);
+    }
+});
 
 // --- Identity ---
 builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>
@@ -44,7 +64,7 @@ builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var jwtKey = jwtSection["Key"]
     ?? throw new InvalidOperationException(
-        "JWT signing key not configured. Run: dotnet user-secrets set \"Jwt:Key\" \"<your-32-char-secret>\"");
+        "JWT signing key not configured. Set Jwt:Key in user-secrets or Backend/HirayaHaven.Api/.env.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -77,13 +97,22 @@ builder.Services.AddHsts(options =>
 
 builder.Services.AddCors(options =>
 {
+    var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
     options.AddPolicy("Frontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:4173",
-                "http://127.0.0.1:4173")
+        if (configuredOrigins.Length > 0)
+        {
+            policy.WithOrigins(configuredOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+            return;
+        }
+
+        policy.SetIsOriginAllowed(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+                uri.Scheme == Uri.UriSchemeHttp &&
+                (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1"))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -230,5 +259,33 @@ static async Task SeedAsync(IServiceProvider services)
         var result = await userManager.CreateAsync(admin, adminPassword);
         if (result.Succeeded)
             await userManager.AddToRoleAsync(admin, "Admin");
+    }
+}
+
+static void LoadDotEnvIfPresent(string path)
+{
+    if (!File.Exists(path))
+        return;
+
+    foreach (var raw in File.ReadAllLines(path))
+    {
+        var line = raw.Trim();
+        if (line.Length == 0 || line.StartsWith('#'))
+            continue;
+
+        var sep = line.IndexOf('=');
+        if (sep <= 0)
+            continue;
+
+        var key = line[..sep].Trim();
+        if (key.Length == 0)
+            continue;
+
+        var value = line[(sep + 1)..].Trim();
+        if (value.Length >= 2 && ((value.StartsWith('"') && value.EndsWith('"')) || (value.StartsWith('\'') && value.EndsWith('\''))))
+            value = value[1..^1];
+
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(key)))
+            Environment.SetEnvironmentVariable(key, value);
     }
 }

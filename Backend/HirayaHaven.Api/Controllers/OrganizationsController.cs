@@ -11,4 +11,12 @@ public class OrganizationsController(HirayaContext db, IPermissionService permis
     : CrudControllerBase<Organization>(db, permissions, userManager)
 {
     protected override DbSet<Organization> Entities => Db.Organizations;
+
+    [AllowAnonymous]
+    [HttpGet]
+    public override async Task<IActionResult> GetAll(CancellationToken ct)
+    {
+        var organizations = await Db.Organizations.AsNoTracking().ToListAsync(ct);
+        return Ok(organizations);
+    }
 }
