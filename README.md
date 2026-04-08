@@ -12,6 +12,7 @@ Hiraya Haven project repository for IS Jr Core.
 ## Prerequisites
 - Node.js 20+ and npm
 - .NET SDK 10+
+- Python 3.10+ (for the SQLite loader script)
 
 ## Local Setup
 
@@ -49,7 +50,16 @@ dotnet run
 Expected local API URL:
 - `http://127.0.0.1:5051` (or another local port if changed)
 
-### 3. Frontend setup (`Frontend/INTEX II 3-10`)
+### 3. Build local SQLite data from CSVs (recommended)
+Use the loader script so everyone gets the same reproducible local DB state.
+
+```bash
+python3 db/sqlite/load_csv_to_sqlite.py
+```
+
+This repopulates `Data/hiraya.db` from the CSV files in `Data/`.
+
+### 4. Frontend setup (`Frontend/INTEX II 3-10`)
 In a second terminal:
 
 ```bash
@@ -63,8 +73,9 @@ Expected local frontend URL:
 
 ## Notes
 - Backend uses SQLite at `Data/hiraya.db` for local development.
+- Team workflow: prefer running `db/sqlite/load_csv_to_sqlite.py` after pulling instead of sharing DB snapshots.
 - Current CORS allows localhost/127.0.0.1 HTTP dev origins.
-- Current frontend build is mostly UI and does not yet call backend APIs directly.
+- Frontend pages read from live backend API endpoints.
 
 ## API Routes
 - `/api/residents`
