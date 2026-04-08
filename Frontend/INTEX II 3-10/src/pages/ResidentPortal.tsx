@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -15,9 +15,56 @@ const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string) =>
   fetch(url, { headers: { Authorization: `Bearer ${tok()}` } });
 
+function filterRecordsByText(rows: Record<string, unknown>[], query: string): Record<string, unknown>[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return rows;
+  return rows.filter((row) =>
+    Object.values(row).some((v) => v != null && v !== '' && String(v).toLowerCase().includes(needle)),
+  );
+}
+
+function DataSearchBar({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label htmlFor={id} style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        Search
+      </label>
+      <input
+        id={id}
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? 'Type to filter…'}
+        autoComplete="off"
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          padding: '9px 14px',
+          fontSize: 13,
+          border: `1px solid ${c.sageLight}`,
+          borderRadius: 8,
+          color: c.text,
+          background: c.white,
+          boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Shared UI ────────────────────────────────────────────────────────────────
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 style={{ fontSize: 15, fontWeight: 600, color: c.forest, marginBottom: 12, marginTop: 0, paddingBottom: 6, borderBottom: `1px solid ${c.sageLight}` }}>{children}</h2>;
 }
 
@@ -163,7 +210,9 @@ function MyProgress({ residentId }: { residentId: number | null }) {
         <Field label="Date of Admission" value={resident.dateOfAdmission} />
         <Field label="Length of Stay" value={resident.lengthOfStay} />
         <Field label="Date Enrolled" value={resident.dateEnrolled} />
-        {resident.dateClosed && <Field label="Date Closed" value={resident.dateClosed} />}
+        {resident.dateClosed != null && String(resident.dateClosed) !== '' ? (
+          <Field label="Date Closed" value={resident.dateClosed} />
+        ) : null}
         <Field label="Initial Risk Level" value={resident.initialRiskLevel} />
         <Field label="Initial Assessment" value={resident.initialCaseAssessment} fullWidth />
       </div>
@@ -177,6 +226,13 @@ function HealthWellbeing({ residentId }: { residentId: number | null }) {
   const [records, setRecords] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const tableSearchId = useId();
+  const [tableQuery, setTableQuery] = useState('');
+
+  const filteredTableRecords = useMemo(
+    () => filterRecordsByText(records, tableQuery),
+    [records, tableQuery],
+  );
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -199,7 +255,9 @@ function HealthWellbeing({ residentId }: { residentId: number | null }) {
 
   return (
     <div>
-      <SectionTitle>Latest Health Record ({latest.recordDate ? new Date(latest.recordDate).toLocaleDateString() : '—'})</SectionTitle>
+      <SectionTitle>
+        {`Latest Health Record (${latest.recordDate ? new Date(latest.recordDate).toLocaleDateString() : '—'})`}
+      </SectionTitle>
 
       <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16, marginBottom: 20 }}>
@@ -224,13 +282,29 @@ function HealthWellbeing({ residentId }: { residentId: number | null }) {
             </div>
           ))}
         </div>
-        {latest.notes && <p style={{ fontSize: 12, color: c.muted, marginTop: 12 }}>{latest.notes}</p>}
+        {latest.notes != null && String(latest.notes) !== '' && (
+          <p style={{ fontSize: 12, color: c.muted, marginTop: 12 }}>{String(latest.notes)}</p>
+        )}
       </div>
 
       {records.length > 1 && (
         <>
           <SectionTitle>All Records ({records.length})</SectionTitle>
+          <DataSearchBar
+            id={tableSearchId}
+            value={tableQuery}
+            onChange={setTableQuery}
+            placeholder="Filter records by date, scores, or notes…"
+          />
+          {filteredTableRecords.length === 0 && tableQuery.trim() !== '' ? (
+            <p style={{ fontSize: 13, color: c.muted }}>No rows match your search.</p>
+          ) : (
           <div style={{ overflowX: 'auto' }}>
+            <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>
+              {filteredTableRecords.length === records.length
+                ? `${filteredTableRecords.length} records`
+                : `${filteredTableRecords.length} of ${records.length} records shown`}
+            </p>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: c.sageLight }}>
@@ -240,7 +314,7 @@ function HealthWellbeing({ residentId }: { residentId: number | null }) {
                 </tr>
               </thead>
               <tbody>
-                {records.map((r: any, i) => (
+                {filteredTableRecords.map((r: any, i) => (
                   <tr key={r.healthRecordId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                     <td style={{ padding: '8px 12px', color: c.text }}>{r.recordDate ? new Date(r.recordDate).toLocaleDateString() : '—'}</td>
                     <td style={{ padding: '8px 12px', color: c.text }}>{r.generalHealthScore ?? '—'}</td>
@@ -253,6 +327,7 @@ function HealthWellbeing({ residentId }: { residentId: number | null }) {
               </tbody>
             </table>
           </div>
+          )}
         </>
       )}
     </div>
@@ -265,6 +340,10 @@ function Education({ residentId }: { residentId: number | null }) {
   const [records, setRecords] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const eduSearchId = useId();
+  const [eduQuery, setEduQuery] = useState('');
+
+  const filteredEdu = useMemo(() => filterRecordsByText(records, eduQuery), [records, eduQuery]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -281,8 +360,18 @@ function Education({ residentId }: { residentId: number | null }) {
     <div>
       <SectionTitle>Education Records ({records.length})</SectionTitle>
       {records.length === 0 ? <p style={{ fontSize: 13, color: c.muted }}>No education records on file.</p> : (
+        <>
+          <DataSearchBar
+            id={eduSearchId}
+            value={eduQuery}
+            onChange={setEduQuery}
+            placeholder="Search by school, level, status, or notes…"
+          />
+          {filteredEdu.length === 0 && eduQuery.trim() !== '' ? (
+            <p style={{ fontSize: 13, color: c.muted }}>No records match your search.</p>
+          ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {records.map((r: any) => (
+          {filteredEdu.map((r: any) => (
             <div key={r.educationRecordId} style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                 <div>
@@ -317,6 +406,8 @@ function Education({ residentId }: { residentId: number | null }) {
             </div>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -328,6 +419,10 @@ function VisitSchedule({ residentId }: { residentId: number | null }) {
   const [visits, setVisits] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const visitSearchId = useId();
+  const [visitQuery, setVisitQuery] = useState('');
+
+  const filteredVisits = useMemo(() => filterRecordsByText(visits, visitQuery), [visits, visitQuery]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -344,8 +439,18 @@ function VisitSchedule({ residentId }: { residentId: number | null }) {
     <div>
       <SectionTitle>Visit History ({visits.length})</SectionTitle>
       {visits.length === 0 ? <p style={{ fontSize: 13, color: c.muted }}>No visits recorded.</p> : (
+        <>
+          <DataSearchBar
+            id={visitSearchId}
+            value={visitQuery}
+            onChange={setVisitQuery}
+            placeholder="Search visits by type, date, location, or outcome…"
+          />
+          {filteredVisits.length === 0 && visitQuery.trim() !== '' ? (
+            <p style={{ fontSize: 13, color: c.muted }}>No visits match your search.</p>
+          ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {visits.map((v: any) => (
+          {filteredVisits.map((v: any) => (
             <div key={v.visitationId} style={{
               background: c.white,
               borderTop: `1px solid ${c.sageLight}`,
@@ -373,6 +478,8 @@ function VisitSchedule({ residentId }: { residentId: number | null }) {
             </div>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -384,6 +491,10 @@ function MyGoals({ residentId }: { residentId: number | null }) {
   const [plans, setPlans] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const goalsSearchId = useId();
+  const [goalsQuery, setGoalsQuery] = useState('');
+
+  const filteredPlans = useMemo(() => filterRecordsByText(plans, goalsQuery), [plans, goalsQuery]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -409,8 +520,18 @@ function MyGoals({ residentId }: { residentId: number | null }) {
     <div>
       <SectionTitle>My Intervention Goals ({plans.length})</SectionTitle>
       {plans.length === 0 ? <p style={{ fontSize: 13, color: c.muted }}>No intervention plans on file.</p> : (
+        <>
+          <DataSearchBar
+            id={goalsSearchId}
+            value={goalsQuery}
+            onChange={setGoalsQuery}
+            placeholder="Search goals by category, status, or description…"
+          />
+          {filteredPlans.length === 0 && goalsQuery.trim() !== '' ? (
+            <p style={{ fontSize: 13, color: c.muted }}>No goals match your search.</p>
+          ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {plans.map((p: any) => (
+          {filteredPlans.map((p: any) => (
             <div key={p.planId} style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                 <div>
@@ -430,6 +551,8 @@ function MyGoals({ residentId }: { residentId: number | null }) {
             </div>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );

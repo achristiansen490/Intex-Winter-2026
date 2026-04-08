@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,53 @@ const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
   fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
+function filterRecordsByText(rows: Record<string, unknown>[], query: string): Record<string, unknown>[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return rows;
+  return rows.filter((row) =>
+    Object.values(row).some((v) => v != null && v !== '' && String(v).toLowerCase().includes(needle)),
+  );
+}
+
+function DataSearchBar({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label htmlFor={id} style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        Search
+      </label>
+      <input
+        id={id}
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? 'Type to filter rows…'}
+        autoComplete="off"
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          padding: '9px 14px',
+          fontSize: 13,
+          border: `1px solid ${c.goldLight}`,
+          borderRadius: 8,
+          color: c.text,
+          background: c.white,
+          boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Shared UI ────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
@@ -27,7 +74,7 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 style={{ fontSize: 15, fontWeight: 600, color: c.forest, marginBottom: 12, marginTop: 0, paddingBottom: 6, borderBottom: `1px solid ${c.goldLight}` }}>{children}</h2>;
 }
 
@@ -117,6 +164,13 @@ function DonationHistory() {
   const [donations, setDonations] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const searchId = useId();
+  const [donationQuery, setDonationQuery] = useState('');
+
+  const filteredDonations = useMemo(
+    () => filterRecordsByText(donations, donationQuery),
+    [donations, donationQuery],
+  );
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -138,7 +192,22 @@ function DonationHistory() {
           <p style={{ fontSize: 13, color: c.muted }}>Your giving history will appear here once your first donation is processed.</p>
         </div>
       ) : (
+        <>
+          <DataSearchBar
+            id={searchId}
+            value={donationQuery}
+            onChange={setDonationQuery}
+            placeholder="Search donation history…"
+          />
+          {filteredDonations.length === 0 && donationQuery.trim() !== '' ? (
+            <p style={{ fontSize: 13, color: c.muted }}>No rows match your search.</p>
+          ) : (
         <div style={{ overflowX: 'auto' }}>
+          <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>
+            {filteredDonations.length === donations.length
+              ? `${filteredDonations.length} donation${filteredDonations.length !== 1 ? 's' : ''}`
+              : `${filteredDonations.length} of ${donations.length} donations shown`}
+          </p>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: c.goldLight }}>
@@ -148,7 +217,7 @@ function DonationHistory() {
               </tr>
             </thead>
             <tbody>
-              {donations.map((d: any, i) => (
+              {filteredDonations.map((d: any, i) => (
                 <tr key={d.donationId} style={{ borderBottom: `1px solid ${c.goldLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                   <td style={{ padding: '8px 12px', color: c.text }}>{d.donationDate ? new Date(d.donationDate).toLocaleDateString() : '—'}</td>
                   <td style={{ padding: '8px 12px', color: c.text }}>{d.donationType ?? '—'}</td>
@@ -166,6 +235,8 @@ function DonationHistory() {
             </tbody>
           </table>
         </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -264,7 +335,9 @@ function MyProfile() {
           <div style={{ background: c.white, border: `1px solid ${c.goldLight}`, borderRadius: 12, padding: '1.5rem', maxWidth: 480 }}>
             {field('Display Name', supporter.displayName)}
             {field('Type', supporter.supporterType)}
-            {supporter.organizationName && field('Organization', supporter.organizationName)}
+            {supporter.organizationName != null && String(supporter.organizationName) !== ''
+              ? field('Organization', supporter.organizationName)
+              : null}
             {field('First Name', supporter.firstName)}
             {field('Last Name', supporter.lastName)}
             {field('Country', supporter.country)}
