@@ -9,7 +9,7 @@ This document maps each `ml-pipelines/*.ipynb` artifact to concrete surfaces in 
 | **SQLite** `Data/hiraya.db` | Single analytical + app database path used by notebooks and (via EF Core) the API. |
 | **Notebooks** | Train/evaluate models offline; produce metrics, plots, and (optionally) exported artifacts. |
 | **API** | JWT auth, CRUD controllers, `GET /api/Dashboard/overview` with aggregate counts and a “top post” snapshot. |
-| **Frontend** | Single-file `App.tsx`: **landing**, **donor** dashboard (static demo metrics/charts), **staff** dashboard (static activity/metrics). No ML calls yet. |
+| **Frontend** | Single-file `src/App.tsx` (React/Vite) with 4 in-app pages: `landing`, `impact`, `contributions`, `login`. It already calls several API endpoints (dashboard, donations, posts, etc.), but it does **not** have dedicated pipeline-specific pages/routes yet (e.g., “Caseload”, “Donors”, “Reports”). |
 
 ## Guiding principles
 
@@ -25,15 +25,15 @@ This document maps each `ml-pipelines/*.ipynb` artifact to concrete surfaces in 
 
 | Notebook | Primary audience | Best “active” integration | Suggested API / data shape | UI placement |
 | --- | --- | --- | --- | --- |
-| **campaign-effectiveness** | Fundraising / leadership | **High** — campaign lift & seasonality | Monthly series + optional coefficient summary per campaign (from batch job) | Donor: “Active Campaigns” / impact strip; Staff: “Reports” or donor module |
-| **donor-upgrade-potential** | Development | **Medium** — donor segments / “next gift” band | `supporter_id`, `score_band`, `next_value_estimate`, `computed_at` (staff-only or anonymized aggregates for donors) | Staff: “Donors” tab with sortable score; Donor: optional “your giving journey” if non-PHI |
-| **engagement-vs-vanity** | Comms | **High** — segment mix (engagement vs donation lift) | Aggregate segment counts + trend; optional post-level score for internal review | Staff: social/comms view; Landing: anonymized “impact of authentic engagement” callout |
-| **intervention-effectiveness** | Programs | **Medium** — directional associations only | **No per-resident causal claims** in UI; safehouse/month aggregates or internal research flags | Staff: research / quality section, not resident-facing claims |
-| **outreach-money-outcomes-bridge** | Leadership | **High** — monthly bridge dashboard | Materialized monthly `bridge` row: outreach ↔ donations ↔ outcomes | Staff “Reports”; Donor: high-level “collective outcomes” chart fed by API instead of hardcoded `barData` |
-| **post-to-donation-linkage** | Comms + fundraising | **High** — which content types correlate with referrals | `post_id` + `referral_propensity` (internal) or aggregates by `content_topic` / platform | Replace static donor chart with API-driven aggregates |
-| **reintegration-readiness** | Case management | **Low/Medium (internal)** — sensitive | Only with strict RBAC: `resident_id` + probability + `model_version`; never on public pages | Staff “Caseload” only; audit log on access |
-| **resident-risk-flag** | Clinical / safety | **Medium (internal)** — next-month risk | `resident_id` + month + `risk_score` + top drivers (categorical) | Staff “Caseload” alert column; not donor-facing |
-| **safehouse-strain-forecast** | Operations | **High** — capacity / strain | `safehouse_id` + month + `forecast_incidents` + `stress_index` | Staff “Dashboard” and per–safe-house drill-down |
+| **campaign-effectiveness** | Fundraising / leadership | **High** — campaign lift & seasonality | Monthly series + optional coefficient summary per campaign (from batch job) | Existing: `impact` (monthly giving trend). Missing: “Campaigns” detail page/section |
+| **donor-upgrade-potential** | Development | **Medium** — donor segments / “next gift” band | `supporter_id`, `score_band`, `next_value_estimate`, `computed_at` (staff-only or anonymized aggregates for donors) | Missing: staff-only “Donors” page/section (not present in frontend file structure) |
+| **engagement-vs-vanity** | Comms | **High** — segment mix (engagement vs donation lift) | Aggregate segment counts + trend; optional post-level score for internal review | Existing: `impact` can host aggregate segments. Missing: staff-only “Comms / Social” page/section |
+| **intervention-effectiveness** | Programs | **Medium** — directional associations only | **No per-resident causal claims** in UI; safehouse/month aggregates or internal research flags | Missing: staff-only “Programs / Quality” page/section |
+| **outreach-money-outcomes-bridge** | Leadership | **High** — monthly bridge dashboard | Materialized monthly `bridge` row: outreach ↔ donations ↔ outcomes | Existing: `impact` is the best public/aggregate home. Missing: a “Reports” page/section for staff drill-down |
+| **post-to-donation-linkage** | Comms + fundraising | **High** — which content types correlate with referrals | `post_id` + `referral_propensity` (internal) or aggregates by `content_topic` / platform | Existing: `impact` can show aggregate topic/platform charts. Missing: staff-only post ranking/review page |
+| **reintegration-readiness** | Case management | **Low/Medium (internal)** — sensitive | Only with strict RBAC: `resident_id` + probability + `model_version`; never on public pages | Missing: staff-only “Caseload” page/section (not present in frontend file structure) |
+| **resident-risk-flag** | Clinical / safety | **Medium (internal)** — next-month risk | `resident_id` + month + `risk_score` + top drivers (categorical) | Missing: staff-only “Caseload” alerts (same missing page/section) |
+| **safehouse-strain-forecast** | Operations | **High** — capacity / strain | `safehouse_id` + month + `forecast_incidents` + `stress_index` | Missing: staff-only “Operations” page/section (safehouse drill-down) |
 
 **Non-pipeline notebooks:** `caseyEDA.ipynb` supports internal analysis only; `planning.ipynb` stays documentation unless you add a “Methodology” public page.
 
@@ -103,3 +103,27 @@ This document maps each `ml-pipelines/*.ipynb` artifact to concrete surfaces in 
 4. Iterate on **staff** widgets using the mapping table above.
 
 This plan maximizes **visible value on the site** early (aggregates, charts, campaign story) while keeping **sensitive per-resident models** behind staff auth and batch jobs.
+
+---
+
+## What “pages” exist today vs what’s missing (for pipelines)
+
+### Existing frontend pages (in `src/App.tsx`)
+
+- **`landing`**: marketing/intro
+- **`impact`**: impact dashboard style view (good home for aggregate, donor-safe pipeline outputs)
+- **`contributions`**: donation/contribution view
+- **`login`**: staff/admin login workflow
+
+### Missing pages / sections implied by the pipelines
+
+These are referenced conceptually in the plan and are **not** present as separate files/components in the current frontend structure (because everything is still in one `App.tsx`):
+
+- **Staff “Caseload”**: needed for `resident-risk-flag` and `reintegration-readiness`
+- **Staff “Donors”**: needed for `donor-upgrade-potential`
+- **Staff “Reports” / “Analytics”**: best home for `outreach-money-outcomes-bridge`, `campaign-effectiveness` drill-downs
+- **Staff “Operations” / “Safehouses”**: needed for `safehouse-strain-forecast`
+- **Staff “Comms / Social”**: needed for `engagement-vs-vanity` + `post-to-donation-linkage` post ranking/review
+- **Programs “Quality”** (staff-only): for `intervention-effectiveness` style research flags (non-causal)
+
+On the backend, there is currently **no** `InsightsController` (and no `/api/insights/*` route); only `DashboardController` and CRUD controllers exist, so any pipeline-specific aggregate endpoints still need to be added.
