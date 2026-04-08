@@ -33,7 +33,8 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   role: Role | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** Resolves only after /api/auth/me has completed and user state is set. */
+  login: (email: string, password: string) => Promise<Role | null>;
   logout: () => void;
 }
 
@@ -56,6 +57,14 @@ function getPrimaryRole(roles: Role[]): Role | null {
   return ROLE_PRIORITY.find((r) => roles.includes(r)) ?? null;
 }
 
+async function fetchMe(token: string): Promise<AuthUser> {
+  const res = await fetch('/api/auth/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Token invalid');
+  return res.json();
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(
     () => localStorage.getItem(TOKEN_KEY)
@@ -63,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch /api/auth/me whenever token changes
+  // Rehydrate user on mount / token change (e.g. page refresh)
   useEffect(() => {
     if (!token) {
       setUser(null);
@@ -72,13 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true);
-    fetch('/api/auth/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Token invalid');
-        return res.json();
-      })
+    fetchMe(token)
       .then((data) => setUser(data))
       .catch(() => {
         localStorage.removeItem(TOKEN_KEY);
@@ -88,7 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, [token]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  /**
+   * Logs in, waits for /api/auth/me to complete, then returns the
+   * resolved primary role so the caller can navigate immediately.
+   */
+  const login = useCallback(async (email: string, password: string): Promise<Role | null> => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -101,12 +108,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await res.json();
-    localStorage.setItem(TOKEN_KEY, data.token);
-    setToken(data.token);
+    const jwt = data.token as string;
+
+    // Fetch /me immediately using the new token — don't wait for useEffect
+    const meData = await fetchMe(jwt);
+
+    // Now commit to state
+    localStorage.setItem(TOKEN_KEY, jwt);
+    setToken(jwt);
+    setUser(meData);
+
+    return getPrimaryRole(meData.roles);
   }, []);
 
   const logout = useCallback(() => {
-    // Fire-and-forget logout audit log
     if (token) {
       fetch('/api/auth/logout', {
         method: 'POST',

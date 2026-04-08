@@ -7,16 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
+// Supporter data contains donor contact info — NOT public, requires auth
 public class SupportersController(HirayaContext db, IPermissionService permissions, UserManager<AppUser> userManager)
     : CrudControllerBase<Supporter>(db, permissions, userManager)
 {
     protected override DbSet<Supporter> Entities => Db.Supporters;
-
-    [AllowAnonymous]
-    [HttpGet]
-    public override async Task<IActionResult> GetAll(CancellationToken ct)
-    {
-        var supporters = await Db.Supporters.AsNoTracking().ToListAsync(ct);
-        return Ok(supporters);
-    }
 }

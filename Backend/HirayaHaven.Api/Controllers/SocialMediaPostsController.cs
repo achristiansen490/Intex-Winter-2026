@@ -1,6 +1,7 @@
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
 using HirayaHaven.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,17 +13,20 @@ public class SocialMediaPostsController(HirayaContext db, IPermissionService per
 {
     protected override DbSet<SocialMediaPost> Entities => Db.SocialMediaPosts;
 
+    /// <summary>
+    /// Public endpoint — social media posts are public content.
+    /// Authenticated users get up to 500 posts; anonymous users get up to 100.
+    /// </summary>
     [AllowAnonymous]
     [HttpGet]
     public override async Task<IActionResult> GetAll(CancellationToken ct)
     {
-        var role = await GetUserRoleAsync();
-        if (role is null) return Forbid();
-        if (!await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
+        var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+        var maxTake = isAuthenticated ? 500 : 100;
 
-        var take = 500;
+        var take = maxTake;
         if (HttpContext.Request.Query.TryGetValue("take", out var raw) && int.TryParse(raw, out var t))
-            take = Math.Clamp(t, 1, 500);
+            take = Math.Clamp(t, 1, maxTake);
 
         var posts = await Db.SocialMediaPosts
             .AsNoTracking()
