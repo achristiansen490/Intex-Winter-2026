@@ -9,7 +9,7 @@ This document maps each `ml-pipelines/*.ipynb` artifact to concrete surfaces in 
 | **SQLite** `Data/hiraya.db` | Single analytical + app database path used by notebooks and (via EF Core) the API. |
 | **Notebooks** | Train/evaluate models offline; produce metrics, plots, and (optionally) exported artifacts. |
 | **API** | JWT auth, CRUD controllers, `GET /api/Dashboard/overview` with aggregate counts and a “top post” snapshot. |
-| **Frontend** | Single-file `src/App.tsx` (React/Vite) with 4 in-app pages: `landing`, `impact`, `contributions`, `login`. It already calls several API endpoints (dashboard, donations, posts, etc.), but it does **not** have dedicated pipeline-specific pages/routes yet (e.g., “Caseload”, “Donors”, “Reports”). |
+| **Frontend** | React/Vite app with React Router routes in `src/App.tsx` and page components under `src/pages/`. Auth is provided by `src/context/AuthContext.tsx` and route protection by `src/components/ProtectedRoute.tsx`. Primary portals are `DonorPortal`, `StaffPortal`, `ResidentPortal`, and `AdminPortal`. |
 
 ## Guiding principles
 
@@ -25,15 +25,15 @@ This document maps each `ml-pipelines/*.ipynb` artifact to concrete surfaces in 
 
 | Notebook | Primary audience | Best “active” integration | Suggested API / data shape | UI placement |
 | --- | --- | --- | --- | --- |
-| **campaign-effectiveness** | Fundraising / leadership | **High** — campaign lift & seasonality | Monthly series + optional coefficient summary per campaign (from batch job) | Existing: `impact` (monthly giving trend). Missing: “Campaigns” detail page/section |
-| **donor-upgrade-potential** | Development | **Medium** — donor segments / “next gift” band | `supporter_id`, `score_band`, `next_value_estimate`, `computed_at` (staff-only or anonymized aggregates for donors) | Missing: staff-only “Donors” page/section (not present in frontend file structure) |
-| **engagement-vs-vanity** | Comms | **High** — segment mix (engagement vs donation lift) | Aggregate segment counts + trend; optional post-level score for internal review | Existing: `impact` can host aggregate segments. Missing: staff-only “Comms / Social” page/section |
-| **intervention-effectiveness** | Programs | **Medium** — directional associations only | **No per-resident causal claims** in UI; safehouse/month aggregates or internal research flags | Missing: staff-only “Programs / Quality” page/section |
-| **outreach-money-outcomes-bridge** | Leadership | **High** — monthly bridge dashboard | Materialized monthly `bridge` row: outreach ↔ donations ↔ outcomes | Existing: `impact` is the best public/aggregate home. Missing: a “Reports” page/section for staff drill-down |
-| **post-to-donation-linkage** | Comms + fundraising | **High** — which content types correlate with referrals | `post_id` + `referral_propensity` (internal) or aggregates by `content_topic` / platform | Existing: `impact` can show aggregate topic/platform charts. Missing: staff-only post ranking/review page |
-| **reintegration-readiness** | Case management | **Low/Medium (internal)** — sensitive | Only with strict RBAC: `resident_id` + probability + `model_version`; never on public pages | Missing: staff-only “Caseload” page/section (not present in frontend file structure) |
-| **resident-risk-flag** | Clinical / safety | **Medium (internal)** — next-month risk | `resident_id` + month + `risk_score` + top drivers (categorical) | Missing: staff-only “Caseload” alerts (same missing page/section) |
-| **safehouse-strain-forecast** | Operations | **High** — capacity / strain | `safehouse_id` + month + `forecast_incidents` + `stress_index` | Missing: staff-only “Operations” page/section (safehouse drill-down) |
+| **campaign-effectiveness** | Fundraising / leadership | **High** — campaign lift & seasonality | Donation/month series + campaign aggregates; optional “above baseline” coefficients from batch runs | **DonorPortal → “Active Campaigns”** (currently shows impact snapshots; extend) + **StaffPortal/AdminPortal → “Reports”** (currently mapped to dashboard placeholder) |
+| **donor-upgrade-potential** | Development | **Medium** — donor segments / “next gift” band | `supporter_id`, `score_band`, `next_value_estimate`, `computed_at` (staff/admin only) | **StaffPortal → “Donors”** exists (currently lists supporters via `/api/supporters`), add scoring columns + filters |
+| **engagement-vs-vanity** | Comms | **High** — segment mix (engagement vs donation lift) | Aggregate segment counts/trends; optional post scoring for internal review | Best home: **AdminPortal → “Reports”** or a new “Social” section; **no dedicated comms page exists yet** |
+| **intervention-effectiveness** | Programs | **Medium** — directional associations only | Aggregate by safehouse/month; internal research flags; avoid causal language | Best home: **StaffPortal/AdminPortal → “Reports”** (needs a real reports view) |
+| **outreach-money-outcomes-bridge** | Leadership | **High** — monthly bridge dashboard | Materialized monthly `bridge` rows (outreach ↔ donations ↔ outcomes) | **AdminPortal/StaffPortal → “Reports”** (placeholder today). Donor-safe rollups can also appear in **DonorPortal → “My Impact”** |
+| **post-to-donation-linkage** | Comms + fundraising | **High** — which content correlates with referrals | Aggregates by topic/platform + optional internal “top posts by referral propensity” | **AdminPortal** is best for internal post ranking; donor-safe aggregates could go in **DonorPortal → “My Impact”** |
+| **reintegration-readiness** | Case management | **Low/Medium (internal)** — sensitive | `resident_id` + probability + `model_version` (strict RBAC) | **StaffPortal → “Caseload/Residents”** exists (currently a residents table via `/api/residents`); integrate as an additional staff-only score column + drill-down |
+| **resident-risk-flag** | Clinical / safety | **Medium (internal)** — next-month risk | `resident_id` + month + `risk_score` + top drivers | Same as above: **StaffPortal → “Caseload/Residents”** table + alerts panel (new UI needed) |
+| **safehouse-strain-forecast** | Operations | **High** — capacity / strain | `safehouse_id` + month + `forecast_incidents` + `stress_index` | **AdminPortal → “Safehouses”** exists (table view); add an **Operations/Forecast** report view or safehouse drill-down (new UI needed) |
 
 **Non-pipeline notebooks:** `caseyEDA.ipynb` supports internal analysis only; `planning.ipynb` stays documentation unless you add a “Methodology” public page.
 
@@ -79,10 +79,11 @@ This document maps each `ml-pipelines/*.ipynb` artifact to concrete surfaces in 
 
 ## Frontend work breakdown
 
-1. **Split `App.tsx`** into `pages/`, `components/`, and `api/client.ts` as the app grows.
-2. **Donor dashboard** — Replace `barData` / `quarters` constants with props from `useEffect` + API; add loading/error states.
-3. **Staff dashboard** — Add sub-routes or sidebar sections: “Operations (strain)”, “Caseload (risk)”, “Social (engagement)”.
-4. **Auth** — Wire JWT login for staff routes before showing resident-level scores (already scaffolded in API).
+1. **Centralize API client**: pages currently call `fetch()` inline; consider `src/api/client.ts` to standardize base URL, auth headers, and error handling.
+2. **Reports views**: `StaffPortal` and `AdminPortal` have a “Reports” nav item, but it currently renders the dashboard. Implement an actual reports page/section to host aggregate pipeline outputs.
+3. **Caseload enhancements**: `StaffPortal` already renders `Residents` for “Caseload/My Residents/Residents”. Add ML score columns + sorting + drill-down (role-gated).
+4. **Donor enhancements**: `DonorPortal` already has “My Impact / Donation History / Active Campaigns”. Extend “Active Campaigns” with campaign effectiveness aggregates and “My Impact” with donor-safe bridge metrics.
+5. **Auth/RBAC**: already present via `AuthContext` + `ProtectedRoute`; ensure ML score endpoints are staff/admin-only.
 
 ---
 
@@ -108,22 +109,29 @@ This plan maximizes **visible value on the site** early (aggregates, charts, cam
 
 ## What “pages” exist today vs what’s missing (for pipelines)
 
-### Existing frontend pages (in `src/App.tsx`)
+### Existing frontend routes/pages (in `src/App.tsx` and `src/pages/`)
 
-- **`landing`**: marketing/intro
-- **`impact`**: impact dashboard style view (good home for aggregate, donor-safe pipeline outputs)
-- **`contributions`**: donation/contribution view
-- **`login`**: staff/admin login workflow
+- **Public**:
+  - `/` → `src/pages/LandingPage.tsx`
+  - `/privacy` → `src/pages/PrivacyPolicyPage.tsx`
+  - `/login` → `src/pages/LoginPage.tsx`
+  - `/register` → `src/pages/RegisterPage.tsx`
+  - `/pending-approval` → `src/pages/PendingApprovalPage.tsx`
+  - `/forbidden` → `src/pages/ForbiddenPage.tsx`
+  - `*` → `src/pages/NotFoundPage.tsx`
+- **Protected portals**:
+  - `/donor` → `src/pages/DonorPortal.tsx`
+  - `/staff` → `src/pages/StaffPortal.tsx`
+  - `/resident` → `src/pages/ResidentPortal.tsx`
+  - `/admin` → `src/pages/AdminPortal.tsx`
 
 ### Missing pages / sections implied by the pipelines
 
-These are referenced conceptually in the plan and are **not** present as separate files/components in the current frontend structure (because everything is still in one `App.tsx`):
+You now have portal pages and a sidebar nav, but these **pipeline-specific sections are still missing or placeholders**:
 
-- **Staff “Caseload”**: needed for `resident-risk-flag` and `reintegration-readiness`
-- **Staff “Donors”**: needed for `donor-upgrade-potential`
-- **Staff “Reports” / “Analytics”**: best home for `outreach-money-outcomes-bridge`, `campaign-effectiveness` drill-downs
-- **Staff “Operations” / “Safehouses”**: needed for `safehouse-strain-forecast`
-- **Staff “Comms / Social”**: needed for `engagement-vs-vanity` + `post-to-donation-linkage` post ranking/review
-- **Programs “Quality”** (staff-only): for `intervention-effectiveness` style research flags (non-causal)
+- **Reports content**: `StaffPortal` and `AdminPortal` both have “Reports”, but it currently renders the dashboard rather than pipeline reports/analytics.
+- **Comms/Social analytics view**: no dedicated staff/admin section for `engagement-vs-vanity` + `post-to-donation-linkage` ranking/segmentation (you do have the underlying posts endpoints via `/api/socialmediaposts`).
+- **Operations forecast drill-down**: safehouses table exists (`AdminPortal → Safehouses`), but there is no safehouse forecast/strain visualization yet.
+- **Caseload ML overlays**: residents tables exist, but risk/readiness scores, explanations, and alerting UI do not.
 
 On the backend, there is currently **no** `InsightsController` (and no `/api/insights/*` route); only `DashboardController` and CRUD controllers exist, so any pipeline-specific aggregate endpoints still need to be added.
