@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 namespace HirayaHaven.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
 [Route("api/insights")]
 [Authorize] // These endpoints power portals; keep protected by default.
 public class InsightsController(HirayaContext db) : ControllerBase

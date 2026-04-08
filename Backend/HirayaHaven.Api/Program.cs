@@ -1,6 +1,7 @@
 using System.Text;
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,46 @@ var sqliteConnection = builder.Configuration.GetConnectionString("DefaultConnect
     ?? "Data Source=../../Data/hiraya.db";
 var azureSqlConnection = builder.Configuration.GetConnectionString("AzureSqlConnection");
 
+string ResolveSqliteConnection(string configuredConnection, string contentRootPath)
+{
+    // Make local dev resilient when API is started from different working directories.
+    var csb = new SqliteConnectionStringBuilder(configuredConnection);
+    var configuredPath = csb.DataSource;
+    if (string.IsNullOrWhiteSpace(configuredPath))
+        return configuredConnection;
+
+    if (Path.IsPathRooted(configuredPath))
+        return configuredConnection;
+
+    // Try the configured relative path first.
+    var firstCandidate = Path.GetFullPath(Path.Combine(contentRootPath, configuredPath));
+    if (File.Exists(firstCandidate))
+    {
+        csb.DataSource = firstCandidate;
+        return csb.ConnectionString;
+    }
+
+    // Then try common repo layouts (run from repo root vs API project dir).
+    var fallbackCandidates = new[]
+    {
+        Path.GetFullPath(Path.Combine(contentRootPath, "Data", "hiraya.db")),
+        Path.GetFullPath(Path.Combine(contentRootPath, "..", "..", "Data", "hiraya.db")),
+        Path.GetFullPath(Path.Combine(contentRootPath, "..", "Data", "hiraya.db")),
+    };
+
+    var existing = fallbackCandidates.FirstOrDefault(File.Exists);
+    if (!string.IsNullOrWhiteSpace(existing))
+    {
+        csb.DataSource = existing;
+        return csb.ConnectionString;
+    }
+
+    // Fall back to the configured value if none exist.
+    return configuredConnection;
+}
+
+var resolvedSqliteConnection = ResolveSqliteConnection(sqliteConnection, builder.Environment.ContentRootPath);
+
 builder.Services.AddDbContext<HirayaContext>(options =>
 {
     if (dbProvider == "sqlserver")
@@ -39,7 +80,7 @@ builder.Services.AddDbContext<HirayaContext>(options =>
     }
     else
     {
-        options.UseSqlite(sqliteConnection);
+        options.UseSqlite(resolvedSqliteConnection);
     }
 });
 
