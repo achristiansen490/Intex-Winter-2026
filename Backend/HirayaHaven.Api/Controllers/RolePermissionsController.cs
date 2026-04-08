@@ -1,11 +1,14 @@
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
+using HirayaHaven.Api.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Controllers;
 
-public class RolePermissionsController(HirayaContext db) : CrudControllerBase<RolePermission>(db)
+public class RolePermissionsController(HirayaContext db, IPermissionService permissions, UserManager<AppUser> userManager)
+    : CrudControllerBase<RolePermission>(db, permissions, userManager)
 {
     protected override DbSet<RolePermission> Entities => Db.RolePermissions;
 }

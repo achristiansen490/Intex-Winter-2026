@@ -5,11 +5,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using HirayaHaven.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IApprovalService, ApprovalService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=../../Data/hiraya.db";
@@ -128,11 +132,83 @@ static async Task SeedAsync(IServiceProvider services)
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-    string[] roles = ["Admin", "Donor"];
+    string[] roles = ["Admin", "Supervisor", "CaseManager", "SocialWorker", "FieldWorker", "Resident", "Donor"];
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole<int>(role));
+    }
+
+    // --- Seed RolePermission matrix ---
+    var db = scope.ServiceProvider.GetRequiredService<HirayaContext>();
+    if (!db.RolePermissions.Any())
+    {
+        var perms = new List<RolePermission>();
+        void Allow(string role, string resource, string actions, string? scope = null)
+        {
+            foreach (var action in actions.Split(','))
+                perms.Add(new RolePermission { Role = role, Resource = resource, Action = action.Trim(), IsAllowed = true, ScopeNote = scope });
+        }
+
+        // Admin — full CRUD on everything
+        foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
+            "home_visitations", "incident_reports", "intervention_plans", "donations", "users", "staff",
+            "safehouses", "reports", "audit_log", "organization" })
+            Allow("Admin", res, "Create,Read,Update,Delete");
+
+        // Supervisor
+        foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
+            "home_visitations", "incident_reports", "intervention_plans" })
+            Allow("Supervisor", res, "Create,Read,Update", "Own safehouse");
+        Allow("Supervisor", "donations", "Read");
+        Allow("Supervisor", "users", "Create,Read,Update", "Resident accounts only");
+        Allow("Supervisor", "staff", "Read,Update", "Own safehouse");
+        Allow("Supervisor", "safehouses", "Read,Update", "Own safehouse");
+        Allow("Supervisor", "reports", "Create,Read");
+        Allow("Supervisor", "audit_log", "Read");
+        Allow("Supervisor", "organization", "Read");
+
+        // Case Manager
+        foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
+            "home_visitations", "incident_reports", "intervention_plans" })
+            Allow("CaseManager", res, "Create,Read,Update", "Own safehouse");
+        Allow("CaseManager", "staff", "Read");
+        Allow("CaseManager", "safehouses", "Read");
+        Allow("CaseManager", "reports", "Create,Read");
+        Allow("CaseManager", "organization", "Read");
+
+        // Social Worker
+        Allow("SocialWorker", "residents", "Read,Update", "Own safehouse, sensitive changes require approval");
+        foreach (var res in new[] { "health_records", "education_records", "process_recordings",
+            "home_visitations", "incident_reports" })
+            Allow("SocialWorker", res, "Create,Read,Update", "Assigned residents");
+        Allow("SocialWorker", "intervention_plans", "Read,Update", "Assigned residents");
+        Allow("SocialWorker", "staff", "Read");
+        Allow("SocialWorker", "safehouses", "Read");
+        Allow("SocialWorker", "reports", "Read");
+        Allow("SocialWorker", "organization", "Read");
+
+        // Field Worker
+        Allow("FieldWorker", "residents", "Read", "Own safehouse");
+        foreach (var res in new[] { "health_records", "education_records", "process_recordings",
+            "home_visitations", "incident_reports" })
+            Allow("FieldWorker", res, "Create,Read", "Own safehouse, cannot edit after submission");
+        Allow("FieldWorker", "intervention_plans", "Read");
+        Allow("FieldWorker", "safehouses", "Read");
+        Allow("FieldWorker", "organization", "Read");
+
+        // Resident
+        foreach (var res in new[] { "residents", "health_records", "education_records",
+            "home_visitations", "intervention_plans" })
+            Allow("Resident", res, "Read", "Own records only");
+        Allow("Resident", "organization", "Read");
+
+        // Donor
+        Allow("Donor", "donations", "Read", "Own records only");
+        Allow("Donor", "organization", "Read");
+
+        db.RolePermissions.AddRange(perms);
+        await db.SaveChangesAsync();
     }
 
     var adminEmail = config["Seed:AdminEmail"] ?? "admin@hirayahaven.org";

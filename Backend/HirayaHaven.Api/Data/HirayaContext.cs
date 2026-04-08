@@ -1,11 +1,13 @@
+using System.Security.Claims;
 using HirayaHaven.Api.Models;
+using HirayaHaven.Api.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Data;
 
-public partial class HirayaContext(DbContextOptions<HirayaContext> options)
+public partial class HirayaContext(DbContextOptions<HirayaContext> options, IHttpContextAccessor? httpContextAccessor = null)
     : IdentityDbContext<AppUser, IdentityRole<int>, int>(options)
 {
     public DbSet<Organization> Organizations => Set<Organization>();
@@ -30,4 +32,30 @@ public partial class HirayaContext(DbContextOptions<HirayaContext> options)
     public DbSet<IncidentReport> IncidentReports => Set<IncidentReport>();
     public DbSet<SafehouseMonthlyMetric> SafehouseMonthlyMetrics => Set<SafehouseMonthlyMetric>();
     public DbSet<PublicImpactSnapshot> PublicImpactSnapshots => Set<PublicImpactSnapshot>();
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        int? userId = null;
+        string? ipAddress = null;
+
+        if (httpContextAccessor?.HttpContext is { } ctx)
+        {
+            var userIdClaim = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(userIdClaim, out var uid)) userId = uid;
+            ipAddress = ctx.Connection.RemoteIpAddress?.ToString();
+        }
+
+        var auditEntries = AuditInterceptor.GetAuditEntries(ChangeTracker, userId, ipAddress);
+
+        var result = await base.SaveChangesAsync(cancellationToken);
+
+        // Add audit entries after save so we have generated PKs for INSERTs
+        if (auditEntries.Count > 0)
+        {
+            AuditLogs.AddRange(auditEntries);
+            await base.SaveChangesAsync(cancellationToken);
+        }
+
+        return result;
+    }
 }
