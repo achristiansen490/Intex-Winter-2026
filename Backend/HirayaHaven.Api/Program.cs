@@ -240,25 +240,54 @@ static async Task SeedAsync(IServiceProvider services)
         await db.SaveChangesAsync();
     }
 
-    var adminEmail = config["Seed:AdminEmail"] ?? "admin@hirayahaven.org";
-    if (await userManager.FindByEmailAsync(adminEmail) is null)
-    {
-        var adminPassword = config["Seed:AdminPassword"]
-            ?? throw new InvalidOperationException(
-                "Admin seed password not configured. Run: dotnet user-secrets set \"Seed:AdminPassword\" \"<password>\"");
+    // Seed one test account per role.
+    // Admin password must be set explicitly:
+    //   dotnet user-secrets set "Seed:AdminPassword" "<password>"
+    // All other roles share a single dev password (override with "Seed:DefaultPassword"):
+    //   dotnet user-secrets set "Seed:DefaultPassword" "<password>"
+    // Default dev password (satisfies the 12-char policy): HirayaDev@2025!
 
-        var admin = new AppUser
+    var defaultPassword = config["Seed:DefaultPassword"] ?? "HirayaDev@2025!";
+
+    var seedAccounts = new[]
+    {
+        new { Key = "Seed:AdminPassword",  Email = config["Seed:AdminEmail"] ?? "admin@hirayahaven.org", UserName = "admin",       Role = "Admin"       },
+        new { Key = (string?)null,         Email = "supervisor@hirayahaven.org",                         UserName = "supervisor",  Role = "Supervisor"  },
+        new { Key = (string?)null,         Email = "casemanager@hirayahaven.org",                        UserName = "casemanager", Role = "CaseManager" },
+        new { Key = (string?)null,         Email = "socialworker@hirayahaven.org",                       UserName = "socialworker",Role = "SocialWorker"},
+        new { Key = (string?)null,         Email = "fieldworker@hirayahaven.org",                        UserName = "fieldworker", Role = "FieldWorker" },
+        new { Key = (string?)null,         Email = "resident@hirayahaven.org",                           UserName = "resident",    Role = "Resident"    },
+        new { Key = (string?)null,         Email = "donor@hirayahaven.org",                              UserName = "donor",       Role = "Donor"       },
+    };
+
+    foreach (var acct in seedAccounts)
+    {
+        if (await userManager.FindByEmailAsync(acct.Email) is not null) continue;
+
+        string password;
+        if (acct.Key is not null)
         {
-            UserName = "admin",
-            Email = adminEmail,
+            password = config[acct.Key]
+                ?? throw new InvalidOperationException(
+                    $"Admin seed password not configured. Run: dotnet user-secrets set \"{acct.Key}\" \"<password>\"");
+        }
+        else
+        {
+            password = defaultPassword;
+        }
+
+        var user = new AppUser
+        {
+            UserName = acct.UserName,
+            Email = acct.Email,
             EmailConfirmed = true,
             IsActive = true,
-            IsApproved = true
+            IsApproved = true,
         };
 
-        var result = await userManager.CreateAsync(admin, adminPassword);
+        var result = await userManager.CreateAsync(user, password);
         if (result.Succeeded)
-            await userManager.AddToRoleAsync(admin, "Admin");
+            await userManager.AddToRoleAsync(user, acct.Role);
     }
 }
 
