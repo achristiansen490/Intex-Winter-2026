@@ -527,14 +527,25 @@ function AdminReports() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [b, c, ev] = await Promise.all([
-        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(r => r.json()),
-        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
-        api('/api/insights/social/engagement-vs-vanity').then(r => r.json()),
+      const [bridgeRes, campaignRes, evRes] = await Promise.allSettled([
+        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(async (r) => (r.ok ? r.json() : [])),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(async (r) => (r.ok ? r.json() : [])),
+        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
       ]);
-      setBridge(Array.isArray(b) ? b : []);
-      setCampaigns(Array.isArray(c) ? c : []);
-      setEvSummary(ev && typeof ev === 'object' && 'segments' in ev ? ev as EngagementVsVanitySummary : null);
+
+      const nextBridge = bridgeRes.status === 'fulfilled' && Array.isArray(bridgeRes.value) ? bridgeRes.value : [];
+      const nextCampaigns = campaignRes.status === 'fulfilled' && Array.isArray(campaignRes.value) ? campaignRes.value : [];
+      const nextEv = evRes.status === 'fulfilled' && evRes.value && typeof evRes.value === 'object' && 'segments' in evRes.value
+        ? evRes.value as EngagementVsVanitySummary
+        : null;
+
+      setBridge(nextBridge);
+      setCampaigns(nextCampaigns);
+      setEvSummary(nextEv);
+
+      if (nextBridge.length === 0 && nextCampaigns.length === 0 && !nextEv) {
+        setError('Failed to load reports.');
+      }
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
   }, [bridgeTake, campaignTake]);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 
 const c = {
@@ -90,7 +91,14 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, user, o
             marginBottom: '0.75rem',
           }}
         >
-          <Logo light />
+          <Link
+            to="/"
+            onClick={() => setOpen(false)}
+            aria-label="Hiraya Haven - return to home page"
+            style={{ textDecoration: 'none', display: 'inline-flex' }}
+          >
+            <Logo light />
+          </Link>
         </div>
 
         <ul style={{ listStyle: 'none', flex: 1, margin: 0, padding: 0 }}>
