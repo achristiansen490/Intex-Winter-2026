@@ -1,5 +1,6 @@
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ public class SocialMediaPostsController(HirayaContext db) : CrudControllerBase<S
 {
     protected override DbSet<SocialMediaPost> Entities => Db.SocialMediaPosts;
 
+    [AllowAnonymous]
     [HttpGet]
     public override async Task<IActionResult> GetAll(CancellationToken ct)
     {

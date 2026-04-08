@@ -35,6 +35,7 @@ public class DonationsController(HirayaContext db, UserManager<AppUser> userMana
     }
 
     [HttpGet("summary")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetSummary(CancellationToken ct)
     {
         var totalDonationRows = await Db.Donations.CountAsync(ct);
@@ -63,5 +64,33 @@ public class DonationsController(HirayaContext db, UserManager<AppUser> userMana
             totalEstimatedValue,
             byType
         });
+    }
+
+    [HttpGet("public")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublicDonations(CancellationToken ct)
+    {
+        var take = 25;
+        if (HttpContext.Request.Query.TryGetValue("take", out var raw) && int.TryParse(raw, out var t))
+            take = Math.Clamp(t, 1, 100);
+
+        var donations = await Db.Donations
+            .AsNoTracking()
+            .OrderByDescending(d => d.DonationDate)
+            .Take(take)
+            .Select(d => new
+            {
+                d.DonationId,
+                d.DonationDate,
+                d.DonationType,
+                d.CampaignName,
+                d.ChannelSource,
+                d.CurrencyCode,
+                d.Amount,
+                d.EstimatedValue
+            })
+            .ToListAsync(ct);
+
+        return Ok(donations);
     }
 }
