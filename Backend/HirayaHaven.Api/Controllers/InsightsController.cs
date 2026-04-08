@@ -570,5 +570,280 @@ public class InsightsController(HirayaContext db) : ControllerBase
 
         return Ok(ranked);
     }
+
+    private static string ResidentLabel(string? caseControlNo, string? internalCode, int residentId)
+    {
+        if (!string.IsNullOrWhiteSpace(caseControlNo)) return caseControlNo!;
+        if (!string.IsNullOrWhiteSpace(internalCode)) return internalCode!;
+        return $"Resident #{residentId}";
+    }
+
+    private static int CurrentRiskLevelPoints(string? level)
+    {
+        if (string.IsNullOrWhiteSpace(level)) return 6;
+        var x = level.Trim().ToLowerInvariant();
+        if (x.Contains("critical")) return 28;
+        if (x.Contains("high")) return 18;
+        if (x.Contains("medium")) return 10;
+        if (x.Contains("low")) return 4;
+        return 6;
+    }
+
+    private static Dictionary<int, double> LatestEducationProgressByResident(
+        IEnumerable<(int ResidentId, string? RecordDate, double? ProgressPercent)> rows)
+    {
+        return rows
+            .Select(x => (x.ResidentId, Dt: ParseDate(x.RecordDate), x.ProgressPercent))
+            .Where(x => x.Dt.HasValue && x.ProgressPercent.HasValue)
+            .GroupBy(x => x.ResidentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(x => x.Dt!.Value).First().ProgressPercent!.Value);
+    }
+
+    private static Dictionary<int, double> LatestHealthScoreByResident(
+        IEnumerable<(int ResidentId, string? RecordDate, double? GeneralHealthScore)> rows)
+    {
+        return rows
+            .Select(x => (x.ResidentId, Dt: ParseDate(x.RecordDate), x.GeneralHealthScore))
+            .Where(x => x.Dt.HasValue && x.GeneralHealthScore.HasValue)
+            .GroupBy(x => x.ResidentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(x => x.Dt!.Value).First().GeneralHealthScore!.Value);
+    }
+
+    /// <summary>
+    /// Intervention plan categories vs latest education/health outcomes (associative; see <c>intervention-effectiveness.ipynb</c>).
+    /// </summary>
+    [HttpGet("interventions/by-category")]
+    public async Task<IActionResult> GetInterventionsByCategory(CancellationToken ct = default)
+    {
+        var plans = await db.InterventionPlans
+            .AsNoTracking()
+            .Select(p => new { p.ResidentId, p.PlanCategory })
+            .ToListAsync(ct);
+
+        var eduRows = await db.EducationRecords
+            .AsNoTracking()
+            .Select(e => new { e.ResidentId, e.RecordDate, e.ProgressPercent })
+            .ToListAsync(ct);
+
+        var healthRows = await db.HealthWellbeingRecords
+            .AsNoTracking()
+            .Select(h => new { h.ResidentId, h.RecordDate, h.GeneralHealthScore })
+            .ToListAsync(ct);
+
+        var latestEdu = LatestEducationProgressByResident(
+            eduRows.Select(e => (e.ResidentId, e.RecordDate, e.ProgressPercent)));
+        var latestHealth = LatestHealthScoreByResident(
+            healthRows.Select(h => (h.ResidentId, h.RecordDate, h.GeneralHealthScore)));
+
+        var grouped = plans.GroupBy(p => string.IsNullOrWhiteSpace(p.PlanCategory) ? "(unknown)" : p.PlanCategory!.Trim());
+        var list = grouped
+            .Select(g =>
+            {
+                var rids = g.Select(p => p.ResidentId).Distinct().ToList();
+                double? avgEdu = null;
+                var withEdu = rids.Where(latestEdu.ContainsKey).ToList();
+                if (withEdu.Count > 0) avgEdu = withEdu.Average(rid => latestEdu[rid]);
+
+                double? avgHl = null;
+                var withHl = rids.Where(latestHealth.ContainsKey).ToList();
+                if (withHl.Count > 0) avgHl = withHl.Average(rid => latestHealth[rid]);
+
+                return new
+                {
+                    planCategory = g.Key,
+                    planCount = g.Count(),
+                    residentCount = rids.Count,
+                    avgLatestProgressPercent = avgEdu,
+                    avgLatestHealthScore = avgHl
+                };
+            })
+            .OrderByDescending(x => x.planCount)
+            .ToList();
+
+        return Ok(list);
+    }
+
+    /// <summary>
+    /// Staff triage heuristic for elevated safety concern (not the notebook’s sklearn model; see <c>resident-risk-flag.ipynb</c>).
+    /// </summary>
+    [HttpGet("residents/risk-flags")]
+    public async Task<IActionResult> GetResidentRiskFlags([FromQuery] int take = 50, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+        var now = DateTime.UtcNow;
+        var d90 = now.AddDays(-90);
+
+        var residents = await db.Residents
+            .AsNoTracking()
+            .Select(r => new { r.ResidentId, r.CaseControlNo, r.InternalCode, r.SafehouseId, r.CaseStatus, r.CurrentRiskLevel })
+            .ToListAsync(ct);
+
+        var active = residents.Where(r =>
+            string.IsNullOrWhiteSpace(r.CaseStatus) ||
+            !string.Equals(r.CaseStatus, "Closed", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        var incidents = await db.IncidentReports
+            .AsNoTracking()
+            .Select(i => new { i.ResidentId, i.IncidentDate })
+            .ToListAsync(ct);
+
+        var processes = await db.ProcessRecordings
+            .AsNoTracking()
+            .Select(p => new { p.ResidentId, p.SessionDate, p.ConcernsFlagged })
+            .ToListAsync(ct);
+
+        var visits = await db.HomeVisitations
+            .AsNoTracking()
+            .Select(v => new { v.ResidentId, v.VisitDate, v.SafetyConcernsNoted })
+            .ToListAsync(ct);
+
+        int Incidents90(int rid) => incidents.Count(i =>
+            i.ResidentId == rid
+            && ParseDate(i.IncidentDate) is { } dt
+            && dt >= d90 && dt <= now);
+
+        int Concerns90(int rid) => processes.Count(p =>
+            p.ResidentId == rid
+            && p.ConcernsFlagged == true
+            && ParseDate(p.SessionDate) is { } dt
+            && dt >= d90 && dt <= now);
+
+        int SafetyVisits90(int rid) => visits.Count(v =>
+            v.ResidentId == rid
+            && v.SafetyConcernsNoted == true
+            && ParseDate(v.VisitDate) is { } dt
+            && dt >= d90 && dt <= now);
+
+        var rows = active
+            .Select(r =>
+            {
+                var i90 = Incidents90(r.ResidentId);
+                var c90 = Concerns90(r.ResidentId);
+                var s90 = SafetyVisits90(r.ResidentId);
+                var pts = CurrentRiskLevelPoints(r.CurrentRiskLevel);
+                var score = Math.Min(100.0, i90 * 18 + c90 * 12 + s90 * 14 + pts);
+                var band = score >= 60 ? "High" : score >= 35 ? "Medium" : "Low";
+                return new
+                {
+                    r.ResidentId,
+                    residentLabel = ResidentLabel(r.CaseControlNo, r.InternalCode, r.ResidentId),
+                    r.SafehouseId,
+                    riskScore = Math.Round(score, 1),
+                    riskBand = band,
+                    incidents90d = i90,
+                    concernSessions90d = c90,
+                    safetyVisitFlags90d = s90,
+                    currentRiskLevel = r.CurrentRiskLevel ?? "—"
+                };
+            })
+            .OrderByDescending(x => x.riskScore)
+            .Take(take)
+            .ToList();
+
+        return Ok(rows);
+    }
+
+    /// <summary>
+    /// Reintegration readiness-style score (heuristic; see <c>reintegration-readiness.ipynb</c>). Staff-only; not an automated decision.
+    /// </summary>
+    [HttpGet("residents/reintegration-readiness")]
+    public async Task<IActionResult> GetReintegrationReadiness([FromQuery] int take = 50, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+        var now = DateTime.UtcNow;
+        var d180 = now.AddDays(-180);
+        var d365 = now.AddDays(-365);
+
+        var residents = await db.Residents
+            .AsNoTracking()
+            .Select(r => new { r.ResidentId, r.CaseControlNo, r.InternalCode, r.SafehouseId, r.CaseStatus, r.ReintegrationStatus })
+            .ToListAsync(ct);
+
+        var eduRows = await db.EducationRecords
+            .AsNoTracking()
+            .Select(e => new { e.ResidentId, e.RecordDate, e.ProgressPercent })
+            .ToListAsync(ct);
+
+        var healthRows = await db.HealthWellbeingRecords
+            .AsNoTracking()
+            .Select(h => new { h.ResidentId, h.RecordDate, h.GeneralHealthScore })
+            .ToListAsync(ct);
+
+        var incidents = await db.IncidentReports
+            .AsNoTracking()
+            .Select(i => new { i.ResidentId, i.IncidentDate })
+            .ToListAsync(ct);
+
+        var visits = await db.HomeVisitations
+            .AsNoTracking()
+            .Select(v => new { v.ResidentId, v.VisitDate })
+            .ToListAsync(ct);
+
+        var latestEdu = LatestEducationProgressByResident(
+            eduRows.Select(e => (e.ResidentId, e.RecordDate, e.ProgressPercent)));
+        var latestHealth = LatestHealthScoreByResident(
+            healthRows.Select(h => (h.ResidentId, h.RecordDate, h.GeneralHealthScore)));
+
+        int Incidents365(int rid) => incidents.Count(i =>
+            i.ResidentId == rid
+            && ParseDate(i.IncidentDate) is { } dt
+            && dt >= d365 && dt <= now);
+
+        int Visits180(int rid) => visits.Count(v =>
+            v.ResidentId == rid
+            && ParseDate(v.VisitDate) is { } dt
+            && dt >= d180 && dt <= now);
+
+        var open = residents.Where(r =>
+            string.IsNullOrWhiteSpace(r.CaseStatus) ||
+            !string.Equals(r.CaseStatus, "Closed", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        var rows = open
+            .Select(r =>
+            {
+                var completed = string.Equals(r.ReintegrationStatus, "Completed", StringComparison.OrdinalIgnoreCase);
+                var eduV = latestEdu.TryGetValue(r.ResidentId, out var e) ? e : 50.0;
+                var hV = latestHealth.TryGetValue(r.ResidentId, out var h) ? h : 50.0;
+                var inc365 = Incidents365(r.ResidentId);
+                var v180 = Visits180(r.ResidentId);
+
+                double readiness;
+                if (completed)
+                {
+                    readiness = 100;
+                }
+                else
+                {
+                    readiness = eduV * 0.38 + hV * 0.38 + Math.Min(15, v180 * 1.2) - Math.Min(28, inc365 * 5.5);
+                    if (string.Equals(r.ReintegrationStatus, "On Hold", StringComparison.OrdinalIgnoreCase))
+                        readiness -= 18;
+                    if (string.Equals(r.ReintegrationStatus, "Not Started", StringComparison.OrdinalIgnoreCase))
+                        readiness -= 8;
+                    readiness = Math.Clamp(readiness, 0, 99);
+                }
+
+                return new
+                {
+                    r.ResidentId,
+                    residentLabel = ResidentLabel(r.CaseControlNo, r.InternalCode, r.ResidentId),
+                    r.SafehouseId,
+                    reintegrationStatus = r.ReintegrationStatus ?? "—",
+                    readinessScore = Math.Round(readiness, 1),
+                    latestProgressPercent = latestEdu.TryGetValue(r.ResidentId, out var le) ? le : (double?)null,
+                    latestHealthScore = latestHealth.TryGetValue(r.ResidentId, out var lh) ? lh : (double?)null,
+                    incidentsLast365d = inc365,
+                    homeVisitsLast180d = v180
+                };
+            })
+            .OrderByDescending(x => x.readinessScore)
+            .Take(take)
+            .ToList();
+
+        return Ok(rows);
+    }
 }
 
