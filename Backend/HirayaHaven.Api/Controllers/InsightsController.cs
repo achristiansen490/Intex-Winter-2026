@@ -30,6 +30,26 @@ public class InsightsController(HirayaContext db) : ControllerBase
         return string.IsNullOrWhiteSpace(full) ? $"Supporter #{s.SupporterId}" : full;
     }
 
+    private static double QuantileP75(IReadOnlyList<double> values)
+    {
+        if (values.Count == 0) return 0;
+        var sorted = values.OrderBy(x => x).ToList();
+        var pos = 0.75 * (sorted.Count - 1);
+        var lo = (int)Math.Floor(pos);
+        var hi = (int)Math.Ceiling(pos);
+        if (lo == hi) return sorted[lo];
+        return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+    }
+
+    private static double ZWithinGroup(IReadOnlyList<double> xs, double x)
+    {
+        if (xs.Count == 0) return 0;
+        var mean = xs.Average();
+        var variance = xs.Sum(v => (v - mean) * (v - mean)) / xs.Count;
+        var std = Math.Sqrt(variance);
+        return std < 1e-9 ? 0 : (x - mean) / std;
+    }
+
     [HttpGet("donations/monthly")]
     public async Task<IActionResult> GetDonationsMonthly([FromQuery] int take = 120, CancellationToken ct = default)
     {
@@ -373,6 +393,182 @@ public class InsightsController(HirayaContext db) : ControllerBase
             .ToList();
 
         return Ok(rows);
+    }
+
+    /// <summary>
+    /// Engagement vs vanity segment mix (see <c>engagement-vs-vanity.ipynb</c>).
+    /// Uses P75 thresholds on the full post set for dashboard use (associative / exploratory).
+    /// </summary>
+    [HttpGet("social/engagement-vs-vanity")]
+    public async Task<IActionResult> GetEngagementVsVanity(CancellationToken ct = default)
+    {
+        var posts = await db.SocialMediaPosts
+            .AsNoTracking()
+            .Select(p => new
+            {
+                p.Likes,
+                p.Comments,
+                p.Shares,
+                p.DonationReferrals
+            })
+            .ToListAsync(ct);
+
+        var engagementScores = posts
+            .Select(p => (double)((p.Likes ?? 0) + (p.Comments ?? 0) + (p.Shares ?? 0)))
+            .ToList();
+        var referralCounts = posts
+            .Select(p => (double)(p.DonationReferrals ?? 0))
+            .ToList();
+
+        var engP75 = QuantileP75(engagementScores);
+        var donP75 = QuantileP75(referralCounts);
+
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["both_high"] = 0,
+            ["engagement_only"] = 0,
+            ["donation_only"] = 0,
+            ["neither"] = 0
+        };
+
+        foreach (var p in posts)
+        {
+            var eng = (double)((p.Likes ?? 0) + (p.Comments ?? 0) + (p.Shares ?? 0));
+            var don = (double)(p.DonationReferrals ?? 0);
+            var hiE = eng >= engP75 ? 1 : 0;
+            var hiD = don >= donP75 ? 1 : 0;
+            string seg;
+            if (hiE == 1 && hiD == 1) seg = "both_high";
+            else if (hiE == 1) seg = "engagement_only";
+            else if (hiD == 1) seg = "donation_only";
+            else seg = "neither";
+            counts[seg]++;
+        }
+
+        return Ok(new
+        {
+            totalPosts = posts.Count,
+            thresholds = new { engagementScoreP75 = engP75, donationReferralsP75 = donP75 },
+            segments = counts.Select(kv => new { segment = kv.Key, postCount = kv.Value }).ToList()
+        });
+    }
+
+    /// <summary>
+    /// Per-safehouse latest month strain snapshot + simple next-month incident heuristic
+    /// (see <c>safehouse-strain-forecast.ipynb</c> for methodology; not the offline RF model).
+    /// </summary>
+    [HttpGet("safehouses/strain/latest")]
+    public async Task<IActionResult> GetSafehouseStrainLatest([FromQuery] int take = 25, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 100);
+
+        var rows = await (
+            from m in db.SafehouseMonthlyMetrics.AsNoTracking()
+            join s in db.Safehouses.AsNoTracking() on m.SafehouseId equals s.SafehouseId
+            select new
+            {
+                m.SafehouseId,
+                SafehouseName = s.Name ?? s.SafehouseCode ?? ("Safehouse " + m.SafehouseId),
+                m.MonthStart,
+                Incidents = (double)(m.IncidentCount ?? 0),
+                Edu = (double)(m.AvgEducationProgress ?? 0),
+                Health = (double)(m.AvgHealthScore ?? 0),
+                Active = (long)(m.ActiveResidents ?? 0)
+            }
+        ).ToListAsync(ct);
+
+        var parsed = rows
+            .Select(r => new
+            {
+                r.SafehouseId,
+                r.SafehouseName,
+                Month = ParseDate(r.MonthStart),
+                r.Incidents,
+                r.Edu,
+                r.Health,
+                r.Active
+            })
+            .Where(x => x.Month.HasValue)
+            .ToList();
+
+        var byMonth = parsed.GroupBy(x => x.Month!.Value).ToDictionary(g => g.Key, g => g.ToList());
+
+        double StressFor(int safehouseId, DateTime month, double inc, double edu, double health)
+        {
+            if (!byMonth.TryGetValue(month, out var bucket) || bucket.Count == 0)
+                return 0;
+            var incs = bucket.Select(b => b.Incidents).ToList();
+            var edus = bucket.Select(b => b.Edu).ToList();
+            var healths = bucket.Select(b => b.Health).ToList();
+            var zInc = ZWithinGroup(incs, inc);
+            var zEdu = ZWithinGroup(edus, edu);
+            var zH = ZWithinGroup(healths, health);
+            return zInc - zEdu - zH;
+        }
+
+        var bySh = parsed.GroupBy(x => x.SafehouseId).ToList();
+        var latestRows = new List<(
+            int SafehouseId,
+            string SafehouseName,
+            DateTime Month,
+            double IncidentCount,
+            double? IncidentLag1,
+            double? IncidentLag2,
+            double StressIndexZ,
+            double ForecastNext,
+            long ActiveResidents,
+            double AvgEducationProgress,
+            double AvgHealthScore)>();
+
+        foreach (var g in bySh)
+        {
+            var ordered = g.OrderBy(x => x.Month!.Value).ToList();
+            if (ordered.Count == 0) continue;
+            var last = ordered[^1];
+            var month = last.Month!.Value;
+            var lag1 = ordered.Count >= 2 ? ordered[^2].Incidents : (double?)null;
+            var lag2 = ordered.Count >= 3 ? ordered[^3].Incidents : (double?)null;
+
+            var stress = StressFor(g.Key, month, last.Incidents, last.Edu, last.Health);
+
+            var lag1v = lag1 ?? last.Incidents;
+            var lag2v = lag2 ?? lag1v;
+            var forecast = Math.Max(0, last.Incidents * 0.55 + lag1v * 0.35 + lag2v * 0.1);
+
+            latestRows.Add((
+                g.Key,
+                last.SafehouseName,
+                month,
+                last.Incidents,
+                lag1,
+                lag2,
+                stress,
+                Math.Round(forecast, 2),
+                last.Active,
+                last.Edu,
+                last.Health));
+        }
+
+        var ranked = latestRows
+            .OrderByDescending(x => x.StressIndexZ)
+            .Take(take)
+            .Select(x => new
+            {
+                safehouseId = x.SafehouseId,
+                safehouseName = x.SafehouseName,
+                month = x.Month,
+                incidentCount = x.IncidentCount,
+                incidentLag1 = x.IncidentLag1,
+                incidentLag2 = x.IncidentLag2,
+                stressIndexZ = x.StressIndexZ,
+                forecastNextMonthIncidents = x.ForecastNext,
+                activeResidents = x.ActiveResidents,
+                avgEducationProgress = x.AvgEducationProgress,
+                avgHealthScore = x.AvgHealthScore
+            })
+            .ToList();
+
+        return Ok(ranked);
     }
 }
 
