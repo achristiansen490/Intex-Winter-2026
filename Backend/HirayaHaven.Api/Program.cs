@@ -16,6 +16,9 @@ builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
+builder.Services.AddHttpClient("PipelineTraining", client => client.Timeout = TimeSpan.FromMinutes(15));
+builder.Services.AddScoped<IPipelineTrainingService, PipelineTrainingService>();
+builder.Services.AddHostedService<PipelineScheduleHostedService>();
 
 var dbProvider = (builder.Configuration["Database:Provider"] ?? "sqlite").Trim().ToLowerInvariant();
 var sqliteConnection = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -293,6 +296,18 @@ static async Task SeedAsync(IServiceProvider services)
         var result = await userManager.CreateAsync(user, password);
         if (result.Succeeded)
             await userManager.AddToRoleAsync(user, acct.Role);
+    }
+
+    if (!await db.PipelineScheduleSettings.AnyAsync())
+    {
+        db.PipelineScheduleSettings.Add(new PipelineScheduleSettings
+        {
+            SettingsId = 1,
+            Enabled = false,
+            HourUtc = 2,
+            MinuteUtc = 0
+        });
+        await db.SaveChangesAsync();
     }
 }
 

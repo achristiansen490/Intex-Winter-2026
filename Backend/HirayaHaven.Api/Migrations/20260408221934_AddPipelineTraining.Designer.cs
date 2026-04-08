@@ -3,121 +3,117 @@ using System;
 using HirayaHaven.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace HirayaHaven.Api.Migrations.SqlServer
+namespace HirayaHaven.Api.Migrations
 {
-    [DbContext(typeof(HirayaSqlServerContext))]
-    partial class HirayaSqlServerContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(HirayaContext))]
+    [Migration("20260408221934_AddPipelineTraining")]
+    partial class AddPipelineTraining
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
-
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.1");
 
             modelBuilder.Entity("HirayaHaven.Api.Models.AppUser", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("ApprovedBy")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("CreatedBy")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsApproved")
-                        .HasColumnType("bit");
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("LastLogin")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("MfaSecret")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("ResetInitiatedBy")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("ResidentId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("StaffId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("SupporterId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("UserType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -130,8 +126,7 @@ namespace HirayaHaven.Api.Migrations.SqlServer
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("UserNameIndex");
 
                     b.HasIndex("ResetInitiatedBy");
 
@@ -148,61 +143,59 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("AuditId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("audit_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AuditId"));
-
                     b.Property<string>("Action")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("action");
 
                     b.Property<string>("ApprovalStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("approval_status");
 
                     b.Property<string>("ApprovedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("approved_at");
 
                     b.Property<int?>("ApprovedBy")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("approved_by");
 
                     b.Property<string>("IpAddress")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("ip_address");
 
                     b.Property<string>("NewValue")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("new_value");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes");
 
                     b.Property<string>("OldValue")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("old_value");
 
                     b.Property<int?>("RecordId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("record_id");
 
                     b.Property<bool?>("RequiresApproval")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("requires_approval");
 
                     b.Property<string>("Resource")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("resource");
 
                     b.Property<string>("Timestamp")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("timestamp");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("AuditId");
@@ -218,57 +211,55 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("DonationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("donation_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DonationId"));
-
                     b.Property<decimal?>("Amount")
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("amount");
 
                     b.Property<string>("CampaignName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("campaign_name");
 
                     b.Property<string>("ChannelSource")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("channel_source");
 
                     b.Property<string>("CurrencyCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("currency_code");
 
                     b.Property<string>("DonationDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("donation_date");
 
                     b.Property<string>("DonationType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("donation_type");
 
                     b.Property<decimal?>("EstimatedValue")
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("estimated_value");
 
                     b.Property<string>("ImpactUnit")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("impact_unit");
 
                     b.Property<bool?>("IsRecurring")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_recurring");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes");
 
                     b.Property<int?>("ReferralPostId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("referral_post_id");
 
                     b.Property<int>("SupporterId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("supporter_id");
 
                     b.HasKey("DonationId");
@@ -284,33 +275,31 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("AllocationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("allocation_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AllocationId"));
-
                     b.Property<string>("AllocationDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("allocation_date");
 
                     b.Property<string>("AllocationNotes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("allocation_notes");
 
                     b.Property<double?>("AmountAllocated")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("amount_allocated");
 
                     b.Property<int>("DonationId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("donation_id");
 
                     b.Property<string>("ProgramArea")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("program_area");
 
                     b.Property<int>("SafehouseId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safehouse_id");
 
                     b.HasKey("AllocationId");
@@ -326,45 +315,43 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("EducationRecordId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("education_record_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EducationRecordId"));
-
                     b.Property<double?>("AttendanceRate")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("attendance_rate");
 
                     b.Property<string>("CompletionStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("completion_status");
 
                     b.Property<string>("EducationLevel")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("education_level");
 
                     b.Property<string>("EnrollmentStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("enrollment_status");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes");
 
                     b.Property<double?>("ProgressPercent")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("progress_percent");
 
                     b.Property<string>("RecordDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("record_date");
 
                     b.Property<int>("ResidentId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resident_id");
 
                     b.Property<string>("SchoolName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("school_name");
 
                     b.HasKey("EducationRecordId");
@@ -378,61 +365,59 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("HealthRecordId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("health_record_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("HealthRecordId"));
-
                     b.Property<double?>("Bmi")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("bmi");
 
                     b.Property<bool?>("DentalCheckupDone")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("dental_checkup_done");
 
                     b.Property<double?>("EnergyLevelScore")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("energy_level_score");
 
                     b.Property<double?>("GeneralHealthScore")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("general_health_score");
 
                     b.Property<double?>("HeightCm")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("height_cm");
 
                     b.Property<bool?>("MedicalCheckupDone")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("medical_checkup_done");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes");
 
                     b.Property<double?>("NutritionScore")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("nutrition_score");
 
                     b.Property<bool?>("PsychologicalCheckupDone")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("psychological_checkup_done");
 
                     b.Property<string>("RecordDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("record_date");
 
                     b.Property<int>("ResidentId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resident_id");
 
                     b.Property<double?>("SleepQualityScore")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("sleep_quality_score");
 
                     b.Property<double?>("WeightKg")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("weight_kg");
 
                     b.HasKey("HealthRecordId");
@@ -446,61 +431,59 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("VisitationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("visitation_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VisitationId"));
-
                     b.Property<string>("FamilyCooperationLevel")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("family_cooperation_level");
 
                     b.Property<string>("FamilyMembersPresent")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("family_members_present");
 
                     b.Property<bool?>("FollowUpNeeded")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("follow_up_needed");
 
                     b.Property<string>("FollowUpNotes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("follow_up_notes");
 
                     b.Property<string>("LocationVisited")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("location_visited");
 
                     b.Property<string>("Observations")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("observations");
 
                     b.Property<string>("Purpose")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("purpose");
 
                     b.Property<int>("ResidentId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resident_id");
 
                     b.Property<bool?>("SafetyConcernsNoted")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safety_concerns_noted");
 
                     b.Property<string>("SocialWorker")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("social_worker");
 
                     b.Property<string>("VisitDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("visit_date");
 
                     b.Property<string>("VisitOutcome")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("visit_outcome");
 
                     b.Property<string>("VisitType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("visit_type");
 
                     b.HasKey("VisitationId");
@@ -514,41 +497,39 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("ItemId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("item_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ItemId"));
-
                     b.Property<int>("DonationId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("donation_id");
 
                     b.Property<double?>("EstimatedUnitValue")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("estimated_unit_value");
 
                     b.Property<string>("IntendedUse")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("intended_use");
 
                     b.Property<string>("ItemCategory")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("item_category");
 
                     b.Property<string>("ItemName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("item_name");
 
                     b.Property<int?>("Quantity")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("quantity");
 
                     b.Property<string>("ReceivedCondition")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("received_condition");
 
                     b.Property<string>("UnitOfMeasure")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("unit_of_measure");
 
                     b.HasKey("ItemId");
@@ -562,53 +543,51 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("IncidentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("incident_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IncidentId"));
-
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<bool?>("FollowUpRequired")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("follow_up_required");
 
                     b.Property<string>("IncidentDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("incident_date");
 
                     b.Property<string>("IncidentType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("incident_type");
 
                     b.Property<string>("ReportedBy")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("reported_by");
 
                     b.Property<int>("ResidentId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resident_id");
 
                     b.Property<string>("ResolutionDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("resolution_date");
 
                     b.Property<bool?>("Resolved")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resolved");
 
                     b.Property<string>("ResponseTaken")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("response_taken");
 
                     b.Property<int>("SafehouseId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safehouse_id");
 
                     b.Property<string>("Severity")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("severity");
 
                     b.HasKey("IncidentId");
@@ -624,49 +603,47 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("PlanId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("plan_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PlanId"));
-
                     b.Property<string>("CaseConferenceDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("case_conference_date");
 
                     b.Property<string>("CreatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("PlanCategory")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("plan_category");
 
                     b.Property<string>("PlanDescription")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("plan_description");
 
                     b.Property<int>("ResidentId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resident_id");
 
                     b.Property<string>("ServicesProvided")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("services_provided");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<string>("TargetDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_date");
 
                     b.Property<double?>("TargetValue")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("target_value");
 
                     b.Property<string>("UpdatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
                     b.HasKey("PlanId");
@@ -680,105 +657,103 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("OrgId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("org_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrgId"));
-
                     b.Property<string>("AddressLine1")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("address_line1");
 
                     b.Property<string>("AddressLine2")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("address_line2");
 
                     b.Property<string>("City")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("city");
 
                     b.Property<string>("Country")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("country");
 
                     b.Property<string>("CountryOfRegistration")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("country_of_registration");
 
                     b.Property<string>("CreatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("CurrencyPrimary")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("currency_primary");
 
                     b.Property<string>("CurrencyReporting")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("currency_reporting");
 
                     b.Property<string>("Ein")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("ein");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("email");
 
                     b.Property<string>("FiscalYearEnd")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("fiscal_year_end");
 
                     b.Property<string>("FiscalYearStart")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("fiscal_year_start");
 
                     b.Property<int?>("FoundedYear")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("founded_year");
 
                     b.Property<string>("LegalName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("legal_name");
 
                     b.Property<string>("LogoUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("logo_url");
 
                     b.Property<string>("MissionStatement")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("mission_statement");
 
                     b.Property<string>("OperationsCountry")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("operations_country");
 
                     b.Property<string>("OrgName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("org_name");
 
                     b.Property<string>("OrgType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("org_type");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("phone");
 
                     b.Property<string>("State")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("state");
 
                     b.Property<string>("UpdatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
                     b.Property<string>("Website")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("website");
 
                     b.Property<string>("ZipCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("zip_code");
 
                     b.HasKey("OrgId");
@@ -790,53 +765,51 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("PartnerId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("partner_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PartnerId"));
-
                     b.Property<string>("ContactName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("contact_name");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("email");
 
                     b.Property<string>("EndDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("end_date");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes");
 
                     b.Property<string>("PartnerName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("partner_name");
 
                     b.Property<string>("PartnerType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("partner_type");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("phone");
 
                     b.Property<string>("Region")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("region");
 
                     b.Property<string>("RoleType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("role_type");
 
                     b.Property<string>("StartDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("start_date");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.HasKey("PartnerId");
@@ -848,41 +821,39 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("AssignmentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("assignment_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AssignmentId"));
-
                     b.Property<string>("AssignmentEnd")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("assignment_end");
 
                     b.Property<string>("AssignmentStart")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("assignment_start");
 
                     b.Property<bool?>("IsPrimary")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_primary");
 
                     b.Property<int>("PartnerId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("partner_id");
 
                     b.Property<string>("ProgramArea")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("program_area");
 
                     b.Property<string>("ResponsibilityNotes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("responsibility_notes");
 
                     b.Property<int?>("SafehouseId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safehouse_id");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.HasKey("AssignmentId");
@@ -897,23 +868,23 @@ namespace HirayaHaven.Api.Migrations.SqlServer
             modelBuilder.Entity("HirayaHaven.Api.Models.PipelineScheduleSettings", b =>
                 {
                     b.Property<int>("SettingsId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("settings_id");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("enabled");
 
                     b.Property<int>("HourUtc")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("hour_utc");
 
                     b.Property<string>("LastScheduledRunDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_scheduled_run_date");
 
                     b.Property<int>("MinuteUtc")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("minute_utc");
 
                     b.HasKey("SettingsId");
@@ -925,41 +896,39 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("RunId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("run_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RunId"));
-
                     b.Property<string>("DetailMessage")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("detail_message");
 
                     b.Property<string>("FinishedUtc")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("finished_utc");
 
                     b.Property<string>("PipelineKey")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("pipeline_key");
 
                     b.Property<string>("StartedUtc")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("started_utc");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<string>("TriggerType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("trigger_type");
 
                     b.Property<string>("TriggeredByUserName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("triggered_by_user_name");
 
                     b.HasKey("RunId");
@@ -971,65 +940,63 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("RecordingId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("recording_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RecordingId"));
-
                     b.Property<bool?>("ConcernsFlagged")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("concerns_flagged");
 
                     b.Property<string>("EmotionalStateEnd")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("emotional_state_end");
 
                     b.Property<string>("EmotionalStateObserved")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("emotional_state_observed");
 
                     b.Property<string>("FollowUpActions")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("follow_up_actions");
 
                     b.Property<string>("InterventionsApplied")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("interventions_applied");
 
                     b.Property<string>("NotesRestricted")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes_restricted");
 
                     b.Property<bool?>("ProgressNoted")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("progress_noted");
 
                     b.Property<bool?>("ReferralMade")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("referral_made");
 
                     b.Property<int>("ResidentId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resident_id");
 
                     b.Property<string>("SessionDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("session_date");
 
                     b.Property<int?>("SessionDurationMinutes")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("session_duration_minutes");
 
                     b.Property<string>("SessionNarrative")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("session_narrative");
 
                     b.Property<string>("SessionType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("session_type");
 
                     b.Property<string>("SocialWorker")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("social_worker");
 
                     b.HasKey("RecordingId");
@@ -1043,29 +1010,27 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("ProgramAreaId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("program_area_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProgramAreaId"));
-
                     b.Property<string>("AppliesTo")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("applies_to");
 
                     b.Property<string>("AreaCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("area_code");
 
                     b.Property<string>("AreaName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("area_name");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<bool?>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_active");
 
                     b.HasKey("ProgramAreaId");
@@ -1077,33 +1042,31 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("SnapshotId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("snapshot_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SnapshotId"));
-
                     b.Property<string>("Headline")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("headline");
 
                     b.Property<bool?>("IsPublished")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_published");
 
                     b.Property<string>("MetricPayloadJson")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("metric_payload_json");
 
                     b.Property<string>("PublishedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("published_at");
 
                     b.Property<string>("SnapshotDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("snapshot_date");
 
                     b.Property<string>("SummaryText")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("summary_text");
 
                     b.HasKey("SnapshotId");
@@ -1115,201 +1078,199 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("ResidentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("resident_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ResidentId"));
-
                     b.Property<string>("AgeUponAdmission")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("age_upon_admission");
 
                     b.Property<string>("AssignedSocialWorker")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("assigned_social_worker");
 
                     b.Property<string>("BirthStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("birth_status");
 
                     b.Property<string>("CaseCategory")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("case_category");
 
                     b.Property<string>("CaseControlNo")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("case_control_no");
 
                     b.Property<string>("CaseStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("case_status");
 
                     b.Property<string>("CreatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("CurrentRiskLevel")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("current_risk_level");
 
                     b.Property<string>("DateCaseStudyPrepared")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_case_study_prepared");
 
                     b.Property<string>("DateClosed")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_closed");
 
                     b.Property<string>("DateColbObtained")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_colb_obtained");
 
                     b.Property<string>("DateColbRegistered")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_colb_registered");
 
                     b.Property<string>("DateEnrolled")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_enrolled");
 
                     b.Property<string>("DateOfAdmission")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_of_admission");
 
                     b.Property<string>("DateOfBirth")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_of_birth");
 
                     b.Property<bool?>("FamilyIndigenous")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("family_indigenous");
 
                     b.Property<bool?>("FamilyInformalSettler")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("family_informal_settler");
 
                     b.Property<bool?>("FamilyIs4ps")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("family_is_4ps");
 
                     b.Property<bool?>("FamilyParentPwd")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("family_parent_pwd");
 
                     b.Property<bool?>("FamilySoloParent")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("family_solo_parent");
 
                     b.Property<bool?>("HasSpecialNeeds")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("has_special_needs");
 
                     b.Property<string>("InitialCaseAssessment")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("initial_case_assessment");
 
                     b.Property<string>("InitialRiskLevel")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("initial_risk_level");
 
                     b.Property<string>("InternalCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("internal_code");
 
                     b.Property<bool?>("IsPwd")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_pwd");
 
                     b.Property<string>("LengthOfStay")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("length_of_stay");
 
                     b.Property<string>("NotesRestricted")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes_restricted");
 
                     b.Property<string>("PlaceOfBirth")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("place_of_birth");
 
                     b.Property<string>("PresentAge")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("present_age");
 
                     b.Property<string>("PwdType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("pwd_type");
 
                     b.Property<string>("ReferralSource")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("referral_source");
 
                     b.Property<string>("ReferringAgencyPerson")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("referring_agency_person");
 
                     b.Property<string>("ReintegrationStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("reintegration_status");
 
                     b.Property<string>("ReintegrationType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("reintegration_type");
 
                     b.Property<string>("Religion")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("religion");
 
                     b.Property<int?>("SafehouseId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safehouse_id");
 
                     b.Property<string>("Sex")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("sex");
 
                     b.Property<string>("SpecialNeedsDiagnosis")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("special_needs_diagnosis");
 
                     b.Property<bool?>("SubCatAtRisk")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_at_risk");
 
                     b.Property<bool?>("SubCatChildLabor")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_child_labor");
 
                     b.Property<bool?>("SubCatChildWithHiv")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_child_with_hiv");
 
                     b.Property<bool?>("SubCatCicl")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_cicl");
 
                     b.Property<bool?>("SubCatOrphaned")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_orphaned");
 
                     b.Property<bool?>("SubCatOsaec")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_osaec");
 
                     b.Property<bool?>("SubCatPhysicalAbuse")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_physical_abuse");
 
                     b.Property<bool?>("SubCatSexualAbuse")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_sexual_abuse");
 
                     b.Property<bool?>("SubCatStreetChild")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_street_child");
 
                     b.Property<bool?>("SubCatTrafficked")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("sub_cat_trafficked");
 
                     b.HasKey("ResidentId");
@@ -1323,29 +1284,27 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("PermissionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("permission_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PermissionId"));
-
                     b.Property<string>("Action")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("action");
 
                     b.Property<bool?>("IsAllowed")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_allowed");
 
                     b.Property<string>("Resource")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("resource");
 
                     b.Property<string>("Role")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("role");
 
                     b.Property<string>("ScopeNote")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("scope_note");
 
                     b.HasKey("PermissionId");
@@ -1357,57 +1316,55 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("SafehouseId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safehouse_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SafehouseId"));
-
                     b.Property<int?>("CapacityGirls")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("capacity_girls");
 
                     b.Property<int?>("CapacityStaff")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("capacity_staff");
 
                     b.Property<string>("City")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("city");
 
                     b.Property<string>("Country")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("country");
 
                     b.Property<int?>("CurrentOccupancy")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("current_occupancy");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes");
 
                     b.Property<string>("OpenDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("open_date");
 
                     b.Property<string>("Province")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("province");
 
                     b.Property<string>("Region")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("region");
 
                     b.Property<string>("SafehouseCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("safehouse_code");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.HasKey("SafehouseId");
@@ -1419,49 +1376,47 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("MetricId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("metric_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MetricId"));
-
                     b.Property<int?>("ActiveResidents")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("active_residents");
 
                     b.Property<double?>("AvgEducationProgress")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("avg_education_progress");
 
                     b.Property<double?>("AvgHealthScore")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("avg_health_score");
 
                     b.Property<int?>("HomeVisitationCount")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("home_visitation_count");
 
                     b.Property<int?>("IncidentCount")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("incident_count");
 
                     b.Property<string>("MonthEnd")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("month_end");
 
                     b.Property<string>("MonthStart")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("month_start");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("notes");
 
                     b.Property<int?>("ProcessRecordingCount")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("process_recording_count");
 
                     b.Property<int>("SafehouseId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safehouse_id");
 
                     b.HasKey("MetricId");
@@ -1475,161 +1430,159 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("PostId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("post_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PostId"));
-
                     b.Property<int?>("AvgViewDurationSeconds")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("avg_view_duration_seconds");
 
                     b.Property<double?>("BoostBudgetPhp")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("boost_budget_php");
 
                     b.Property<string>("CallToActionType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("call_to_action_type");
 
                     b.Property<string>("CampaignName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("campaign_name");
 
                     b.Property<string>("Caption")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("caption");
 
                     b.Property<int?>("CaptionLength")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("caption_length");
 
                     b.Property<int?>("ClickThroughs")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("click_throughs");
 
                     b.Property<int?>("Comments")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("comments");
 
                     b.Property<string>("ContentTopic")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("content_topic");
 
                     b.Property<string>("CreatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("DayOfWeek")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("day_of_week");
 
                     b.Property<int?>("DonationReferrals")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("donation_referrals");
 
                     b.Property<double?>("EngagementRate")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("engagement_rate");
 
                     b.Property<double?>("EstimatedDonationValuePhp")
-                        .HasColumnType("float")
+                        .HasColumnType("REAL")
                         .HasColumnName("estimated_donation_value_php");
 
                     b.Property<bool?>("FeaturesResidentStory")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("features_resident_story");
 
                     b.Property<int?>("FollowerCountAtPost")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("follower_count_at_post");
 
                     b.Property<int?>("Forwards")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("forwards");
 
                     b.Property<bool?>("HasCallToAction")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("has_call_to_action");
 
                     b.Property<string>("Hashtags")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("hashtags");
 
                     b.Property<int?>("Impressions")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("impressions");
 
                     b.Property<bool?>("IsBoosted")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_boosted");
 
                     b.Property<int?>("Likes")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("likes");
 
                     b.Property<string>("MediaType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("media_type");
 
                     b.Property<int?>("MentionsCount")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("mentions_count");
 
                     b.Property<int?>("NumHashtags")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("num_hashtags");
 
                     b.Property<string>("Platform")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("platform");
 
                     b.Property<string>("PlatformPostId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("platform_post_id");
 
                     b.Property<int?>("PostHour")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("post_hour");
 
                     b.Property<string>("PostType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("post_type");
 
                     b.Property<string>("PostUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("post_url");
 
                     b.Property<int?>("ProfileVisits")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("profile_visits");
 
                     b.Property<int?>("Reach")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("reach");
 
                     b.Property<int?>("Saves")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("saves");
 
                     b.Property<string>("SentimentTone")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("sentiment_tone");
 
                     b.Property<int?>("Shares")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("shares");
 
                     b.Property<int?>("SubscriberCountAtPost")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("subscriber_count_at_post");
 
                     b.Property<int?>("VideoViews")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("video_views");
 
                     b.Property<int?>("WatchTimeSeconds")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("watch_time_seconds");
 
                     b.HasKey("PostId");
@@ -1641,69 +1594,67 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("StaffId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("staff_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StaffId"));
-
                     b.Property<int?>("Age")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("age");
 
                     b.Property<string>("CreatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("DateEnded")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_ended");
 
                     b.Property<string>("DateHired")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("date_hired");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("email");
 
                     b.Property<string>("EmploymentStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("employment_status");
 
                     b.Property<string>("EmploymentType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("employment_type");
 
                     b.Property<string>("FirstName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("first_name");
 
                     b.Property<string>("LastName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_name");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("phone");
 
                     b.Property<string>("Role")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("role");
 
                     b.Property<int?>("SafehouseId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("safehouse_id");
 
                     b.Property<string>("Specialization")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("specialization");
 
                     b.Property<string>("StaffCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("staff_code");
 
                     b.Property<string>("UpdatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
                     b.HasKey("StaffId");
@@ -1717,65 +1668,63 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("SupporterId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("supporter_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SupporterId"));
-
                     b.Property<string>("AcquisitionChannel")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("acquisition_channel");
 
                     b.Property<string>("Country")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("country");
 
                     b.Property<string>("CreatedAt")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
                     b.Property<string>("DisplayName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("display_name");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("email");
 
                     b.Property<string>("FirstDonationDate")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("first_donation_date");
 
                     b.Property<string>("FirstName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("first_name");
 
                     b.Property<string>("LastName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_name");
 
                     b.Property<string>("OrganizationName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("organization_name");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("phone");
 
                     b.Property<string>("Region")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("region");
 
                     b.Property<string>("RelationshipType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("relationship_type");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<string>("SupporterType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("supporter_type");
 
                     b.HasKey("SupporterId");
@@ -1787,28 +1736,25 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
-                        .HasDatabaseName("RoleNameIndex")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
+                        .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles", (string)null);
                 });
@@ -1817,18 +1763,16 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -1841,18 +1785,16 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -1864,16 +1806,16 @@ namespace HirayaHaven.Api.Migrations.SqlServer
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -1885,10 +1827,10 @@ namespace HirayaHaven.Api.Migrations.SqlServer
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -1900,16 +1842,16 @@ namespace HirayaHaven.Api.Migrations.SqlServer
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
