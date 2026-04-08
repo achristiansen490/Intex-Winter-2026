@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HirayaHaven.Api.Data;
 
-public partial class HirayaContext(DbContextOptions<HirayaContext> options)
+public partial class HirayaContext(DbContextOptions options)
     : IdentityDbContext<AppUser, IdentityRole<int>, int>(options)
 {
     public DbSet<Organization> Organizations => Set<Organization>();

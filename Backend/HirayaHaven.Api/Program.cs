@@ -13,10 +13,28 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+var dbProvider = (builder.Configuration["Database:Provider"] ?? "sqlite").Trim().ToLowerInvariant();
+var sqliteConnection = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=../../Data/hiraya.db";
+var azureSqlConnection = builder.Configuration.GetConnectionString("AzureSqlConnection");
 
-builder.Services.AddDbContext<HirayaContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<HirayaContext>(options =>
+{
+    if (dbProvider == "sqlserver")
+    {
+        if (string.IsNullOrWhiteSpace(azureSqlConnection))
+        {
+            throw new InvalidOperationException(
+                "Database provider is set to sqlserver, but ConnectionStrings:AzureSqlConnection is missing.");
+        }
+
+        options.UseSqlServer(azureSqlConnection);
+    }
+    else
+    {
+        options.UseSqlite(sqliteConnection);
+    }
+});
 
 // --- Identity ---
 builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>
@@ -75,12 +93,22 @@ builder.Services.AddHsts(options =>
 
 builder.Services.AddCors(options =>
 {
+    var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
     options.AddPolicy("Frontend", policy =>
     {
+        if (configuredOrigins.Length > 0)
+        {
+            policy.WithOrigins(configuredOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+            return;
+        }
+
         policy.SetIsOriginAllowed(origin =>
-            Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
-            uri.Scheme == Uri.UriSchemeHttp &&
-            (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1"))
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+                uri.Scheme == Uri.UriSchemeHttp &&
+                (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1"))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
