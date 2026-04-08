@@ -531,6 +531,50 @@ function AdminReports() {
             { key: 'activeResidents', label: 'Active residents' },
           ]}
         />
+
+        <DataPanel
+          title="Intervention effectiveness (plan category vs latest outcomes)"
+          url="/api/insights/interventions/by-category"
+          keyField="planCategory"
+          columns={[
+            { key: 'planCategory', label: 'Category' },
+            { key: 'planCount', label: 'Plans' },
+            { key: 'residentCount', label: 'Residents' },
+            { key: 'avgLatestProgressPercent', label: 'Avg progress %' },
+            { key: 'avgLatestHealthScore', label: 'Avg health' },
+          ]}
+        />
+
+        <DataPanel
+          title="Resident risk flags (90-day heuristic; staff triage)"
+          url="/api/insights/residents/risk-flags?take=40"
+          keyField="residentId"
+          columns={[
+            { key: 'residentLabel', label: 'Resident' },
+            { key: 'riskBand', label: 'Band' },
+            { key: 'riskScore', label: 'Score' },
+            { key: 'incidents90d', label: 'Incidents 90d' },
+            { key: 'concernSessions90d', label: 'Concern sessions 90d' },
+            { key: 'safetyVisitFlags90d', label: 'Safety flags 90d' },
+            { key: 'currentRiskLevel', label: 'Current risk' },
+            { key: 'safehouseId', label: 'Safehouse' },
+          ]}
+        />
+
+        <DataPanel
+          title="Reintegration readiness (heuristic score; not a decision)"
+          url="/api/insights/residents/reintegration-readiness?take=40"
+          keyField="residentId"
+          columns={[
+            { key: 'residentLabel', label: 'Resident' },
+            { key: 'readinessScore', label: 'Readiness' },
+            { key: 'reintegrationStatus', label: 'Status' },
+            { key: 'latestProgressPercent', label: 'Progress %' },
+            { key: 'latestHealthScore', label: 'Health' },
+            { key: 'incidentsLast365d', label: 'Incidents 365d' },
+            { key: 'homeVisitsLast180d', label: 'Visits 180d' },
+          ]}
+        />
       </div>
 
       {evSummary && (
