@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,62 @@ const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
   fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
+/** Client-side filter: any column value contains query (case-insensitive). */
+function filterTableRows(
+  rows: Record<string, unknown>[],
+  columns: { key: string }[],
+  query: string,
+): Record<string, unknown>[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return rows;
+  return rows.filter((row) =>
+    columns.some((col) => {
+      const v = row[col.key];
+      if (v == null || v === '') return false;
+      return String(v).toLowerCase().includes(needle);
+    }),
+  );
+}
+
+function DataSearchBar({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label htmlFor={id} style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        Search
+      </label>
+      <input
+        id={id}
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? 'Type to filter rows…'}
+        autoComplete="off"
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          padding: '9px 14px',
+          fontSize: 13,
+          border: `1px solid ${c.sageLight}`,
+          borderRadius: 8,
+          color: c.text,
+          background: c.white,
+          boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Shared UI ────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
@@ -31,7 +87,7 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 style={{ fontSize: 15, fontWeight: 600, color: c.forest, marginBottom: 12, marginTop: 24, paddingBottom: 6, borderBottom: `1px solid ${c.sageLight}` }}>{children}</h2>;
 }
 
@@ -47,11 +103,30 @@ function ApiError({ msg, retry }: { msg: string; retry: () => void }) {
   );
 }
 
-function Table({ columns, rows, keyField }: { columns: { key: string; label: string }[]; rows: Record<string, unknown>[]; keyField: string }) {
-  if (rows.length === 0) return <p style={{ fontSize: 13, color: c.muted }}>No records found.</p>;
+function Table({
+  columns,
+  rows,
+  keyField,
+  totalCount,
+}: {
+  columns: { key: string; label: string }[];
+  rows: Record<string, unknown>[];
+  keyField: string;
+  /** When filtering, pass full dataset length for “N of M” label */
+  totalCount?: number;
+}) {
+  if (rows.length === 0) {
+    const emptyMsg =
+      totalCount != null && totalCount > 0 ? 'No rows match your search.' : 'No records found.';
+    return <p style={{ fontSize: 13, color: c.muted }}>{emptyMsg}</p>;
+  }
+  const countLabel =
+    totalCount != null && totalCount !== rows.length
+      ? `${rows.length} of ${totalCount} record${totalCount !== 1 ? 's' : ''} shown`
+      : `${rows.length} record${rows.length !== 1 ? 's' : ''}`;
   return (
     <div style={{ overflowX: 'auto' }}>
-      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>{rows.length} record{rows.length !== 1 ? 's' : ''}</p>
+      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>{countLabel}</p>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr style={{ background: c.sageLight }}>
@@ -178,6 +253,22 @@ function AdminUsers() {
     } finally { setBusy(null); }
   };
 
+  const searchId = useId();
+  const [userQuery, setUserQuery] = useState('');
+  const filteredPending = useMemo(() => {
+    const needle = userQuery.trim().toLowerCase();
+    if (!needle) return pending;
+    return pending.filter((u) => {
+      const parts = [
+        String(u.id ?? ''),
+        String(u.userName ?? ''),
+        String(u.email ?? ''),
+        Array.isArray(u.roles) ? u.roles.join(' ') : String(u.roles ?? ''),
+      ];
+      return parts.some((p) => p.toLowerCase().includes(needle));
+    });
+  }, [pending, userQuery]);
+
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
@@ -190,7 +281,9 @@ function AdminUsers() {
       {pending.length === 0 ? (
         <p style={{ fontSize: 13, color: c.muted }}>No accounts awaiting approval.</p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <>
+          <DataSearchBar id={searchId} value={userQuery} onChange={setUserQuery} placeholder="Filter by ID, username, email, or role…" />
+          <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: c.sageLight }}>
@@ -200,7 +293,7 @@ function AdminUsers() {
               </tr>
             </thead>
             <tbody>
-              {pending.map((u, i) => (
+              {filteredPending.map((u, i) => (
                 <tr key={String(u.id)} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                   <td style={{ padding: '8px 12px', color: c.muted, fontSize: 12 }}>{String(u.id)}</td>
                   <td style={{ padding: '8px 12px', color: c.text, fontWeight: 600 }}>{String(u.userName ?? '—')}</td>
@@ -222,7 +315,11 @@ function AdminUsers() {
               ))}
             </tbody>
           </table>
+          {filteredPending.length === 0 && userQuery.trim() !== '' && (
+            <p style={{ fontSize: 13, color: c.muted, marginTop: 8 }}>No rows match your search.</p>
+          )}
         </div>
+        </>
       )}
     </div>
   );
@@ -236,6 +333,27 @@ function AdminPendingApprovals() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<number | null>(null);
   const [toast, setToast] = useState('');
+  const approvalSearchId = useId();
+  const [approvalQuery, setApprovalQuery] = useState('');
+
+  const filteredApprovalItems = useMemo(() => {
+    const needle = approvalQuery.trim().toLowerCase();
+    if (!needle) return items;
+    return items.filter((item) => {
+      const parts = [
+        item.resource,
+        item.recordId,
+        item.action,
+        item.notes,
+        item.userId,
+        item.timestamp,
+        item.oldValue,
+        item.newValue,
+        item.auditId,
+      ].map((v) => (v != null ? String(v) : ''));
+      return parts.some((p) => p.toLowerCase().includes(needle));
+    });
+  }, [items, approvalQuery]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -272,8 +390,18 @@ function AdminPendingApprovals() {
       {items.length === 0 ? (
         <p style={{ fontSize: 13, color: c.muted }}>No changes awaiting approval.</p>
       ) : (
+        <>
+          <DataSearchBar
+            id={approvalSearchId}
+            value={approvalQuery}
+            onChange={setApprovalQuery}
+            placeholder="Search by resource, record, action, user, or values…"
+          />
+          {filteredApprovalItems.length === 0 && approvalQuery.trim() !== '' ? (
+            <p style={{ fontSize: 13, color: c.muted }}>No items match your search.</p>
+          ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {items.map(item => (
+          {filteredApprovalItems.map(item => (
             <div key={String(item.auditId)} style={{ background: c.white, border: `1px solid ${c.goldLight}`, borderRadius: 10, padding: '1rem 1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1 }}>
@@ -287,12 +415,17 @@ function AdminPendingApprovals() {
                     {item.timestamp ? new Date(String(item.timestamp)).toLocaleString() : '—'}
                     {' · '}User #{String(item.userId)}
                   </p>
-                  {(item.oldValue != null || item.newValue != null) && (
+                  {(item.oldValue != null && String(item.oldValue).trim() !== '') ||
+                  (item.newValue != null && String(item.newValue).trim() !== '') ? (
                     <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      {item.oldValue != null && <span style={{ background: c.roseLight, color: c.rose, borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>Before: {String(item.oldValue)}</span>}
-                      {item.newValue != null && <span style={{ background: c.sageLight, color: '#1B5E20', borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>After: {String(item.newValue)}</span>}
+                      {item.oldValue != null && String(item.oldValue).trim() !== '' && (
+                        <span style={{ background: c.roseLight, color: c.rose, borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>Before: {String(item.oldValue)}</span>
+                      )}
+                      {item.newValue != null && String(item.newValue).trim() !== '' && (
+                        <span style={{ background: c.sageLight, color: '#1B5E20', borderRadius: 6, padding: '3px 10px', fontSize: 11 }}>After: {String(item.newValue)}</span>
+                      )}
                     </div>
-                  )}
+                  ) : null}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <button disabled={busy === (item.auditId as number)} onClick={() => act(item.auditId as number, 'approve')}
@@ -308,6 +441,8 @@ function AdminPendingApprovals() {
             </div>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -316,9 +451,11 @@ function AdminPendingApprovals() {
 // ── Generic read-only data panels ─────────────────────────────────────────────
 
 function DataPanel({ title, url, columns, keyField }: { title: string; url: string; columns: { key: string; label: string }[]; keyField: string }) {
+  const searchId = useId();
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -331,10 +468,29 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
 
   useEffect(() => { load(); }, [load]);
 
+  const filteredRows = useMemo(
+    () => filterTableRows(rows, columns, query),
+    [rows, columns, query],
+  );
+
   return (
     <div>
       <SectionTitle>{title}</SectionTitle>
-      {loading ? <Loading /> : error ? <ApiError msg={error} retry={load} /> : <Table columns={columns} rows={rows} keyField={keyField} />}
+      {loading ? (
+        <Loading />
+      ) : error ? (
+        <ApiError msg={error} retry={load} />
+      ) : (
+        <>
+          <DataSearchBar
+            id={searchId}
+            value={query}
+            onChange={setQuery}
+            placeholder={`Search ${title.toLowerCase()}…`}
+          />
+          <Table columns={columns} rows={filteredRows} keyField={keyField} totalCount={rows.length} />
+        </>
+      )}
     </div>
   );
 }

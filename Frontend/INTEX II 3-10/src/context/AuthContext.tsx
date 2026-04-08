@@ -107,8 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(data.message ?? 'Login failed');
     }
 
-    const data = await res.json();
-    const jwt = data.token as string;
+    const data = (await res.json()) as { token?: string; Token?: string };
+    const jwt = data.token ?? data.Token;
+    if (!jwt || typeof jwt !== 'string') {
+      throw new Error('Login response missing token. Check API JSON and CORS/proxy settings.');
+    }
 
     // Fetch /me immediately using the new token — don't wait for useEffect
     const meData = await fetchMe(jwt);
