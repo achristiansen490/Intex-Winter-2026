@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 
@@ -218,10 +219,15 @@ function StaffPendingApprovals() {
 // ── Portal ────────────────────────────────────────────────────────────────────
 
 export default function StaffPortal() {
-  const { user, role } = useAuth();
+  const { user, role, logout } = useAuth();
+  const navigate = useNavigate();
   const navItems = getNavItems(role);
   const [activeNav, setActiveNav] = useState('Dashboard');
   const displayRole = role ?? 'Staff';
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const renderContent = () => {
     switch (activeNav) {
@@ -307,18 +313,15 @@ export default function StaffPortal() {
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
       <Sidebar id="staff-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
-        user={`${user?.userName ?? 'Staff'} · ${displayRole}`} />
+        user={`${user?.userName ?? 'Staff'} · ${displayRole}`} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Command center"
-          style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
           <div>
             <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>{displayRole} Portal</p>
             <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
               Good morning, {user?.userName ?? 'Staff'}
             </h1>
-          </div>
-          <div style={{ background: 'rgba(212,164,76,0.2)', border: `0.5px solid ${c.gold}`, borderRadius: 12, padding: '5px 14px', fontSize: 13, color: c.gold }}>
-            System active
           </div>
         </section>
         {renderContent()}

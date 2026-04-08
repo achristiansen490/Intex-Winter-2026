@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 
@@ -273,8 +274,13 @@ function MyProfile() {
 // ── Portal ────────────────────────────────────────────────────────────────────
 
 export default function DonorPortal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('My Impact');
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const renderContent = () => {
     switch (activeNav) {
@@ -289,7 +295,7 @@ export default function DonorPortal() {
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
       <Sidebar id="donor-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
-        user={`${user?.userName ?? 'Donor'} · Donor`} />
+        user={`${user?.userName ?? 'Donor'} · Donor`} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Welcome"
           style={{ background: DASH_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>

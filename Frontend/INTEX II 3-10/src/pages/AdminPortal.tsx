@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 
@@ -335,8 +336,14 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
 // ── Portal component ──────────────────────────────────────────────────────────
 
 export default function AdminPortal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('Dashboard');
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const renderContent = () => {
     switch (activeNav) {
@@ -395,16 +402,13 @@ export default function AdminPortal() {
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
       <Sidebar id="admin-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
-        user={`${user?.userName ?? 'Admin'} · Admin`} />
+        user={`${user?.userName ?? 'Admin'} · Admin`} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Admin dashboard"
           style={{ background: ADMIN_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>Admin Console</p>
             <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>{user?.userName ?? 'Admin'}</h1>
-          </div>
-          <div style={{ background: 'rgba(212,164,76,0.2)', border: `0.5px solid ${c.gold}`, borderRadius: 12, padding: '5px 14px', fontSize: 13, color: c.gold }}>
-            Full access
           </div>
         </section>
         {renderContent()}
