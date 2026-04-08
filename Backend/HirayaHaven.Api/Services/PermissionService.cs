@@ -52,6 +52,23 @@ public class PermissionService(HirayaContext db) : IPermissionService
         }
     }
 
+    /// <summary>
+    /// Maps API action names to keys that may exist in <c>roles_permissions</c>.
+    /// Seeded data uses Read/Create/Update/Delete; CSV imports often use view/create/edit/delete.
+    /// </summary>
+    private static IEnumerable<string> ActionAliases(string action)
+    {
+        var a = action.Trim().ToLowerInvariant();
+        return a switch
+        {
+            "read" => ["read", "view"],
+            "update" => ["update", "edit"],
+            "delete" => ["delete"],
+            "create" => ["create"],
+            _ => [a],
+        };
+    }
+
     public async Task<bool> CanAsync(string role, string resource, string action)
     {
         var cache = await GetCacheAsync();

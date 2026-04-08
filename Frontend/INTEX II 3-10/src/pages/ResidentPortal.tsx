@@ -348,7 +348,15 @@ function VisitSchedule({ residentId }: { residentId: number | null }) {
       {visits.length === 0 ? <p style={{ fontSize: 13, color: c.muted }}>No visits recorded.</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {visits.map((v: any) => (
-            <div key={v.visitationId} style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', borderLeft: `4px solid ${v.safetyConcernsNoted ? c.rose : c.sage}` }}>
+            <div key={v.visitationId} style={{
+              background: c.white,
+              borderTop: `1px solid ${c.sageLight}`,
+              borderRight: `1px solid ${c.sageLight}`,
+              borderBottom: `1px solid ${c.sageLight}`,
+              borderLeft: `4px solid ${v.safetyConcernsNoted ? c.rose : c.sage}`,
+              borderRadius: 12,
+              padding: '1rem 1.25rem',
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: c.forest }}>{v.visitType ?? 'Home Visit'}</p>
