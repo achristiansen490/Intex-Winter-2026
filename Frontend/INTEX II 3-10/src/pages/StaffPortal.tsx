@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+
+const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
+const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
 
 const c = {
   ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
@@ -164,6 +167,8 @@ function StaffReports() {
   const [bridge, setBridge] = useState<InsightBridgeRow[]>([]);
   const [campaigns, setCampaigns] = useState<InsightDonationByCampaignRow[]>([]);
   const [monthly, setMonthly] = useState<InsightDonationMonthlyRow[]>([]);
+  const [campaignTake, setCampaignTake] = useState(12);
+  const [bridgeTake, setBridgeTake] = useState(24);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -171,22 +176,29 @@ function StaffReports() {
     setLoading(true); setError('');
     try {
       const [b, c, m] = await Promise.all([
-        api('/api/insights/bridge/monthly').then(r => r.json()),
-        api('/api/insights/donations/by-campaign?take=12').then(r => r.json()),
-        api('/api/insights/donations/monthly').then(r => r.json()),
+        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(r => r.json()),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
+        api('/api/insights/donations/monthly?take=120').then(r => r.json()),
       ]);
       setBridge(Array.isArray(b) ? b : []);
       setCampaigns(Array.isArray(c) ? c : []);
       setMonthly(Array.isArray(m) ? m : []);
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
-  }, []);
+  }, [bridgeTake, campaignTake]);
 
   useEffect(() => { load(); }, [load]);
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
   const last = bridge.length ? bridge[bridge.length - 1] : null;
+  const campaignChartData = campaigns.map((r) => ({ name: r.campaignName, total: Number(r.totalValuePhp ?? 0) }));
+  const bridgeChartData = bridge.map((r) => ({
+    month: new Date(r.month).toLocaleDateString('en-US', { year: '2-digit', month: 'short' }),
+    donations: Number(r.donation_total_php ?? 0),
+    referrals: Number(r.donation_referrals ?? 0),
+    incidents: Number(r.incidents ?? 0),
+  }));
 
   return (
     <div>
@@ -194,6 +206,22 @@ function StaffReports() {
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
         These are aggregate, planning-focused indicators (not causal claims). Source: <code>/api/insights/*</code>
       </p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Top campaigns:
+          <select value={campaignTake} onChange={(e) => setCampaignTake(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {[5, 10, 12, 15, 25].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Bridge months:
+          <select value={bridgeTake} onChange={(e) => setBridgeTake(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {[12, 18, 24, 36, 60, 120].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
 
       {last && (
         <>
@@ -208,6 +236,14 @@ function StaffReports() {
       )}
 
       <SectionTitle>Campaign effectiveness (top by total PHP)</SectionTitle>
+      {campaignChartData.length > 0 && (
+        <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Top campaigns (total PHP)</p>
+          <Suspense fallback={<p style={{ fontSize: 12, color: c.muted }}>Loading chart…</p>}>
+            <CampaignBarChart data={campaignChartData} barColor={c.gold} gridColor="rgba(44,43,40,0.08)" />
+          </Suspense>
+        </div>
+      )}
       <div style={{ overflowX: 'auto', marginBottom: 24 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -231,6 +267,23 @@ function StaffReports() {
       </div>
 
       <SectionTitle>Outreach ↔ Money ↔ Outcomes (monthly bridge)</SectionTitle>
+      {bridgeChartData.length > 0 && (
+        <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Donations vs referrals (last 24 months)</p>
+          <Suspense fallback={<p style={{ fontSize: 12, color: c.muted }}>Loading chart…</p>}>
+            <BridgeLineChart
+              data={bridgeChartData}
+              donationsColor={c.forest}
+              referralsColor={c.rose}
+              incidentsColor={c.gold}
+              gridColor="rgba(44,43,40,0.08)"
+            />
+          </Suspense>
+          <p style={{ fontSize: 11, color: c.muted, marginTop: 8 }}>
+            Note: series are on the same axis for readability; interpret directionally.
+          </p>
+        </div>
+      )}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>

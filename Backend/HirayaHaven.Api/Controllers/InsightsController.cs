@@ -21,8 +21,10 @@ public class InsightsController(HirayaContext db) : ControllerBase
         => dt.HasValue ? new DateTime(dt.Value.Year, dt.Value.Month, 1) : null;
 
     [HttpGet("donations/monthly")]
-    public async Task<IActionResult> GetDonationsMonthly(CancellationToken ct)
+    public async Task<IActionResult> GetDonationsMonthly([FromQuery] int take = 120, CancellationToken ct = default)
     {
+        take = Math.Clamp(take, 1, 240);
+
         // Pull minimal fields then aggregate in-memory to avoid provider-specific date grouping quirks.
         var rows = await db.Donations
             .AsNoTracking()
@@ -45,6 +47,9 @@ public class InsightsController(HirayaContext db) : ControllerBase
                 donationCount = g.Count()
             })
             .ToList();
+
+        if (monthly.Count > take)
+            monthly = monthly.Skip(monthly.Count - take).ToList();
 
         return Ok(monthly);
     }
@@ -91,8 +96,10 @@ public class InsightsController(HirayaContext db) : ControllerBase
     }
 
     [HttpGet("bridge/monthly")]
-    public async Task<IActionResult> GetBridgeMonthly(CancellationToken ct)
+    public async Task<IActionResult> GetBridgeMonthly([FromQuery] int take = 120, CancellationToken ct = default)
     {
+        take = Math.Clamp(take, 1, 240);
+
         // OUTREACH: social posts aggregated to month
         var postRows = await db.SocialMediaPosts
             .AsNoTracking()
@@ -210,6 +217,9 @@ public class InsightsController(HirayaContext db) : ControllerBase
                 avg_health = outc?.avg_health ?? 0
             };
         }).ToList();
+
+        if (bridge.Count > take)
+            bridge = bridge.Skip(bridge.Count - take).ToList();
 
         return Ok(bridge);
     }
