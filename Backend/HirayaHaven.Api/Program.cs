@@ -127,7 +127,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// In Development, the Vite proxy calls http://localhost:5000. HTTPS redirection to :5001 can
+// cause follow-up requests to drop the Authorization header, breaking GET /api/auth/me (401).
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 if (!app.Environment.IsDevelopment())
 {
