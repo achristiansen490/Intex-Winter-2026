@@ -79,9 +79,16 @@ public static class AuditInterceptor
                 newValue = JsonSerializer.Serialize(values);
             }
 
+            // During startup/seed and other non-request operations there is no authenticated user.
+            // Skip those entries to avoid violating the audit_log.user_id FK.
+            if (!userId.HasValue)
+            {
+                continue;
+            }
+
             entries.Add(new AuditLog
             {
-                UserId = userId ?? -1, // -1 = system/unauthenticated action
+                UserId = userId.Value,
                 Action = action,
                 Resource = tableName,
                 RecordId = recordId,
