@@ -310,6 +310,36 @@ function StaffReports() {
         </table>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18, marginTop: 22 }}>
+        <DataPanel
+          title="Donor upgrade candidates (expected next gift size)"
+          url="/api/insights/donors/upgrade-candidates?take=25"
+          keyField="supporterId"
+          columns={[
+            { key: 'supporterName', label: 'Supporter' },
+            { key: 'expectedNextValuePhp', label: 'Expected next (PHP)' },
+            { key: 'recencyDays', label: 'Recency (days)' },
+            { key: 'donationCount', label: 'Donations' },
+            { key: 'lastValuePhp', label: 'Last gift (PHP)' },
+            { key: 'lastDonationDate', label: 'Last date' },
+          ]}
+        />
+
+        <DataPanel
+          title="Post → donation linkage (top groups by estimated value)"
+          url="/api/insights/posts/donation-linkage/by-group?group=platform&take=12"
+          keyField="key"
+          columns={[
+            { key: 'key', label: 'Platform' },
+            { key: 'postCount', label: 'Posts' },
+            { key: 'willReferRate', label: 'Refer rate' },
+            { key: 'avgReferrals', label: 'Avg referrals' },
+            { key: 'totalEstimatedValuePhp', label: 'Total est. PHP' },
+            { key: 'boostedRate', label: 'Boosted rate' },
+          ]}
+        />
+      </div>
+
       {monthly.length === 0 && (
         <p style={{ fontSize: 12, color: c.muted, marginTop: 12 }}>
           Note: donations/monthly returned 0 rows. Verify donations exist and donation_date is populated.

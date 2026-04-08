@@ -20,6 +20,16 @@ public class InsightsController(HirayaContext db) : ControllerBase
     private static DateTime? ToMonthStart(DateTime? dt)
         => dt.HasValue ? new DateTime(dt.Value.Year, dt.Value.Month, 1) : null;
 
+    private static string SupporterDisplayName(HirayaHaven.Api.Models.Supporter s)
+    {
+        if (!string.IsNullOrWhiteSpace(s.DisplayName)) return s.DisplayName!;
+        if (!string.IsNullOrWhiteSpace(s.OrganizationName)) return s.OrganizationName!;
+        var first = s.FirstName?.Trim() ?? "";
+        var last = s.LastName?.Trim() ?? "";
+        var full = (first + " " + last).Trim();
+        return string.IsNullOrWhiteSpace(full) ? $"Supporter #{s.SupporterId}" : full;
+    }
+
     [HttpGet("donations/monthly")]
     public async Task<IActionResult> GetDonationsMonthly([FromQuery] int take = 120, CancellationToken ct = default)
     {
@@ -218,6 +228,151 @@ public class InsightsController(HirayaContext db) : ControllerBase
         if (bridge.Count > take)
             bridge = bridge.Skip(bridge.Count - take).ToList();
         return Ok(bridge);
+    }
+
+    [HttpGet("donors/upgrade-candidates")]
+    public async Task<IActionResult> GetDonorUpgradeCandidates([FromQuery] int take = 25, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+
+        // Mirror `donor-upgrade-potential.ipynb` intent in a deployable, DB-driven way:
+        // compute simple recency/frequency/monetary features and output a ranking.
+        var supporters = await db.Supporters
+            .AsNoTracking()
+            .Select(s => new { s.SupporterId, s.DisplayName, s.OrganizationName, s.FirstName, s.LastName })
+            .ToListAsync(ct);
+
+        var donations = await db.Donations
+            .AsNoTracking()
+            .Select(d => new
+            {
+                d.SupporterId,
+                d.DonationDate,
+                ValuePhp = (decimal?)d.Amount ?? d.EstimatedValue ?? 0m
+            })
+            .ToListAsync(ct);
+
+        var now = DateTime.UtcNow;
+        var supporterById = supporters.ToDictionary(x => x.SupporterId);
+
+        var ranked = donations
+            .Select(d => new { d.SupporterId, Dt = ParseDate(d.DonationDate), d.ValuePhp })
+            .Where(x => x.Dt.HasValue)
+            .GroupBy(x => x.SupporterId)
+            .Select(g =>
+            {
+                var ordered = g.OrderBy(x => x.Dt!.Value).ToList();
+                var n = ordered.Count;
+                var last = ordered[^1];
+                var total = ordered.Sum(x => x.ValuePhp);
+                var avg = n == 0 ? 0m : total / n;
+                var recencyDays = Math.Max(0, (now - last.Dt!.Value).TotalDays);
+
+                // Heuristic "expected next value" score:
+                // - anchored to last gift size and historical average
+                // - boosted by frequency (log scale)
+                // - decayed by time since last gift
+                var freqBoost = 1.0 + (Math.Log(1 + n) / 5.0);
+                var recencyDecay = Math.Exp(-recencyDays / 180.0);
+                var expectedNext = (double)(0.65m * last.ValuePhp + 0.35m * avg) * freqBoost * recencyDecay;
+
+                supporterById.TryGetValue(g.Key, out var s);
+                var display = s is null
+                    ? $"Supporter #{g.Key}"
+                    : SupporterDisplayName(new HirayaHaven.Api.Models.Supporter
+                    {
+                        SupporterId = s.SupporterId,
+                        DisplayName = s.DisplayName,
+                        OrganizationName = s.OrganizationName,
+                        FirstName = s.FirstName,
+                        LastName = s.LastName
+                    });
+
+                return new
+                {
+                    supporterId = g.Key,
+                    supporterName = display,
+                    donationCount = n,
+                    totalValuePhp = total,
+                    avgValuePhp = avg,
+                    lastDonationDate = last.Dt!.Value,
+                    lastValuePhp = last.ValuePhp,
+                    recencyDays = (int)Math.Round(recencyDays),
+                    expectedNextValuePhp = expectedNext
+                };
+            })
+            .OrderByDescending(x => x.expectedNextValuePhp)
+            .ThenByDescending(x => x.lastDonationDate)
+            .Take(take)
+            .ToList();
+
+        return Ok(ranked);
+    }
+
+    [HttpGet("posts/donation-linkage/by-group")]
+    public async Task<IActionResult> GetPostDonationLinkageByGroup(
+        [FromQuery] string group = "platform",
+        [FromQuery] int take = 12,
+        CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 100);
+        group = (group ?? "platform").Trim().ToLowerInvariant();
+        if (group is not ("platform" or "topic" or "cta"))
+            group = "platform";
+
+        // Mirror `post-to-donation-linkage.ipynb` intent: summarize what post attributes correlate
+        // with donation referrals and estimated referred value, without embedding an ML model server-side.
+        var posts = await db.SocialMediaPosts
+            .AsNoTracking()
+            .Select(p => new
+            {
+                p.Platform,
+                p.ContentTopic,
+                p.CallToActionType,
+                p.IsBoosted,
+                p.DonationReferrals,
+                p.EstimatedDonationValuePhp
+            })
+            .ToListAsync(ct);
+
+        var rows = posts
+            .Select(p =>
+            {
+                var key = group switch
+                {
+                    "topic" => string.IsNullOrWhiteSpace(p.ContentTopic) ? "(unknown)" : p.ContentTopic!,
+                    "cta" => string.IsNullOrWhiteSpace(p.CallToActionType) ? "(none)" : p.CallToActionType!,
+                    _ => string.IsNullOrWhiteSpace(p.Platform) ? "(unknown)" : p.Platform!,
+                };
+                var referrals = (long)(p.DonationReferrals ?? 0);
+                var estPhp = (double)(p.EstimatedDonationValuePhp ?? 0.0);
+                return new
+                {
+                    key,
+                    isBoosted = p.IsBoosted ?? false,
+                    referrals,
+                    estPhp,
+                    willRefer = referrals > 0
+                };
+            })
+            .GroupBy(x => x.key)
+            .Select(g => new
+            {
+                group = group,
+                key = g.Key,
+                postCount = g.Count(),
+                willReferRate = g.Count() == 0 ? 0 : (double)g.Count(x => x.willRefer) / g.Count(),
+                avgReferrals = g.Count() == 0 ? 0 : g.Average(x => (double)x.referrals),
+                totalEstimatedValuePhp = g.Sum(x => x.estPhp),
+                avgEstimatedValuePhp = g.Count() == 0 ? 0 : g.Average(x => x.estPhp),
+                boostedRate = g.Count() == 0 ? 0 : (double)g.Count(x => x.isBoosted) / g.Count()
+            })
+            .OrderByDescending(x => x.totalEstimatedValuePhp)
+            .ThenByDescending(x => x.willReferRate)
+            .Take(take)
+            .ToList();
+
+        return Ok(rows);
     }
 }
 
