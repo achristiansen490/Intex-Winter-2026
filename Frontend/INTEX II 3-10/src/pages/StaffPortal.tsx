@@ -186,6 +186,7 @@ function StaffReports() {
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
   }, [bridgeTake, campaignTake]);
+  }, [bridgeTake, campaignTake]);
 
   useEffect(() => { load(); }, [load]);
   if (loading) return <Loading />;

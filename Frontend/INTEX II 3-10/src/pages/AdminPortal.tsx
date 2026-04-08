@@ -372,6 +372,7 @@ function AdminReports() {
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
   }, [bridgeTake, campaignTake]);
+  }, [bridgeTake, campaignTake]);
 
   useEffect(() => { load(); }, [load]);
   if (loading) return <Loading />;
@@ -384,7 +385,6 @@ function AdminReports() {
     referrals: Number(r.donation_referrals ?? 0),
     incidents: Number(r.incidents ?? 0),
   }));
-
   return (
     <div>
       <SectionTitle>Reports (pipelines)</SectionTitle>

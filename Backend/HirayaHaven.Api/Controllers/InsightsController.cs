@@ -24,7 +24,6 @@ public class InsightsController(HirayaContext db) : ControllerBase
     public async Task<IActionResult> GetDonationsMonthly([FromQuery] int take = 120, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 240);
-
         // Pull minimal fields then aggregate in-memory to avoid provider-specific date grouping quirks.
         var rows = await db.Donations
             .AsNoTracking()
@@ -50,7 +49,6 @@ public class InsightsController(HirayaContext db) : ControllerBase
 
         if (monthly.Count > take)
             monthly = monthly.Skip(monthly.Count - take).ToList();
-
         return Ok(monthly);
     }
 
@@ -99,7 +97,6 @@ public class InsightsController(HirayaContext db) : ControllerBase
     public async Task<IActionResult> GetBridgeMonthly([FromQuery] int take = 120, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 240);
-
         // OUTREACH: social posts aggregated to month
         var postRows = await db.SocialMediaPosts
             .AsNoTracking()
@@ -220,7 +217,6 @@ public class InsightsController(HirayaContext db) : ControllerBase
 
         if (bridge.Count > take)
             bridge = bridge.Skip(bridge.Count - take).ToList();
-
         return Ok(bridge);
     }
 }

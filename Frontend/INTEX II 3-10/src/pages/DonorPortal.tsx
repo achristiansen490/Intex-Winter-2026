@@ -246,7 +246,6 @@ function ActiveCampaigns() {
           </Suspense>
         </div>
       )}
-
       {campaigns.length === 0 ? (
         <p style={{ fontSize: 13, color: c.muted }}>No campaign data yet.</p>
       ) : (
@@ -290,7 +289,6 @@ function ActiveCampaigns() {
           </Suspense>
         </div>
       )}
-
       <div style={{ overflowX: 'auto', marginBottom: 24 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
