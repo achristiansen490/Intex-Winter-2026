@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { Fragment, lazy, Suspense } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -119,6 +119,238 @@ function asObjectArray(data: unknown): Record<string, unknown>[] | null {
   if (data.length === 0) return [];
   if (typeof data[0] === 'object' && data[0] !== null && !Array.isArray(data[0])) return data as Record<string, unknown>[];
   return null;
+}
+
+/** OKR quarterly API: `{ metricKey, generatedAtUtc, items: [...] }` */
+function tryExtractOkrItems(data: unknown): Record<string, unknown>[] | null {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  return asObjectArray((data as Record<string, unknown>).items);
+}
+
+function pickChartLabelKey(keys: string[]): string {
+  const priority = [
+    'period',
+    'month',
+    'name',
+    'key',
+    'campaignName',
+    'supporterName',
+    'safehouseName',
+    'planCategory',
+    'segment',
+    'residentLabel',
+    'group',
+    'dayOfWeek',
+  ];
+  for (const p of priority) {
+    if (keys.includes(p)) return p;
+  }
+  return keys[0] ?? 'name';
+}
+
+function pickChartValueKey(keys: string[], rows: Record<string, unknown>[]): string | null {
+  const skip = new Set([
+    'year',
+    'quarter',
+    'postId',
+    'residentId',
+    'supporterId',
+    'safehouseId',
+    'auditId',
+    'recordingId',
+    'planId',
+  ]);
+  for (const k of keys) {
+    if (skip.has(k)) continue;
+    const allNum = rows.every((r) => {
+      const v = r[k];
+      return v == null || (typeof v === 'number' && Number.isFinite(v));
+    });
+    const someNum = rows.some((r) => typeof r[k] === 'number' && Number.isFinite(r[k] as number));
+    if (allNum && someNum) return k;
+  }
+  for (const k of keys) {
+    if (skip.has(k)) continue;
+    if (rows.some((r) => typeof r[k] === 'number' && Number.isFinite(r[k] as number))) return k;
+  }
+  return null;
+}
+
+/** Fallback chart when pipeline has no specific visualization: first suitable numeric column. */
+function AutoBarChart({ rows }: { rows: Record<string, unknown>[] }) {
+  if (rows.length === 0) return <p style={{ fontSize: 13, color: c.muted }}>No rows to chart.</p>;
+  const keys = Object.keys(rows[0]);
+  const labelKey = pickChartLabelKey(keys);
+  const valueKey = pickChartValueKey(keys, rows);
+  if (!valueKey) {
+    return (
+      <p style={{ fontSize: 12, color: c.muted, fontStyle: 'italic' }}>
+        No numeric column detected for a bar chart — see the table below.
+      </p>
+    );
+  }
+  const data = rows.map((r) => ({
+    name: String(r[labelKey] ?? '—').slice(0, 24),
+    value: Number(r[valueKey] ?? 0),
+  }));
+  return (
+    <div style={{ width: '100%', height: 280 }}>
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ top: 8, right: 16, bottom: 56, left: 8 }}>
+          <CartesianGrid stroke="rgba(44,43,40,0.08)" vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-18} height={64} />
+          <YAxis tick={{ fontSize: 11 }} width={56} tickFormatter={(v) => formatCompact(Number(v))} />
+          <Tooltip formatter={(v: unknown) => [String(v), valueKey]} />
+          <Legend />
+          <Bar dataKey="value" name={valueKey} fill={c.sage} radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function humanizeKey(key: string): string {
+  const s = key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .trim();
+  return s.length === 0 ? key : s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function KeyValueRows({ entries }: { entries: [string, unknown][] }) {
+  if (entries.length === 0) return null;
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr style={{ background: c.sageLight }}>
+            <th style={{ padding: '8px 10px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>Field</th>
+            <th style={{ padding: '8px 10px', textAlign: 'left', color: c.forest, fontWeight: 600 }}>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(([k, v], i) => (
+            <tr key={k} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? '#FBF8F2' : '#FFFFFF' }}>
+              <td style={{ padding: '8px 10px', color: c.forest, fontWeight: 500, whiteSpace: 'nowrap' }}>{k}</td>
+              <td style={{ padding: '8px 10px', color: '#2C2B28', maxWidth: 520, wordBreak: 'break-word' }}>{formatCell(v)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Bar chart for numeric top-level fields on a plain object (metadata / KPIs). */
+function NumericScalarBar({ obj }: { obj: Record<string, unknown> }) {
+  const pairs = Object.entries(obj).filter(
+    ([, v]) => typeof v === 'number' && Number.isFinite(v as number)
+  ) as [string, number][];
+  if (pairs.length === 0) {
+    return (
+      <p style={{ fontSize: 12, color: c.muted, fontStyle: 'italic', marginBottom: 12 }}>
+        No numeric fields for a bar chart — see the table below.
+      </p>
+    );
+  }
+  const chartData = pairs.map(([name, value]) => ({ name: name.slice(0, 32), value }));
+  return (
+    <div style={{ width: '100%', height: Math.min(140 + pairs.length * 24, 340), marginBottom: 14 }}>
+      <ResponsiveContainer>
+        <BarChart data={chartData} margin={{ top: 8, right: 16, bottom: 56, left: 8 }}>
+          <CartesianGrid stroke="rgba(44,43,40,0.08)" vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-22} height={68} />
+          <YAxis tick={{ fontSize: 11 }} width={52} tickFormatter={(v) => formatCompact(Number(v))} />
+          <Tooltip formatter={(v: unknown) => [String(v), 'Value']} />
+          <Bar dataKey="value" fill={c.sage} radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function PrimitiveArrayView({ title, values }: { title: string; values: unknown[] }) {
+  if (values.length === 0) {
+    return <p style={{ fontSize: 13, color: c.muted }}>No items in {title}.</p>;
+  }
+  const allNum = values.every((v) => typeof v === 'number' && Number.isFinite(v as number));
+  const rows: Record<string, unknown>[] = values.map((v, i) => ({ index: i, value: v }));
+  const chartBlock =
+    allNum && values.length > 0 ? (
+      <div style={{ width: '100%', height: Math.min(200 + values.length * 8, 320), marginBottom: 14 }}>
+        <ResponsiveContainer>
+          <BarChart
+            data={(values as number[]).map((value, i) => ({ name: String(i), value }))}
+            margin={{ top: 8, right: 16, bottom: 32, left: 8 }}
+          >
+            <CartesianGrid stroke="rgba(44,43,40,0.08)" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} label={{ value: 'Index', position: 'insideBottom', offset: -4, fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 11 }} width={48} />
+            <Tooltip formatter={(v: unknown) => [String(v), 'Value']} />
+            <Bar dataKey="value" fill={c.forest} radius={[2, 2, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    ) : (
+      <p style={{ fontSize: 12, color: c.muted, fontStyle: 'italic', marginBottom: 12 }}>
+        Non-numeric or mixed array — values are listed in the table below.
+      </p>
+    );
+  return (
+    <>
+      {chartBlock}
+      <GenericTable rows={rows} maxCols={8} />
+    </>
+  );
+}
+
+/** Any JSON object: tabular arrays → chart + table each; scalars → KPI bar + field table; primitive arrays → chart + table. */
+function BareObjectView({ obj }: { obj: Record<string, unknown> }) {
+  const scalars: [string, unknown][] = [];
+  const tabular: { key: string; rows: Record<string, unknown>[] }[] = [];
+  const otherArrays: { key: string; values: unknown[] }[] = [];
+
+  for (const [k, v] of Object.entries(obj)) {
+    const rowArr = asObjectArray(v);
+    if (rowArr !== null) {
+      tabular.push({ key: k, rows: rowArr });
+      continue;
+    }
+    if (Array.isArray(v)) {
+      otherArrays.push({ key: k, values: v });
+      continue;
+    }
+    scalars.push([k, v]);
+  }
+
+  const scalarRecord = Object.fromEntries(scalars) as Record<string, unknown>;
+  const hasAny = scalars.length > 0 || tabular.length > 0 || otherArrays.length > 0;
+
+  return (
+    <>
+      {scalars.length > 0 && (
+        <Section title="Fields">
+          <NumericScalarBar obj={scalarRecord} />
+          <KeyValueRows entries={scalars} />
+        </Section>
+      )}
+      {tabular.map(({ key, rows }) => (
+        <Fragment key={key}>
+          <Section title={humanizeKey(key)}>
+            <AutoBarChart rows={rows} />
+            <div style={{ marginTop: 16 }} />
+            <GenericTable rows={rows} maxCols={16} />
+          </Section>
+        </Fragment>
+      ))}
+      {otherArrays.map(({ key, values }) => (
+        <Section key={key} title={humanizeKey(key)}>
+          <PrimitiveArrayView title={key} values={values} />
+        </Section>
+      ))}
+      {!hasAny && <p style={{ fontSize: 13, color: c.muted }}>Empty object.</p>}
+    </>
+  );
 }
 
 const PIE_COLORS = [c.forest, c.gold, c.rose, c.sage, '#8B7355', '#4A6FA5'];
@@ -274,6 +506,108 @@ export function PipelineOutputView({ pipelineId, data }: { pipelineId: string; d
     );
   }
 
+  // —— Quarterly OKR API `{ metricKey, generatedAtUtc, items: [...] }` ——
+  const okrRows = tryExtractOkrItems(data);
+  const dataRec = typeof data === 'object' && data !== null && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
+  if (
+    okrRows != null &&
+    dataRec != null &&
+    (pipelineId.endsWith('-okr') || typeof dataRec.metricKey === 'string')
+  ) {
+    const o = dataRec;
+    const metricKey = typeof o.metricKey === 'string' ? o.metricKey : null;
+    const summaryBlock = (
+      <Section title="Summary">
+        {metricKey != null ? (
+          <p style={{ fontSize: 12, color: c.muted, fontFamily: 'ui-monospace, monospace', wordBreak: 'break-word' }}>{metricKey}</p>
+        ) : (
+          <p style={{ fontSize: 12, color: c.muted }}>OKR payload (items)</p>
+        )}
+        {o.generatedAtUtc != null && <p style={{ fontSize: 12, color: c.muted }}>Generated: {String(o.generatedAtUtc)}</p>}
+      </Section>
+    );
+
+    if (okrRows.length > 0 && 'rate' in okrRows[0] && 'period' in okrRows[0]) {
+      const chartData = okrRows.map((item) => {
+        const rate = item.rate;
+        const tgt = item.targetRate;
+        return {
+          name: String(item.period ?? `${item.year ?? ''}-Q${item.quarter ?? ''}`),
+          ratePct:
+            rate != null && typeof rate === 'number'
+              ? Math.round(rate * 10000) / 100
+              : rate != null
+                ? Math.round(Number(rate) * 10000) / 100
+                : 0,
+          targetPct:
+            tgt != null && typeof tgt === 'number'
+              ? Math.round(tgt * 10000) / 100
+              : tgt != null
+                ? Math.round(Number(tgt) * 10000) / 100
+                : null,
+        };
+      });
+      return (
+        <>
+          {summaryBlock}
+          <Section title="Actual vs target (%)">
+            <div style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
+                <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                  <CartesianGrid stroke="rgba(44,43,40,0.08)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} height={36} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} width={48} domain={[0, 'auto']} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip formatter={(v: unknown) => [`${v}%`, '']} />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="ratePct" name="Actual %" fill={c.forest} radius={[2, 2, 0, 0]} />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="targetPct"
+                    name="Target %"
+                    stroke={c.gold}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </Section>
+          <Section title="Quarterly rows">
+            <GenericTable rows={okrRows} maxCols={16} />
+          </Section>
+        </>
+      );
+    }
+
+    if (okrRows.length > 0) {
+      return (
+        <>
+          {summaryBlock}
+          <Section title="Overview">
+            <AutoBarChart rows={okrRows} />
+          </Section>
+          <Section title="Rows">
+            <GenericTable rows={okrRows} maxCols={16} />
+          </Section>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {summaryBlock}
+        <Section title="Overview">
+          <p style={{ fontSize: 13, color: c.muted }}>No quarterly rows yet — nothing to chart.</p>
+        </Section>
+        <Section title="Quarterly rows">
+          <GenericTable rows={[]} />
+        </Section>
+      </>
+    );
+  }
+
   // —— Special: engagement object with segments ——
   if (pipelineId === 'social-engagement-vanity' && typeof data === 'object' && data !== null && !Array.isArray(data)) {
     const o = data as Record<string, unknown>;
@@ -324,19 +658,22 @@ export function PipelineOutputView({ pipelineId, data }: { pipelineId: string; d
 
   const rows = asObjectArray(data);
   if (!rows) {
+    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      return <BareObjectView obj={data as Record<string, unknown>} />;
+    }
+    if (Array.isArray(data)) {
+      return (
+        <Section title="Items">
+          <PrimitiveArrayView title="this list" values={data} />
+        </Section>
+      );
+    }
     return (
-      <pre
-        style={{
-          background: '#f6f4ef',
-          padding: 12,
-          borderRadius: 8,
-          fontSize: 12,
-          overflow: 'auto',
-          border: `1px solid ${c.sageLight}`,
-        }}
-      >
-        {JSON.stringify(data, null, 2)}
-      </pre>
+      <Section title="Response">
+        <p style={{ fontSize: 13, color: '#2C2B28', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'ui-monospace, monospace' }}>
+          {typeof data === 'string' ? data : JSON.stringify(data)}
+        </p>
+      </Section>
     );
   }
 
@@ -529,10 +866,15 @@ export function PipelineOutputView({ pipelineId, data }: { pipelineId: string; d
     );
   }
 
-  // Default: table only
+  // Default: bar chart (heuristic) + table
   return (
-    <Section title="Query results">
-      <GenericTable rows={rows} />
-    </Section>
+    <>
+      <Section title="Overview">
+        <AutoBarChart rows={rows} />
+      </Section>
+      <Section title="Query results">
+        <GenericTable rows={rows} />
+      </Section>
+    </>
   );
 }
