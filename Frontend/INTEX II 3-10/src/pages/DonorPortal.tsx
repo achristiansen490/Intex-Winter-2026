@@ -264,7 +264,7 @@ function ExampleDonateModal({
             Example donate form
           </p>
           <p style={{ fontSize: 12, color: c.muted, margin: '0 0 1rem', lineHeight: 1.45 }}>
-            Demonstration only — no payment is processed. Submitting records a sample monetary donation tied to your supporter profile.
+            Demonstration only — no payment is processed. Submitting records a sample monetary donation under your donor record (the app creates one automatically when needed).
           </p>
 
           {optionsLoading && (

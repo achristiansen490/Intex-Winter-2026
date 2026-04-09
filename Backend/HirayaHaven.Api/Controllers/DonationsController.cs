@@ -14,6 +14,51 @@ public class DonationsController(HirayaContext db, IPermissionService permission
 {
     protected override DbSet<Donation> Entities => Db.Donations;
 
+    [HttpGet]
+    public override async Task<IActionResult> GetAll(CancellationToken ct)
+    {
+        var role = await GetUserRoleAsync();
+        if (role is null) return Forbid();
+        if (!await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
+
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Forbid();
+
+        if (role == "Donor")
+            user = await EnsureDonorSupporterLinkedAsync(user, ct);
+
+        var query = Entities.AsNoTracking();
+        query = await ApplyScopingAsync(query, user, role);
+
+        var list = await query.ToListAsync(ct);
+        foreach (var item in list) RedactForRole(item, role);
+        return Ok(list);
+    }
+
+    [HttpGet("{id:int}")]
+    public override async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct)
+    {
+        var role = await GetUserRoleAsync();
+        if (role is null) return Forbid();
+        if (!await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
+
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Forbid();
+
+        if (role == "Donor")
+            user = await EnsureDonorSupporterLinkedAsync(user, ct);
+
+        var query = Entities.AsQueryable();
+        query = await ApplyScopingAsync(query, user, role);
+
+        var pkName = Db.Model.FindEntityType(typeof(Donation))!.FindPrimaryKey()!.Properties[0].Name;
+        var entity = await query.FirstOrDefaultAsync(e => EF.Property<int>(e, pkName) == id, ct);
+        if (entity is null) return NotFound();
+
+        RedactForRole(entity, role);
+        return Ok(entity);
+    }
+
     /// <summary>
     /// Distinct campaign and channel values from existing data (donations and social posts) for donor forms.
     /// </summary>
@@ -63,9 +108,9 @@ public class DonationsController(HirayaContext db, IPermissionService permission
         if (role == "Donor")
         {
             var user = await GetCurrentUserAsync();
-            if (user?.SupporterId is null)
-                return BadRequest(new { message = "Your account is not linked to a supporter profile." });
-            entity.SupporterId = user.SupporterId.Value;
+            if (user is null) return Forbid();
+            user = await EnsureDonorSupporterLinkedAsync(user, ct);
+            entity.SupporterId = user.SupporterId!.Value;
         }
 
         if (entity.IsRecurring == true && string.IsNullOrWhiteSpace(entity.RecurringSeriesKey))
@@ -90,18 +135,8 @@ public class DonationsController(HirayaContext db, IPermissionService permission
         IQueryable<Donation> q = Db.Donations.AsNoTracking();
         if (role == "Donor")
         {
-            if (!user.SupporterId.HasValue)
-            {
-                return Ok(new
-                {
-                    totalDonationRows = 0,
-                    totalMonetaryAmount = 0m,
-                    totalEstimatedValue = 0m,
-                    byType = Array.Empty<object>()
-                });
-            }
-
-            q = q.Where(d => d.SupporterId == user.SupporterId.Value);
+            user = await EnsureDonorSupporterLinkedAsync(user, ct);
+            q = q.Where(d => d.SupporterId == user.SupporterId!.Value);
         }
 
         var totalDonationRows = await q.CountAsync(ct);
@@ -166,10 +201,11 @@ public class DonationsController(HirayaContext db, IPermissionService permission
         if (!await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
 
         var user = await GetCurrentUserAsync();
-        if (user?.SupporterId is null) return Ok(Array.Empty<object>());
+        if (user is null) return Forbid();
+        user = await EnsureDonorSupporterLinkedAsync(user, ct);
 
         var rows = await Db.Donations.AsNoTracking()
-            .Where(d => d.SupporterId == user.SupporterId.Value && d.IsRecurring == true)
+            .Where(d => d.SupporterId == user.SupporterId!.Value && d.IsRecurring == true)
             .ToListAsync(ct);
 
         if (rows.Count == 0) return Ok(Array.Empty<object>());
@@ -254,14 +290,14 @@ public class DonationsController(HirayaContext db, IPermissionService permission
         if (role != "Donor") return Forbid();
 
         var user = await GetCurrentUserAsync();
-        if (user?.SupporterId is null)
-            return BadRequest(new { message = "Your account is not linked to a supporter profile." });
+        if (user is null) return Forbid();
+        user = await EnsureDonorSupporterLinkedAsync(user, ct);
 
         List<Donation> toUpdate;
         if (!string.IsNullOrWhiteSpace(body.RecurringSeriesKey))
         {
             toUpdate = await Db.Donations
-                .Where(d => d.SupporterId == user.SupporterId.Value
+                .Where(d => d.SupporterId == user.SupporterId!.Value
                     && d.RecurringSeriesKey == body.RecurringSeriesKey
                     && d.IsRecurring == true)
                 .ToListAsync(ct);
@@ -270,7 +306,7 @@ public class DonationsController(HirayaContext db, IPermissionService permission
         {
             toUpdate = await Db.Donations
                 .Where(d => d.DonationId == lid
-                    && d.SupporterId == user.SupporterId.Value
+                    && d.SupporterId == user.SupporterId!.Value
                     && d.IsRecurring == true
                     && string.IsNullOrWhiteSpace(d.RecurringSeriesKey))
                 .ToListAsync(ct);

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
@@ -70,6 +71,34 @@ public abstract class CrudControllerBase<TEntity>(
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null) return null;
         return await UserManager.FindByIdAsync(userId);
+    }
+
+    /// <summary>
+    /// Donor logins must reference a <see cref="Supporter"/> row so gifts can be tied in the database.
+    /// If the account has no link yet, creates a minimal supporter (name/email from the user) and saves <c>AppUser.SupporterId</c>.
+    /// </summary>
+    protected async Task<AppUser> EnsureDonorSupporterLinkedAsync(AppUser user, CancellationToken ct)
+    {
+        if (user.SupporterId.HasValue) return user;
+
+        var supporter = new Supporter
+        {
+            DisplayName = user.UserName ?? user.Email ?? "Donor",
+            Email = user.Email,
+            Status = "Active",
+            SupporterType = "Individual",
+            CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        };
+        Db.Supporters.Add(supporter);
+        await Db.SaveChangesAsync(ct);
+
+        user.SupporterId = supporter.SupporterId;
+        var updateResult = await UserManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", updateResult.Errors.Select(e => e.Description)));
+
+        var refreshed = await UserManager.FindByIdAsync(user.Id.ToString());
+        return refreshed ?? user;
     }
 
     /// <summary>
