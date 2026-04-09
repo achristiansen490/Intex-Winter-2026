@@ -197,6 +197,309 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
   );
 }
 
+function CrudDataPanel({
+  title,
+  url,
+  columns,
+  keyField,
+  canCreate,
+  canUpdate,
+}: {
+  title: string;
+  url: string;
+  columns: { key: string; label: string }[];
+  keyField: string;
+  canCreate: boolean;
+  canUpdate: boolean;
+}) {
+  const searchId = useId();
+  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [toast, setToast] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [viewRow, setViewRow] = useState<Record<string, unknown> | null>(null);
+  const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
+  const [createRow, setCreateRow] = useState<Record<string, unknown> | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const d = await api(url).then((r) => r.json());
+      setRows(Array.isArray(d) ? d : []);
+    } catch {
+      setError('Failed to load data.');
+    } finally {
+      setLoading(false);
+    }
+  }, [url]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const notify = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2800);
+  };
+
+  const filteredRows = useMemo(
+    () => filterTableRows(rows, columns, query),
+    [rows, columns, query],
+  );
+
+  const normalizeRowForSave = (row: Record<string, unknown>) => {
+    const payload: Record<string, unknown> = {};
+    for (const col of columns) {
+      const key = col.key;
+      if (key === keyField) continue;
+      const raw = row[key];
+      if (raw == null) continue;
+      if (typeof raw === 'string') {
+        const t = raw.trim();
+        if (t === '') continue;
+        if (t === 'true') { payload[key] = true; continue; }
+        if (t === 'false') { payload[key] = false; continue; }
+        if (/^-?\d+(\.\d+)?$/.test(t) && !/date/i.test(key)) { payload[key] = Number(t); continue; }
+        payload[key] = t;
+        continue;
+      }
+      payload[key] = raw;
+    }
+    return payload;
+  };
+
+  const editableColumns = columns.filter((col) => col.key !== keyField);
+
+  const updateDraft = (setter: (updater: (prev: Record<string, unknown> | null) => Record<string, unknown> | null) => void, key: string, value: unknown) => {
+    setter((prev) => (prev ? { ...prev, [key]: value } : prev));
+  };
+
+  const saveCreate = async () => {
+    if (!createRow) return;
+    setSaving(true);
+    try {
+      const payload = normalizeRowForSave(createRow);
+      const res = await api(url, { method: 'POST', body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error('Create failed');
+      setCreateRow(null);
+      notify('Created successfully.');
+      await load();
+    } catch {
+      notify('Create failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+    const id = editRow[keyField];
+    if (id == null) return;
+    setSaving(true);
+    try {
+      const payload = normalizeRowForSave(editRow);
+      const res = await api(`${url}/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error('Update failed');
+      setEditRow(null);
+      notify('Updated successfully.');
+      await load();
+    } catch {
+      notify('Update failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputFor = (
+    draft: Record<string, unknown>,
+    onUpdate: (key: string, value: unknown) => void,
+    col: { key: string; label: string },
+  ) => {
+    const key = col.key;
+    const value = draft[key];
+    const valueString = String(value ?? '');
+    if (typeof value === 'boolean') {
+      return (
+        <select
+          value={String(value)}
+          onChange={(e) => onUpdate(key, e.target.value === 'true')}
+          style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}`, background: c.white }}
+        >
+          <option value="true">True</option>
+          <option value="false">False</option>
+        </select>
+      );
+    }
+    const maybeDate = /date|time/i.test(key);
+    const maybeNumber = typeof value === 'number' || /id$|minutes|rate|score|percent|count|value|bmi/i.test(key);
+    return (
+      <input
+        type={maybeDate ? 'datetime-local' : maybeNumber ? 'number' : 'text'}
+        value={valueString}
+        onChange={(e) => onUpdate(key, e.target.value)}
+        style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }}
+      />
+    );
+  };
+
+  return (
+    <div>
+      {toast && <div style={{ background: c.sageLight, color: c.forest, borderRadius: 8, padding: '10px 16px', marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+      <SectionTitle>{title}</SectionTitle>
+      {loading ? (
+        <Loading />
+      ) : error ? (
+        <ApiError msg={error} retry={load} />
+      ) : (
+        <>
+          {canCreate && (
+            <div style={{ marginBottom: 10 }}>
+              <button
+                onClick={() => {
+                  const seed: Record<string, unknown> = {};
+                  editableColumns.forEach((col) => { seed[col.key] = ''; });
+                  setCreateRow(seed);
+                }}
+                style={{ background: c.forest, color: c.white, border: 'none', borderRadius: 7, padding: '8px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+              >
+                + Add record
+              </button>
+            </div>
+          )}
+          <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder={`Search ${title.toLowerCase()}…`} />
+          {filteredRows.length === 0 ? (
+            <p style={{ fontSize: 13, color: c.muted }}>
+              {query.trim() === '' ? 'No records found.' : 'No rows match your search.'}
+            </p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>
+                {filteredRows.length === rows.length ? `${rows.length} records` : `${filteredRows.length} of ${rows.length} records shown`}
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: c.sageLight }}>
+                    {columns.map((col) => (
+                      <th key={col.key} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {col.label}
+                      </th>
+                    ))}
+                    <th style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row, i) => (
+                    <tr key={String(row[keyField] ?? i)} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                      {columns.map((col) => (
+                        <td key={col.key} style={{ padding: '8px 12px', color: c.text, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {String(row[col.key] ?? '—')}
+                        </td>
+                      ))}
+                      <td style={{ padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => setViewRow(row)}
+                            aria-label={`View ${title} ${String(row[keyField] ?? '')}`}
+                            style={{ background: c.sageLight, color: c.forest, border: `1px solid ${c.sage}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            View
+                          </button>
+                          {canUpdate && (
+                            <button
+                              onClick={() => setEditRow({ ...row })}
+                              aria-label={`Edit ${title} ${String(row[keyField] ?? '')}`}
+                              style={{ background: c.goldLight, color: '#5D4037', border: `1px solid ${c.gold}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {viewRow && (
+        <div onClick={() => setViewRow(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(44,43,40,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(720px, 92vw)', maxHeight: '86vh', overflowY: 'auto', background: c.white, borderRadius: 12, border: `1px solid ${c.sageLight}`, padding: '1rem 1.25rem' }}>
+            <h3 style={{ margin: 0, color: c.forest, fontSize: 16 }}>Record details</h3>
+            <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
+              {Object.entries(viewRow).map(([k, v]) => (
+                <div key={k} style={{ border: `1px solid ${c.sageLight}`, borderRadius: 8, padding: '8px 10px', background: c.ivory }}>
+                  <p style={{ margin: 0, fontSize: 10, color: c.muted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{k}</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: 12, color: c.text }}>{String(v ?? '—')}</p>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setViewRow(null)} style={{ background: c.forest, color: c.white, border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editRow && (
+        <div onClick={() => setEditRow(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(44,43,40,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(760px, 92vw)', background: c.white, borderRadius: 12, border: `1px solid ${c.sageLight}`, padding: '1rem 1.25rem' }}>
+            <h3 style={{ margin: 0, color: c.forest, fontSize: 16 }}>Edit record</h3>
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
+              {editableColumns.map((col) => (
+                <label key={col.key} style={{ fontSize: 11, color: c.muted }}>
+                  {col.label}
+                  {inputFor(editRow, (key, value) => updateDraft(setEditRow, key, value), col)}
+                </label>
+              ))}
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button disabled={saving} onClick={() => setEditRow(null)}
+                style={{ background: 'transparent', color: c.muted, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button disabled={saving} onClick={saveEdit}
+                style={{ background: c.forest, color: c.white, border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {createRow && (
+        <div onClick={() => setCreateRow(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(44,43,40,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(760px, 92vw)', background: c.white, borderRadius: 12, border: `1px solid ${c.sageLight}`, padding: '1rem 1.25rem' }}>
+            <h3 style={{ margin: 0, color: c.forest, fontSize: 16 }}>Create record</h3>
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
+              {editableColumns.map((col) => (
+                <label key={col.key} style={{ fontSize: 11, color: c.muted }}>
+                  {col.label}
+                  {inputFor(createRow, (key, value) => updateDraft(setCreateRow, key, value), col)}
+                </label>
+              ))}
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button disabled={saving} onClick={() => setCreateRow(null)}
+                style={{ background: 'transparent', color: c.muted, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button disabled={saving} onClick={saveCreate}
+                style={{ background: c.forest, color: c.white, border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Creating…' : 'Create record'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Dashboard (role-aware) ────────────────────────────────────────────────────
 
 function StaffDashboard({ role }: { role: string | null }) {
@@ -648,12 +951,20 @@ function StaffPendingApprovals() {
                   ) : null}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button disabled={busy === (item.auditId as number)} onClick={() => act(item.auditId as number, 'approve')}
-                    style={{ background: c.sage, color: c.white, border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                  <button
+                    disabled={busy === (item.auditId as number)}
+                    onClick={() => act(item.auditId as number, 'approve')}
+                    aria-label={`Approve change request ${String(item.auditId)}`}
+                    style={{ background: c.sageLight, color: c.forest, border: `1px solid ${c.sage}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: busy === item.auditId ? 0.6 : 1 }}
+                  >
                     Approve
                   </button>
-                  <button disabled={busy === (item.auditId as number)} onClick={() => act(item.auditId as number, 'reject')}
-                    style={{ background: c.roseLight, color: c.rose, border: `1px solid ${c.rose}`, borderRadius: 6, padding: '6px 16px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                  <button
+                    disabled={busy === (item.auditId as number)}
+                    onClick={() => act(item.auditId as number, 'reject')}
+                    aria-label={`Reject change request ${String(item.auditId)}`}
+                    style={{ background: c.roseLight, color: c.rose, border: `1px solid ${c.rose}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: busy === item.auditId ? 0.6 : 1 }}
+                  >
                     Reject
                   </button>
                 </div>
@@ -696,7 +1007,7 @@ export default function StaffPortal() {
         ]} />;
 
       case 'Session Notes':
-        return <DataPanel title="Session Notes" url="/api/processrecordings" keyField="recordingId" columns={[
+        return <CrudDataPanel title="Session Notes" url="/api/processrecordings" keyField="recordingId" canCreate canUpdate columns={[
           { key: 'recordingId', label: 'ID' }, { key: 'sessionDate', label: 'Date' },
           { key: 'residentId', label: 'Resident' }, { key: 'socialWorker', label: 'Social Worker' },
           { key: 'sessionType', label: 'Type' }, { key: 'sessionDurationMinutes', label: 'Duration (min)' },
@@ -706,16 +1017,23 @@ export default function StaffPortal() {
 
       case 'Visits & Conferences':
       case 'Home Visits':
-        return <DataPanel title="Home Visits" url="/api/homevisitations" keyField="visitationId" columns={[
+        return <CrudDataPanel
+          title="Home Visits"
+          url="/api/homevisitations"
+          keyField="visitationId"
+          canCreate
+          canUpdate={role !== 'FieldWorker'}
+          columns={[
           { key: 'visitationId', label: 'ID' }, { key: 'visitDate', label: 'Date' },
           { key: 'residentId', label: 'Resident' }, { key: 'socialWorker', label: 'Social Worker' },
           { key: 'visitType', label: 'Type' }, { key: 'locationVisited', label: 'Location' },
           { key: 'familyCooperationLevel', label: 'Cooperation' }, { key: 'safetyConcernsNoted', label: 'Safety Concerns' },
           { key: 'visitOutcome', label: 'Outcome' },
-        ]} />;
+          ]}
+        />;
 
       case 'Intervention Plans':
-        return <DataPanel title="Intervention Plans" url="/api/interventionplans" keyField="planId" columns={[
+        return <CrudDataPanel title="Intervention Plans" url="/api/interventionplans" keyField="planId" canCreate canUpdate columns={[
           { key: 'planId', label: 'ID' }, { key: 'residentId', label: 'Resident' },
           { key: 'planCategory', label: 'Category' }, { key: 'planDescription', label: 'Description' },
           { key: 'status', label: 'Status' }, { key: 'targetDate', label: 'Target Date' },
@@ -723,15 +1041,22 @@ export default function StaffPortal() {
         ]} />;
 
       case 'Incident Reports':
-        return <DataPanel title="Incident Reports" url="/api/incidentreports" keyField="incidentId" columns={[
+        return <CrudDataPanel
+          title="Incident Reports"
+          url="/api/incidentreports"
+          keyField="incidentId"
+          canCreate
+          canUpdate={role !== 'FieldWorker'}
+          columns={[
           { key: 'incidentId', label: 'ID' }, { key: 'incidentDate', label: 'Date' },
           { key: 'residentId', label: 'Resident' }, { key: 'incidentType', label: 'Type' },
           { key: 'severity', label: 'Severity' }, { key: 'resolved', label: 'Resolved' },
           { key: 'reportedBy', label: 'Reported By' },
-        ]} />;
+          ]}
+        />;
 
       case 'Health Records':
-        return <DataPanel title="Health & Wellbeing Records" url="/api/healthwellbeingrecords" keyField="healthRecordId" columns={[
+        return <CrudDataPanel title="Health & Wellbeing Records" url="/api/healthwellbeingrecords" keyField="healthRecordId" canCreate canUpdate={false} columns={[
           { key: 'healthRecordId', label: 'ID' }, { key: 'residentId', label: 'Resident' },
           { key: 'recordDate', label: 'Date' }, { key: 'generalHealthScore', label: 'Health Score' },
           { key: 'nutritionScore', label: 'Nutrition' }, { key: 'sleepQualityScore', label: 'Sleep' },
@@ -740,7 +1065,7 @@ export default function StaffPortal() {
         ]} />;
 
       case 'Education Records':
-        return <DataPanel title="Education Records" url="/api/educationrecords" keyField="educationRecordId" columns={[
+        return <CrudDataPanel title="Education Records" url="/api/educationrecords" keyField="educationRecordId" canCreate canUpdate={false} columns={[
           { key: 'educationRecordId', label: 'ID' }, { key: 'residentId', label: 'Resident' },
           { key: 'recordDate', label: 'Date' }, { key: 'educationLevel', label: 'Level' },
           { key: 'schoolName', label: 'School' }, { key: 'enrollmentStatus', label: 'Status' },
