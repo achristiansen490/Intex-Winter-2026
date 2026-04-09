@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
+import { ResidentProcessRecordingsModal } from '../components/residents/ResidentProcessRecordingsModal';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
@@ -192,6 +193,120 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
           />
           <DataTable columns={columns} rows={filteredRows} keyField={keyField} totalCount={rows.length} />
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Residents (with process recordings timeline) ───────────────────────────────
+
+type ResidentRow = {
+  residentId: number;
+  caseControlNo: string;
+  caseStatus: string;
+  sex: string;
+  dateOfAdmission: string;
+  currentRiskLevel: string;
+  reintegrationStatus: string;
+  assignedSocialWorker: string;
+};
+
+function ResidentsPanel({
+  role,
+}: {
+  role: string | null;
+}) {
+  const [rows, setRows] = useState<ResidentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [selectedResident, setSelectedResident] = useState<ResidentRow | null>(null);
+  const searchId = useId();
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const d = await api('/api/residents').then((r) => r.json());
+      setRows(Array.isArray(d) ? d : []);
+    } catch {
+      setError('Failed to load residents.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const columns = useMemo(() => ([
+    { key: 'residentId', label: 'ID' }, { key: 'caseControlNo', label: 'Case No.' },
+    { key: 'caseStatus', label: 'Status' }, { key: 'sex', label: 'Sex' },
+    { key: 'dateOfAdmission', label: 'Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
+    { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'SW' },
+  ]), []);
+
+  const filtered = useMemo(() => filterTableRows(rows as unknown as Record<string, unknown>[], columns, query) as unknown as ResidentRow[], [rows, columns, query]);
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  const canCreate = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker' || role === 'FieldWorker';
+  const canEdit = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker';
+  const canDelete = role === 'Admin';
+
+  return (
+    <div>
+      <SectionTitle>Residents</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Click a resident to view their Process Recordings timeline (and create/edit if permitted).
+      </p>
+
+      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search residents…" />
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {columns.map((col) => (
+                <th key={col.key} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{col.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr
+                key={row.residentId}
+                onClick={() => setSelectedResident(row)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedResident(row);
+                }}
+                style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white, cursor: 'pointer' }}
+                aria-label={`Open resident ${row.residentId} details`}
+              >
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentId}</td>
+                <td style={{ padding: '8px 12px' }}>{row.caseControlNo ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.caseStatus ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.sex ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.dateOfAdmission ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.currentRiskLevel ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.reintegrationStatus ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.assignedSocialWorker ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedResident && (
+        <ResidentProcessRecordingsModal
+          residentId={selectedResident.residentId}
+          residentLabel={`#${selectedResident.residentId} · ${selectedResident.caseControlNo ?? 'Resident'}`}
+          onClose={() => setSelectedResident(null)}
+          canCreate={canCreate}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
       )}
     </div>
   );
@@ -999,12 +1114,7 @@ export default function StaffPortal() {
       case 'Caseload':
       case 'My Residents':
       case 'Residents':
-        return <DataPanel title="Residents" url="/api/residents" keyField="residentId" columns={[
-          { key: 'residentId', label: 'ID' }, { key: 'caseControlNo', label: 'Case No.' },
-          { key: 'caseStatus', label: 'Status' }, { key: 'sex', label: 'Sex' },
-          { key: 'dateOfAdmission', label: 'Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
-          { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'SW' },
-        ]} />;
+        return <ResidentsPanel role={role} />;
 
       case 'Session Notes':
         return <CrudDataPanel title="Session Notes" url="/api/processrecordings" keyField="recordingId" canCreate canUpdate columns={[
