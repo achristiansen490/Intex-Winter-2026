@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
 import { apiUrl } from '../lib/api';
 import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
+import { SocialMediaImpactSection } from '../components/reports/SocialMediaImpactSection';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
@@ -209,25 +210,31 @@ function AdminDashboard() {
   const [okrProcess, setOkrProcess] = useState<QuarterlyRateOkrResponse | null>(null);
   const [okrVisits, setOkrVisits] = useState<QuarterlyRateOkrResponse | null>(null);
   const [okrIncidents, setOkrIncidents] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrSocialRef, setOkrSocialRef] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrSocialCtr, setOkrSocialCtr] = useState<QuarterlyRateOkrResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [k, p, o, op, ov, oi] = await Promise.all([
+      const [k, p, o, op, ov, oi, osr, osc] = await Promise.all([
         api('/api/dashboard/kpis').then(r => r.json()),
         api('/api/dashboard/admin-proof').then(r => r.json()),
         api('/api/okrs/education/attendance/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
         api('/api/okrs/healing/process-sessions/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
         api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
         api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
       ]);
       setKpis(k); setProof(p);
       setOkr(o);
       setOkrProcess(op);
       setOkrVisits(ov);
       setOkrIncidents(oi);
+      setOkrSocialRef(osr);
+      setOkrSocialCtr(osc);
     } catch { setError('Failed to load dashboard.'); }
     finally { setLoading(false); }
   }, []);
@@ -340,6 +347,21 @@ function AdminDashboard() {
         response={okrIncidents}
         unitLabel="Incidents"
         emptyMessage="No quarterly data yet. Add incident reports with incident dates and/or set targets."
+      />
+
+      <QuarterlyOkrRateSection
+        title="OKR — Outreach: Posts that drive donation referrals (Quarterly)"
+        subtitle="Share of social posts with at least one recorded donation referral in the quarter."
+        response={okrSocialRef}
+        unitLabel="Posts"
+        emptyMessage="No quarterly social post data yet (or no parseable post dates). Add social_media_posts / set Admin targets via PUT /api/okrs/outreach/social/referral-conversion/targets/{year}/{quarter}."
+      />
+      <QuarterlyOkrRateSection
+        title="OKR — Outreach: Social click-through rate (Quarterly)"
+        subtitle="Aggregate CTR: sum of click-throughs ÷ sum of impressions for posts dated in each quarter."
+        response={okrSocialCtr}
+        unitLabel="Clicks vs impressions"
+        emptyMessage="No quarterly social impressions yet. Add social posts with CreatedAt, impressions, and click-throughs."
       />
 
       <SectionTitle>Donor KPIs</SectionTitle>
@@ -1520,6 +1542,8 @@ function AdminReports() {
           Annual report data is unavailable for the selected year.
         </p>
       )}
+
+      <SocialMediaImpactSection api={api} />
 
       <SectionTitle>Reports (pipelines)</SectionTitle>
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
