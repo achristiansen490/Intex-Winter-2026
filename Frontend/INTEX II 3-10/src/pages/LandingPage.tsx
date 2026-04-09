@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { NavBar } from '../components/NavBar';
-import { Logo } from '../components/Logo';
 
 const c = {
   ivory: '#FBF8F2', rose: '#C4867A', roseLight: '#F0D8D4',
@@ -80,26 +79,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer style={{ background: c.ivory, borderTop: '0.5px solid rgba(44,43,40,0.1)', padding: '1.5rem 2.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <Logo />
-            <nav aria-label="Footer links">
-              <ul style={{ display: 'flex', gap: 20, flexWrap: 'wrap', listStyle: 'none', margin: 0, padding: 0 }}>
-                {[['Privacy Policy', '/privacy'], ['Contact', '#contact']].map(([label, href]) => (
-                  <li key={label}>
-                    {href.startsWith('/') ? (
-                      <Link to={href} style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>{label}</Link>
-                    ) : (
-                      <a href={href} style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>{label}</a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            <p style={{ fontSize: 12, color: c.muted }}>© 2025 Hiraya Haven. All rights reserved.</p>
-          </div>
-        </footer>
       </main>
     </>
   );

@@ -49,10 +49,13 @@ export default function PrivacyPolicyPage() {
           <Section title="4. Cookies">
             <p>We use the following types of cookies:</p>
             <ul style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
-              <li><strong>Essential cookies:</strong> Required for authentication and security. These cannot be disabled.</li>
-              <li><strong>Preference cookies:</strong> Store your display preferences (e.g., light/dark mode). These are only set after you accept our cookie policy.</li>
+              <li><strong>Essential cookies and local storage:</strong> Required for session/authentication and security behavior. These are necessary for the site to function.</li>
+              <li><strong>Preference cookies:</strong> Store optional display preferences (for example, theme settings). These are only set after you accept our cookie policy.</li>
             </ul>
-            <p style={{ marginTop: '0.75rem' }}>You can withdraw your consent at any time by clearing your browser cookies. Essential cookies will be re-set on your next visit as they are necessary for the site to function.</p>
+            <p style={{ marginTop: '0.75rem' }}>
+              You can withdraw or change consent at any time using the <strong>Cookie settings</strong> button shown on the site.
+              You can also clear browser cookies/storage manually in your browser settings. Essential storage will be re-set on your next visit because it is required for core functionality.
+            </p>
           </Section>
 
           <Section title="5. Data sharing">
