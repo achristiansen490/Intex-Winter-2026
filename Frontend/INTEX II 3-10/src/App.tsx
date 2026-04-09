@@ -17,8 +17,6 @@ import ResidentPortal from './pages/ResidentPortal';
 import AdminPortal from './pages/AdminPortal';
 import AdminPipelineDashboard from './pages/AdminPipelineDashboard';
 import AdminPipelineDetail from './pages/AdminPipelineDetail';
-import ForbiddenPage from './pages/ForbiddenPage';
-import NotFoundPage from './pages/NotFoundPage';
 
 /** Redirects already-logged-in users away from /login and /register */
 function AuthRedirect({ children }: { children: React.ReactNode }) {
@@ -50,7 +48,7 @@ function AppRoutes() {
         <Route path="/impact" element={<ImpactPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/pending-approval" element={<PendingApprovalPage />} />
-        <Route path="/forbidden" element={<ForbiddenPage />} />
+        <Route path="/forbidden" element={<Navigate to="/" replace />} />
 
         {/* Auth routes — redirect if already logged in */}
         <Route path="/login" element={<AuthRedirect><LoginPage /></AuthRedirect>} />
@@ -78,8 +76,8 @@ function AppRoutes() {
           <Route path="/admin/pipelines/:pipelineId" element={<AdminPipelineDetail />} />
         </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<NotFoundPage />} />
+        {/* Unknown paths → landing (avoids hard 404 on typos / deep links without a matching route) */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       <Footer />
