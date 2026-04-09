@@ -12,6 +12,17 @@ namespace HirayaHaven.Api.Controllers;
 public class OkrsController(HirayaContext context) : ControllerBase
 {
     private const string EducationAttendanceMetricKey = "education.attendance";
+    private const string ProcessSessionsProgressMetricKey = "healing.process_sessions.progress_rate";
+    private const string HomeVisitsCleanRateMetricKey = "caring.home_visits.clean_rate";
+    private const string IncidentsResolutionMetricKey = "healing.incidents.resolution_rate";
+
+    private static readonly HashSet<string> SupportedMetricKeys =
+    [
+        EducationAttendanceMetricKey,
+        ProcessSessionsProgressMetricKey,
+        HomeVisitsCleanRateMetricKey,
+        IncidentsResolutionMetricKey
+    ];
 
     private static bool TryParseQuarter(string? raw, out int year, out int quarter)
     {
@@ -115,30 +126,187 @@ public class OkrsController(HirayaContext context) : ControllerBase
         [FromRoute] int quarter,
         [FromBody] double targetAttendanceRate,
         CancellationToken ct)
+        => await UpsertTargetValue(EducationAttendanceMetricKey, year, quarter, targetAttendanceRate, ct);
+
+    [HttpGet("healing/process-sessions/quarterly")]
+    public async Task<IActionResult> GetProcessSessionsProgressQuarterly([FromQuery] int take = 8, CancellationToken ct = default)
+    {
+        if (take < 1) take = 1;
+        if (take > 40) take = 40;
+
+        var rows = await context.ProcessRecordings.AsNoTracking()
+            .Select(r => new { r.SessionDate, r.ProgressNoted })
+            .ToListAsync(ct);
+
+        var groups = new Dictionary<(int year, int quarter), (int withProgress, int total)>();
+        foreach (var r in rows)
+        {
+            if (!TryParseQuarter(r.SessionDate, out var y, out var q)) continue;
+            if (!groups.TryGetValue((y, q), out var g))
+                g = (0, 0);
+            g.total++;
+            if (r.ProgressNoted == true) g.withProgress++;
+            groups[(y, q)] = g;
+        }
+
+        return Ok(await BuildRateOkrResponseAsync(
+            ProcessSessionsProgressMetricKey,
+            groups.ToDictionary(kv => kv.Key, kv => (kv.Value.withProgress, kv.Value.total)),
+            take,
+            ct));
+    }
+
+    [HttpGet("caring/home-visits/clean-rate/quarterly")]
+    public async Task<IActionResult> GetHomeVisitsCleanRateQuarterly([FromQuery] int take = 8, CancellationToken ct = default)
+    {
+        if (take < 1) take = 1;
+        if (take > 40) take = 40;
+
+        var rows = await context.HomeVisitations.AsNoTracking()
+            .Select(v => new { v.VisitDate, v.SafetyConcernsNoted })
+            .ToListAsync(ct);
+
+        var groups = new Dictionary<(int year, int quarter), (int clean, int total)>();
+        foreach (var r in rows)
+        {
+            if (!TryParseQuarter(r.VisitDate, out var y, out var q)) continue;
+            if (!groups.TryGetValue((y, q), out var g))
+                g = (0, 0);
+            g.total++;
+            if (r.SafetyConcernsNoted != true) g.clean++;
+            groups[(y, q)] = g;
+        }
+
+        return Ok(await BuildRateOkrResponseAsync(
+            HomeVisitsCleanRateMetricKey,
+            groups.ToDictionary(kv => kv.Key, kv => (kv.Value.clean, kv.Value.total)),
+            take,
+            ct));
+    }
+
+    [HttpGet("healing/incidents/resolution-rate/quarterly")]
+    public async Task<IActionResult> GetIncidentsResolutionRateQuarterly([FromQuery] int take = 8, CancellationToken ct = default)
+    {
+        if (take < 1) take = 1;
+        if (take > 40) take = 40;
+
+        var rows = await context.IncidentReports.AsNoTracking()
+            .Select(i => new { i.IncidentDate, i.Resolved })
+            .ToListAsync(ct);
+
+        var groups = new Dictionary<(int year, int quarter), (int resolved, int total)>();
+        foreach (var r in rows)
+        {
+            if (!TryParseQuarter(r.IncidentDate, out var y, out var q)) continue;
+            if (!groups.TryGetValue((y, q), out var g))
+                g = (0, 0);
+            g.total++;
+            if (r.Resolved == true) g.resolved++;
+            groups[(y, q)] = g;
+        }
+
+        return Ok(await BuildRateOkrResponseAsync(
+            IncidentsResolutionMetricKey,
+            groups.ToDictionary(kv => kv.Key, kv => (kv.Value.resolved, kv.Value.total)),
+            take,
+            ct));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("healing/process-sessions/targets/{year:int}/{quarter:int}")]
+    public Task<IActionResult> UpsertProcessSessionsTarget([FromRoute] int year, [FromRoute] int quarter, [FromBody] double targetRate, CancellationToken ct)
+        => UpsertTargetValue(ProcessSessionsProgressMetricKey, year, quarter, targetRate, ct);
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("caring/home-visits/targets/{year:int}/{quarter:int}")]
+    public Task<IActionResult> UpsertHomeVisitsCleanRateTarget([FromRoute] int year, [FromRoute] int quarter, [FromBody] double targetRate, CancellationToken ct)
+        => UpsertTargetValue(HomeVisitsCleanRateMetricKey, year, quarter, targetRate, ct);
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("healing/incidents/targets/{year:int}/{quarter:int}")]
+    public Task<IActionResult> UpsertIncidentsResolutionTarget([FromRoute] int year, [FromRoute] int quarter, [FromBody] double targetRate, CancellationToken ct)
+        => UpsertTargetValue(IncidentsResolutionMetricKey, year, quarter, targetRate, ct);
+
+    /// <summary>Sets a quarterly target (0..1) for any supported OKR metric.</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPut("targets")]
+    public Task<IActionResult> UpsertTarget([FromBody] OkrTargetUpsertRequest body, CancellationToken ct)
+    {
+        if (body is null || string.IsNullOrWhiteSpace(body.MetricKey))
+            return Task.FromResult<IActionResult>(BadRequest("metricKey is required."));
+        if (!SupportedMetricKeys.Contains(body.MetricKey.Trim()))
+            return Task.FromResult<IActionResult>(BadRequest("Unsupported metricKey."));
+        return UpsertTargetValue(body.MetricKey.Trim(), body.Year, body.Quarter, body.TargetValue, ct);
+    }
+
+    private async Task<IActionResult> UpsertTargetValue(string metricKey, int year, int quarter, double targetValue, CancellationToken ct)
     {
         if (quarter is < 1 or > 4) return BadRequest("Quarter must be 1-4.");
-        if (targetAttendanceRate is < 0 or > 1) return BadRequest("Target attendance rate must be between 0 and 1.");
+        if (targetValue is < 0 or > 1) return BadRequest("Target must be between 0 and 1.");
 
         var existing = await context.OkrTargets
-            .FirstOrDefaultAsync(t => t.MetricKey == EducationAttendanceMetricKey && t.Year == year && t.Quarter == quarter, ct);
+            .FirstOrDefaultAsync(t => t.MetricKey == metricKey && t.Year == year && t.Quarter == quarter, ct);
 
         if (existing is null)
         {
             context.OkrTargets.Add(new OkrTarget
             {
-                MetricKey = EducationAttendanceMetricKey,
+                MetricKey = metricKey,
                 Year = year,
                 Quarter = quarter,
-                TargetValue = targetAttendanceRate
+                TargetValue = targetValue
             });
         }
         else
         {
-            existing.TargetValue = targetAttendanceRate;
+            existing.TargetValue = targetValue;
         }
 
         await context.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    private async Task<object> BuildRateOkrResponseAsync(
+        string metricKey,
+        Dictionary<(int year, int quarter), (int numerator, int denominator)> groups,
+        int take,
+        CancellationToken ct)
+    {
+        var ordered = groups.Keys
+            .OrderByDescending(k => k.year)
+            .ThenByDescending(k => k.quarter)
+            .Take(take)
+            .ToList();
+
+        var targetRows = await context.OkrTargets.AsNoTracking()
+            .Where(t => t.MetricKey == metricKey)
+            .ToListAsync(ct);
+        var targetByPeriod = targetRows.ToDictionary(t => (t.Year, t.Quarter), t => t.TargetValue);
+
+        var items = ordered.Select(k =>
+        {
+            var g = groups[k];
+            double? rate = g.denominator > 0 ? (double)g.numerator / g.denominator : null;
+            var hasTarget = targetByPeriod.TryGetValue((k.year, k.quarter), out var tv);
+
+            return new
+            {
+                period = QuarterKey(k.year, k.quarter),
+                year = k.year,
+                quarter = k.quarter,
+                rate,
+                targetRate = hasTarget ? (double?)tv : null,
+                numerator = g.numerator,
+                denominator = g.denominator
+            };
+        }).ToList();
+
+        return new
+        {
+            metricKey,
+            generatedAtUtc = DateTime.UtcNow,
+            items
+        };
     }
 }
 
