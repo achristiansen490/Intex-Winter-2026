@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.donations', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) EXEC('SET IDENTITY_INSERT dbo.donations ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) SET IDENTITY_INSERT dbo.donations ON;
   INSERT INTO dbo.[donations] ([donation_id], [supporter_id], [donation_type], [donation_date], [is_recurring], [campaign_name], [channel_source], [currency_code], [amount], [estimated_value], [impact_unit], [notes], [referral_post_id]) VALUES
 (1, 42, N'Monetary', N'2025-12-31', 0, NULL, N'Campaign', N'PHP', 717.18, 717.18, N'pesos', N'In support of safehouse operations', NULL),
 (2, 25, N'Time', N'2025-12-02', 1, N'Year-End Hope', N'Event', NULL, NULL, 35.15, N'hours', N'Community outreach support', NULL),
@@ -395,6 +395,6 @@ BEGIN
 (388, 41, N'InKind', N'2023-10-15', 0, NULL, N'Event', NULL, NULL, 511.42, N'items', N'Recurring gift', NULL),
 (389, 20, N'InKind', N'2023-11-05', 1, N'GivingTuesday', N'Campaign', NULL, NULL, 300.0, N'items', N'Community outreach support', NULL),
 (390, 7, N'Monetary', N'2025-02-04', 1, NULL, N'Event', N'PHP', 361.97, 361.97, N'pesos', N'In support of safehouse operations', NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) EXEC('SET IDENTITY_INSERT dbo.donations OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) SET IDENTITY_INSERT dbo.donations OFF;
 END
 COMMIT;

@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.audit_log', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.audit_log')) EXEC('SET IDENTITY_INSERT dbo.audit_log ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.audit_log')) SET IDENTITY_INSERT dbo.audit_log ON;
   INSERT INTO dbo.[audit_log] ([audit_id], [user_id], [action], [resource], [record_id], [old_value], [new_value], [requires_approval], [approval_status], [approved_by], [approved_at], [ip_address], [timestamp], [notes]) VALUES
 (1, 1, N'UPDATE', N'users', 20, N'{"is_approved": false}', N'{"is_approved": true}', 0, N'N/A', NULL, NULL, N'192.168.1.26', N'2022-06-02 06:33:10', N'Contracted staff account approved by admin'),
 (2, 1, N'UPDATE', N'users', 17, N'{"is_approved": false}', N'{"is_approved": true}', 0, N'N/A', NULL, NULL, N'192.168.1.132', N'2022-06-22 11:07:12', N'Contracted staff account approved by admin'),
@@ -295,6 +295,6 @@ BEGIN
 (288, 7, N'LOGIN', N'auth', NULL, NULL, NULL, NULL, NULL, NULL, NULL, N'127.0.0.1', N'2026-04-09T02:14:10.1303862Z', NULL),
 (289, 7, N'LOGOUT', N'auth', NULL, NULL, NULL, NULL, NULL, NULL, NULL, N'127.0.0.1', N'2026-04-09T02:15:27.7172577Z', NULL),
 (290, 1, N'LOGIN', N'auth', NULL, NULL, NULL, NULL, NULL, NULL, NULL, N'127.0.0.1', N'2026-04-09T03:27:00.9453789Z', NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.audit_log')) EXEC('SET IDENTITY_INSERT dbo.audit_log OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.audit_log')) SET IDENTITY_INSERT dbo.audit_log OFF;
 END
 COMMIT;

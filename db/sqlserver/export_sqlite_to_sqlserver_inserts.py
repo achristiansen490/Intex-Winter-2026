@@ -93,7 +93,7 @@ def write_table_inserts(
         f"IF OBJECT_ID(N'dbo.{table}', N'U') IS NOT NULL\nBEGIN\n"
         "  IF EXISTS (SELECT 1 FROM sys.identity_columns "
         f"WHERE object_id = OBJECT_ID(N'dbo.{table}')) "
-        f"EXEC('SET IDENTITY_INSERT dbo.{table} ON');\n"
+        f"SET IDENTITY_INSERT dbo.{table} ON;\n"
     )
 
     batch: list[str] = []
@@ -116,7 +116,7 @@ def write_table_inserts(
     out.write(
         "  IF EXISTS (SELECT 1 FROM sys.identity_columns "
         f"WHERE object_id = OBJECT_ID(N'dbo.{table}')) "
-        f"EXEC('SET IDENTITY_INSERT dbo.{table} OFF');\n"
+        f"SET IDENTITY_INSERT dbo.{table} OFF;\n"
     )
     out.write("END\n")
 
@@ -272,7 +272,7 @@ def _write_split(conn: sqlite3.Connection, out_dir: Path, batch_size: int) -> No
                     f"IF OBJECT_ID(N'dbo.{table}', N'U') IS NOT NULL\nBEGIN\n"
                     "  IF EXISTS (SELECT 1 FROM sys.identity_columns "
                     f"WHERE object_id = OBJECT_ID(N'dbo.{table}')) "
-                    f"EXEC('SET IDENTITY_INSERT dbo.{table} ON');\n"
+                    f"SET IDENTITY_INSERT dbo.{table} ON;\n"
                 )
                 # Write in sub-batches of batch_size rows
                 for i in range(0, len(chunk), batch_size):
@@ -283,7 +283,7 @@ def _write_split(conn: sqlite3.Connection, out_dir: Path, batch_size: int) -> No
                 f.write(
                     "  IF EXISTS (SELECT 1 FROM sys.identity_columns "
                     f"WHERE object_id = OBJECT_ID(N'dbo.{table}')) "
-                    f"EXEC('SET IDENTITY_INSERT dbo.{table} OFF');\n"
+                    f"SET IDENTITY_INSERT dbo.{table} OFF;\n"
                     "END\n"
                 )
                 f.write("COMMIT;\n")

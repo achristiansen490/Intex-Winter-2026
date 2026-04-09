@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.safehouses', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouses')) EXEC('SET IDENTITY_INSERT dbo.safehouses ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouses')) SET IDENTITY_INSERT dbo.safehouses ON;
   INSERT INTO dbo.[safehouses] ([safehouse_id], [safehouse_code], [name], [region], [city], [province], [country], [open_date], [status], [capacity_girls], [capacity_staff], [current_occupancy], [notes]) VALUES
 (1, N'SH01', N'Lighthouse Safehouse 1', N'Luzon', N'Quezon City', N'Metro Manila', N'Philippines', N'2022-01-01', N'Active', 8, 4, 8, NULL),
 (2, N'SH02', N'Lighthouse Safehouse 2', N'Visayas', N'Cebu City', N'Cebu', N'Philippines', N'2022-02-15', N'Active', 10, 5, 8, NULL),
@@ -15,6 +15,6 @@ BEGIN
 (8, N'SH08', N'Lighthouse Safehouse 8', N'Visayas', N'Tacloban', N'Leyte', N'Philippines', N'2022-11-12', N'Active', 9, 7, 7, NULL),
 (9, N'SH09', N'Lighthouse Safehouse 9', N'Mindanao', N'General Santos', N'South Cotabato', N'Philippines', N'2022-12-27', N'Active', 6, 3, 6, NULL),
 (10, N'SH10', N'Lighthouse Safehouse 10', N'Luzon', N'Manila', N'Metro Manila', N'Philippines', N'2023-01-15', N'Active', 10, 4, 9, NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouses')) EXEC('SET IDENTITY_INSERT dbo.safehouses OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouses')) SET IDENTITY_INSERT dbo.safehouses OFF;
 END
 COMMIT;

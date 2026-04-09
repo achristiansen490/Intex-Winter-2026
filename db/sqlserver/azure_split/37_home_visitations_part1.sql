@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.home_visitations', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) EXEC('SET IDENTITY_INSERT dbo.home_visitations ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) SET IDENTITY_INSERT dbo.home_visitations ON;
   INSERT INTO dbo.[home_visitations] ([visitation_id], [resident_id], [visit_date], [social_worker], [visit_type], [location_visited], [family_members_present], [purpose], [observations], [family_cooperation_level], [safety_concerns_noted], [follow_up_needed], [follow_up_notes], [visit_outcome]) VALUES
 (1, 1, N'2023-11-02', N'SW-04', N'Routine Follow-Up', N'Proposed Foster Home', N'Lopez (Parent); Diaz (Sibling)', N'Visitation for routine follow-up', N'Visit observations recorded during routine follow-up.', N'Neutral', 1, 0, N'Follow-up scheduled', N'Favorable'),
 (2, 1, N'2023-11-22', N'SW-12', N'Routine Follow-Up', N'Church', N'Mendoza (Parent); Mendoza (Sibling)', N'Visitation for routine follow-up', N'Visit observations recorded during routine follow-up.', N'Neutral', 0, 0, NULL, N'Favorable'),
@@ -196,6 +196,6 @@ BEGIN
 (189, 7, N'2025-07-06', N'SW-08', N'Reintegration Assessment', N'Community Center', N'Flores (Parent); Garcia (Sibling)', N'Visitation for reintegration assessment', N'Visit observations recorded during reintegration assessment.', N'Highly Cooperative', 1, 0, N'Follow-up scheduled', N'Favorable'),
 (190, 7, N'2025-07-25', N'SW-16', N'Reintegration Assessment', N'Barangay Office', N'Santos (Parent); Garcia (Sibling)', N'Visitation for reintegration assessment', N'Visit observations recorded during reintegration assessment.', N'Cooperative', 0, 0, N'Follow-up scheduled', N'Inconclusive'),
 (191, 7, N'2025-08-13', N'SW-19', N'Routine Follow-Up', N'Family Home', N'Flores (Parent); Torres (Sibling)', N'Visitation for routine follow-up', N'Visit observations recorded during routine follow-up.', N'Highly Cooperative', 0, 0, N'Follow-up scheduled', N'Favorable');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) EXEC('SET IDENTITY_INSERT dbo.home_visitations OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) SET IDENTITY_INSERT dbo.home_visitations OFF;
 END
 COMMIT;

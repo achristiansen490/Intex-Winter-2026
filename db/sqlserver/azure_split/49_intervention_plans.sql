@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.intervention_plans', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.intervention_plans')) EXEC('SET IDENTITY_INSERT dbo.intervention_plans ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.intervention_plans')) SET IDENTITY_INSERT dbo.intervention_plans ON;
   INSERT INTO dbo.[intervention_plans] ([plan_id], [resident_id], [plan_category], [plan_description], [services_provided], [target_value], [target_date], [status], [case_conference_date], [created_at], [updated_at]) VALUES
 (1, 1, N'Safety', N'Maintain a stable and safe environment', N'Healing, Legal Services, Teaching', 4.2, N'2024-02-01', N'On Hold', N'2023-11-01', N'2023-10-01 00:00:00', N'2024-03-01 00:00:00'),
 (2, 1, N'Education', N'Improve participation and course completion', N'Caring, Legal Services, Healing', 0.85, N'2024-02-01', N'In Progress', N'2024-01-30', N'2023-10-01 00:00:00', N'2024-03-01 00:00:00'),
@@ -185,6 +185,6 @@ BEGIN
 (178, 60, N'Safety', N'Maintain a stable and safe environment', N'Teaching', 4.2, N'2024-05-01', N'Open', NULL, N'2024-01-01 00:00:00', N'2024-06-01 00:00:00'),
 (179, 60, N'Education', N'Improve participation and course completion', N'Teaching, Legal Services, Caring', 0.85, N'2024-05-01', N'In Progress', N'2024-02-03', N'2024-01-01 00:00:00', N'2024-06-01 00:00:00'),
 (180, 60, N'Physical Health', N'Improve nutrition and overall wellbeing', N'Teaching, Legal Services, Healing', 4.2, N'2024-05-01', N'Achieved', NULL, N'2024-01-01 00:00:00', N'2024-06-01 00:00:00');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.intervention_plans')) EXEC('SET IDENTITY_INSERT dbo.intervention_plans OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.intervention_plans')) SET IDENTITY_INSERT dbo.intervention_plans OFF;
 END
 COMMIT;

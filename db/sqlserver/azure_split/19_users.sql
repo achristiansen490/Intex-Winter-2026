@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.users', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.users')) EXEC('SET IDENTITY_INSERT dbo.users ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.users')) SET IDENTITY_INSERT dbo.users ON;
   INSERT INTO dbo.[users] ([user_id], [user_type], [staff_id], [resident_id], [supporter_id], [username], [email], [password_hash], [role], [is_active], [is_approved], [approved_by], [approved_at], [last_login], [failed_login_attempts], [locked_until], [mfa_enabled], [mfa_secret], [password_reset_token], [password_reset_expires], [reset_initiated_by], [created_by], [created_at], [updated_at]) VALUES
 (1, N'staff', 1, NULL, NULL, N'elena.santos', N'elena.santos@lighthouseph.org', N'$2b$12$examplehashedpasswordplaceholder', N'Social Worker', 1, 1, 1, N'2023-02-18 00:00:00', N'2026-01-25 00:00:00', 0, NULL, 0, NULL, NULL, NULL, NULL, 1, N'2023-02-18 00:00:00', N'2026-04-06 00:00:00'),
 (2, N'staff', 2, NULL, NULL, N'fatima.cruz', N'fatima.cruz@lighthouseph.org', N'$2b$12$examplehashedpasswordplaceholder', N'Social Worker', 1, 1, 1, N'2022-07-24 00:00:00', N'2026-09-06 00:00:00', 0, NULL, 0, NULL, NULL, NULL, NULL, 1, N'2022-07-24 00:00:00', N'2026-04-06 00:00:00'),
@@ -145,6 +145,6 @@ BEGIN
 (138, N'donor', NULL, NULL, 58, N'rico.iglesias', N'rico-iglesias@smart.com.ph', N'$2b$12$examplehashedpasswordplaceholder', N'Donor', 0, 1, 1, N'2022-10-13 00:00:00', N'2026-05-29 00:00:00', 0, NULL, 0, NULL, NULL, NULL, NULL, 1, N'2022-10-13 00:00:00', N'2026-04-06 00:00:00'),
 (139, N'donor', NULL, NULL, 59, N'lea.jain', N'lea-jain@pldt.net.ph', N'$2b$12$examplehashedpasswordplaceholder', N'Donor', 0, 1, 1, N'2022-10-18 00:00:00', N'2025-10-22 00:00:00', 0, NULL, 0, NULL, NULL, NULL, NULL, 1, N'2022-10-18 00:00:00', N'2026-04-06 00:00:00'),
 (140, N'donor', NULL, NULL, 60, N'tess.khan', N'tess-khan@smart.com.ph', N'$2b$12$examplehashedpasswordplaceholder', N'Donor', 0, 1, 1, N'2022-10-23 00:00:00', N'2025-01-12 00:00:00', 0, NULL, 0, NULL, NULL, NULL, NULL, 1, N'2022-10-23 00:00:00', N'2026-04-06 00:00:00');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.users')) EXEC('SET IDENTITY_INSERT dbo.users OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.users')) SET IDENTITY_INSERT dbo.users OFF;
 END
 COMMIT;

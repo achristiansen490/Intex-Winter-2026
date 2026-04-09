@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.incident_reports', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.incident_reports')) EXEC('SET IDENTITY_INSERT dbo.incident_reports ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.incident_reports')) SET IDENTITY_INSERT dbo.incident_reports ON;
   INSERT INTO dbo.[incident_reports] ([incident_id], [resident_id], [safehouse_id], [incident_date], [incident_type], [severity], [description], [response_taken], [resolved], [resolution_date], [reported_by], [follow_up_required]) VALUES
 (1, 1, 4, N'2024-06-22', N'Medical', N'Medium', N'Medical incident reported on 2024-06-22', N'Response to medical', 1, N'2024-07-01', N'SW-19', 0),
 (2, 1, 4, N'2026-02-10', N'Security', N'High', N'Security incident reported on 2026-02-10', N'Response to security', 0, NULL, N'SW-20', 1),
@@ -105,6 +105,6 @@ BEGIN
 (98, 58, 8, N'2026-04-09', N'Security', N'Medium', N'Security incident reported on 2026-04-09', N'Response to security', 1, N'2026-04-17', N'SW-09', 0),
 (99, 58, 8, N'2025-07-26', N'Behavioral', N'Medium', N'Behavioral incident reported on 2025-07-26', N'Response to behavioral', 1, N'2025-08-09', N'SW-17', 0),
 (100, 59, 3, N'2023-12-26', N'RunawayAttempt', N'Low', N'RunawayAttempt incident reported on 2023-12-26', N'Response to runawayattempt', 1, N'2024-01-06', N'SW-03', 0);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.incident_reports')) EXEC('SET IDENTITY_INSERT dbo.incident_reports OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.incident_reports')) SET IDENTITY_INSERT dbo.incident_reports OFF;
 END
 COMMIT;

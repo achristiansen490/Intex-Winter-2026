@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.safehouse_monthly_metrics', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouse_monthly_metrics')) EXEC('SET IDENTITY_INSERT dbo.safehouse_monthly_metrics ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouse_monthly_metrics')) SET IDENTITY_INSERT dbo.safehouse_monthly_metrics ON;
   INSERT INTO dbo.[safehouse_monthly_metrics] ([metric_id], [safehouse_id], [month_start], [month_end], [active_residents], [avg_education_progress], [avg_health_score], [process_recording_count], [home_visitation_count], [incident_count], [notes]) VALUES
 (1, 1, N'2023-01-01', N'2023-01-31', 10, NULL, NULL, 0, 0, 0, NULL),
 (2, 1, N'2023-02-01', N'2023-02-28', 10, NULL, NULL, 0, 0, 0, NULL),
@@ -455,6 +455,6 @@ BEGIN
 (448, 9, N'2026-12-01', N'2026-12-31', 2, NULL, NULL, 0, 0, 0, NULL),
 (449, 9, N'2027-01-01', N'2027-01-31', 2, NULL, NULL, 0, 0, 0, NULL),
 (450, 9, N'2027-02-01', N'2027-02-28', 2, NULL, NULL, 0, 0, 0, NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouse_monthly_metrics')) EXEC('SET IDENTITY_INSERT dbo.safehouse_monthly_metrics OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.safehouse_monthly_metrics')) SET IDENTITY_INSERT dbo.safehouse_monthly_metrics OFF;
 END
 COMMIT;

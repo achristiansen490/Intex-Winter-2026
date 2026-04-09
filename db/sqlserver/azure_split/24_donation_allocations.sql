@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.donation_allocations', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donation_allocations')) EXEC('SET IDENTITY_INSERT dbo.donation_allocations ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donation_allocations')) SET IDENTITY_INSERT dbo.donation_allocations ON;
   INSERT INTO dbo.[donation_allocations] ([allocation_id], [donation_id], [safehouse_id], [program_area], [amount_allocated], [allocation_date], [allocation_notes]) VALUES
 (1, 1, 2, N'Education', 717.18, N'2025-12-31', NULL),
 (2, 2, 4, N'Transport', 35.15, N'2025-12-02', NULL),
@@ -527,6 +527,6 @@ BEGIN
 (519, 419, 9, N'Operations', 440.59, N'2024-10-29', NULL),
 (520, 420, 7, N'Maintenance', 150.0, N'2025-12-09', NULL),
 (521, 420, 7, N'Transport', 150.0, N'2025-12-09', NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donation_allocations')) EXEC('SET IDENTITY_INSERT dbo.donation_allocations OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donation_allocations')) SET IDENTITY_INSERT dbo.donation_allocations OFF;
 END
 COMMIT;

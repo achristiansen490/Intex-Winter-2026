@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.roles_permissions', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.roles_permissions')) EXEC('SET IDENTITY_INSERT dbo.roles_permissions ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.roles_permissions')) SET IDENTITY_INSERT dbo.roles_permissions ON;
   INSERT INTO dbo.[roles_permissions] ([permission_id], [role], [resource], [action], [is_allowed], [scope_note]) VALUES
 (1, N'Admin', N'residents', N'view', 1, NULL),
 (2, N'Admin', N'residents', N'create', 1, NULL),
@@ -397,6 +397,6 @@ BEGIN
 (390, N'Donor', N'organization', N'create', 0, NULL),
 (391, N'Donor', N'organization', N'edit', 0, NULL),
 (392, N'Donor', N'organization', N'delete', 0, NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.roles_permissions')) EXEC('SET IDENTITY_INSERT dbo.roles_permissions OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.roles_permissions')) SET IDENTITY_INSERT dbo.roles_permissions OFF;
 END
 COMMIT;
