@@ -84,10 +84,28 @@ jobs:
           ConnectionStrings__AzureSqlConnection: ${{ env.AZURE_SQL_CONNECTION_STRING }}
           Database__Provider: sqlserver
         run: |
-          dotnet ef database update \
-            --project Backend/HirayaHaven.Api/HirayaHaven.Api.csproj \
-            --startup-project Backend/HirayaHaven.Api/HirayaHaven.Api.csproj \
-            --context HirayaSqlServerContext
+          max_attempts=8
+          attempt=1
+          until [ $attempt -gt $max_attempts ]
+          do
+            echo "Applying migrations (attempt $attempt/$max_attempts)..."
+            if dotnet ef database update \
+              --project Backend/HirayaHaven.Api/HirayaHaven.Api.csproj \
+              --startup-project Backend/HirayaHaven.Api/HirayaHaven.Api.csproj \
+              --context HirayaSqlServerContext; then
+              echo "Migrations applied successfully."
+              break
+            fi
+
+            if [ $attempt -eq $max_attempts ]; then
+              echo "Migration failed after $max_attempts attempts."
+              exit 1
+            fi
+
+            echo "Migration attempt failed, waiting 20s before retry..."
+            sleep 20
+            attempt=$((attempt + 1))
+          done
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
