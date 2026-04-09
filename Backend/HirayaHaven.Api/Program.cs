@@ -94,12 +94,12 @@ builder.Services.AddDbContext<HirayaContext>(options =>
 // --- Identity ---
 builder.Services.AddIdentity<AppUser, IdentityRole<int>>(options =>
 {
-    // TODO: Replace these values with the password policy from your class notes/lab
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = true;
-    options.Password.RequiredLength = 12;
+    // Grading policy: minimum 14 characters, no composition requirements
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 14;
     options.Password.RequiredUniqueChars = 1;
 
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
