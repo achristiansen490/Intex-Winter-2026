@@ -5,6 +5,7 @@ import MonthlyLineChart from '../components/charts/MonthlyLineChart';
 import CampaignBarChart from '../components/charts/CampaignBarChart';
 import { apiUrl } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
+import { displayImpactHeadline } from '../lib/impactHeadline';
 import './ImpactPage.css';
 
 const c = {
@@ -205,10 +206,10 @@ export default function ImpactPage() {
     ];
   }, [series?.programAllocationMix, overview?.totalMonetaryAmount]);
 
-  const displayHeadline = useMemo(() => {
-    const headline = latestSnapshot?.headline ?? 'Impact update';
-    return headline.replace('Lighthouse Sanctuary', 'Hiraya Haven');
-  }, [latestSnapshot?.headline]);
+  const displayHeadline = useMemo(
+    () => displayImpactHeadline(latestSnapshot?.headline),
+    [latestSnapshot?.headline],
+  );
 
   return (
     <>
