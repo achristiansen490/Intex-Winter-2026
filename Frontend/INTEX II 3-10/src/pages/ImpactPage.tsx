@@ -1,8 +1,10 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NavBar } from '../components/NavBar';
 import { Logo } from '../components/Logo';
 import MonthlyLineChart from '../components/charts/MonthlyLineChart';
 import CampaignBarChart from '../components/charts/CampaignBarChart';
+import { apiUrl } from '../lib/api';
 
 const c = {
   ivory: '#FBF8F2',
@@ -15,29 +17,90 @@ const c = {
   muted: '#7A786F',
 };
 
-const monthlyImpact = [
-  { month: 'Jan', total: 138000 },
-  { month: 'Feb', total: 152500 },
-  { month: 'Mar', total: 165200 },
-  { month: 'Apr', total: 174800 },
-  { month: 'May', total: 189300 },
-  { month: 'Jun', total: 201700 },
-];
+type PublicImpactSnapshot = {
+  snapshotId: number;
+  snapshotDate: string | null;
+  headline: string | null;
+  summaryText: string | null;
+  metricPayloadJson: string | null;
+  isPublished: boolean | null;
+  publishedAt: string | null;
+};
 
-const supportPrograms = [
-  { name: 'Safehouse Care', total: 320000 },
-  { name: 'Education', total: 185000 },
-  { name: 'Counseling', total: 142000 },
-  { name: 'Reintegration', total: 97000 },
-];
+type Overview = {
+  safehouseCount?: number;
+  activeResidentCount?: number;
+  partnerCount?: number;
+  totalMonetaryAmount?: number;
+};
 
-const topStats = [
-  ['312', 'Girls served this year'],
-  ['12', 'Partner communities'],
-  ['94%', 'Stayed in school'],
-];
+function safeJsonParse(raw: string | null | undefined): unknown {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as unknown; } catch { return null; }
+}
 
 export default function ImpactPage() {
+  const [snapshots, setSnapshots] = useState<PublicImpactSnapshot[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [snaps, ov] = await Promise.allSettled([
+        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => (r.ok ? r.json() : [])),
+        fetch(apiUrl('/api/dashboard/overview')).then(r => (r.ok ? r.json() : null)),
+      ]);
+      const nextSnaps = snaps.status === 'fulfilled' && Array.isArray(snaps.value) ? snaps.value as PublicImpactSnapshot[] : [];
+      const nextOv = ov.status === 'fulfilled' && ov.value && typeof ov.value === 'object' ? ov.value as Overview : null;
+      setSnapshots(nextSnaps);
+      setOverview(nextOv);
+    } catch {
+      setError('Failed to load impact data.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const latestSnapshot = snapshots.length ? snapshots[0] : null;
+  const payload = useMemo(() => safeJsonParse(latestSnapshot?.metricPayloadJson), [latestSnapshot?.metricPayloadJson]);
+
+  const topStats = useMemo(() => {
+    const p = payload as any;
+    const a = p?.topStats;
+    if (Array.isArray(a) && a.every((x: any) => Array.isArray(x) && x.length >= 2)) {
+      return a.slice(0, 3) as [string, string][];
+    }
+
+    const girlsServed = p?.stats?.girlsServedThisYear ?? p?.girlsServedThisYear ?? overview?.activeResidentCount ?? '—';
+    const partners = p?.stats?.partnerCommunities ?? p?.partnerCommunities ?? overview?.partnerCount ?? '—';
+    const stayed = p?.stats?.stayedInSchoolRate ?? p?.stayedInSchoolRate ?? null;
+    const stayedLabel = stayed != null ? `${Math.round(Number(stayed) * 100)}%` : '—';
+    return [
+      [String(girlsServed), 'Girls served this year'],
+      [String(partners), 'Partner communities'],
+      [String(stayedLabel), 'Stayed in school'],
+    ] as [string, string][];
+  }, [overview?.activeResidentCount, overview?.partnerCount, payload]);
+
+  const monthlyImpact = useMemo(() => {
+    const p = payload as any;
+    const arr = p?.monthlyImpact;
+    if (Array.isArray(arr)) return arr as { month: string; total: number }[];
+    // Fallback: show empty chart if snapshot didn't include series.
+    return [] as { month: string; total: number }[];
+  }, [payload]);
+
+  const supportPrograms = useMemo(() => {
+    const p = payload as any;
+    const arr = p?.supportPrograms;
+    if (Array.isArray(arr)) return arr as { name: string; total: number }[];
+    return [] as { name: string; total: number }[];
+  }, [payload]);
+
   return (
     <>
       <NavBar />
@@ -62,10 +125,18 @@ export default function ImpactPage() {
             Every gift helps rebuild futures.
           </h1>
           <p style={{ maxWidth: 720, color: c.muted, lineHeight: 1.75, margin: 0 }}>
-            This page shares sample impact highlights from our programs. Values are
-            illustrative for demo purposes so visitors can quickly understand the
-            kind of outcomes support makes possible.
+            This page highlights our latest published impact snapshot and high-level operational totals.
           </p>
+          {error && (
+            <p style={{ maxWidth: 720, color: '#C4867A', lineHeight: 1.6, margin: '0.75rem 0 0' }}>
+              {error}
+            </p>
+          )}
+          {!loading && !latestSnapshot && (
+            <p style={{ maxWidth: 720, color: c.muted, lineHeight: 1.6, margin: '0.75rem 0 0' }}>
+              No published impact snapshots yet. An admin can publish one via the Impact Snapshots table.
+            </p>
+          )}
         </section>
 
         <section
@@ -127,7 +198,13 @@ export default function ImpactPage() {
               >
                 Monthly support trend
               </h2>
-              <MonthlyLineChart data={monthlyImpact} />
+              {monthlyImpact.length > 0 ? (
+                <MonthlyLineChart data={monthlyImpact} />
+              ) : (
+                <p style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>
+                  No monthly series in the latest snapshot.
+                </p>
+              )}
             </article>
 
             <article
@@ -148,10 +225,34 @@ export default function ImpactPage() {
               >
                 Program allocation mix
               </h2>
-              <CampaignBarChart data={supportPrograms} />
+              {supportPrograms.length > 0 ? (
+                <CampaignBarChart data={supportPrograms} />
+              ) : (
+                <p style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>
+                  No program mix series in the latest snapshot.
+                </p>
+              )}
             </article>
           </div>
         </section>
+
+        {!loading && latestSnapshot && (
+          <section style={{ padding: '0 2.5rem 2.5rem' }}>
+            <article style={{ background: '#fff', border: '0.5px solid rgba(44,43,40,0.12)', borderRadius: 14, padding: '1.25rem 1.25rem' }}>
+              <h2 style={{ margin: 0, fontFamily: 'Georgia, serif', fontWeight: 400, color: c.forest }}>
+                {latestSnapshot.headline ?? 'Impact update'}
+              </h2>
+              {latestSnapshot.summaryText && (
+                <p style={{ margin: '0.6rem 0 0', color: c.text, lineHeight: 1.7 }}>
+                  {latestSnapshot.summaryText}
+                </p>
+              )}
+              <p style={{ margin: '0.75rem 0 0', color: c.muted, fontSize: 12 }}>
+                {latestSnapshot.snapshotDate ? new Date(latestSnapshot.snapshotDate).toLocaleDateString() : '—'}
+              </p>
+            </article>
+          </section>
+        )}
 
         <section
           style={{
@@ -231,7 +332,7 @@ export default function ImpactPage() {
               </ul>
             </nav>
             <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>
-              Demo metrics for public storytelling.
+              Published impact snapshots are sourced from the live system.
             </p>
           </div>
         </footer>
