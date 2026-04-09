@@ -1267,7 +1267,29 @@ type EngagementVsVanitySummary = {
   segments: { segment: string; postCount: number }[];
 };
 
+type AnnualAccomplishmentReport = {
+  year: number;
+  generatedAtUtc: string;
+  beneficiaries: { residentBeneficiaries: number; activeResidentsNow: number };
+  outcomes: {
+    reintegrationReadyNow: number;
+    progressSessionRate: number;
+    safetyConcernVisitRate: number;
+    incidentResolvedRate: number;
+    stayedInSchoolRate: number;
+    avgEducationProgressPercent: number;
+    avgGeneralHealthScore: number;
+  };
+  services: {
+    caring: { homeVisits: number; interventionPlans: number; visitsWithSafetyConcern: number };
+    healing: { processSessions: number; sessionsWithProgress: number; healthRecords: number; incidentReports: number; resolvedIncidents: number };
+    teaching: { educationRecords: number; enrolledCount: number };
+  };
+};
+
 function AdminReports() {
+  const [annual, setAnnual] = useState<AnnualAccomplishmentReport | null>(null);
+  const [annualYear, setAnnualYear] = useState<number>(new Date().getFullYear());
   const [bridge, setBridge] = useState<InsightBridgeRow[]>([]);
   const [campaigns, setCampaigns] = useState<InsightDonationByCampaignRow[]>([]);
   const [evSummary, setEvSummary] = useState<EngagementVsVanitySummary | null>(null);
@@ -1279,28 +1301,34 @@ function AdminReports() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [bridgeRes, campaignRes, evRes] = await Promise.allSettled([
+      const [annualRes, bridgeRes, campaignRes, evRes] = await Promise.allSettled([
+        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then(async (r) => (r.ok ? r.json() : null)),
         api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(async (r) => (r.ok ? r.json() : [])),
         api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(async (r) => (r.ok ? r.json() : [])),
         api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
       ]);
 
+      const nextAnnual =
+        annualRes.status === 'fulfilled' && annualRes.value && typeof annualRes.value === 'object' && 'services' in annualRes.value
+          ? (annualRes.value as AnnualAccomplishmentReport)
+          : null;
       const nextBridge = bridgeRes.status === 'fulfilled' && Array.isArray(bridgeRes.value) ? bridgeRes.value : [];
       const nextCampaigns = campaignRes.status === 'fulfilled' && Array.isArray(campaignRes.value) ? campaignRes.value : [];
       const nextEv = evRes.status === 'fulfilled' && evRes.value && typeof evRes.value === 'object' && 'segments' in evRes.value
         ? evRes.value as EngagementVsVanitySummary
         : null;
 
+      setAnnual(nextAnnual);
       setBridge(nextBridge);
       setCampaigns(nextCampaigns);
       setEvSummary(nextEv);
 
-      if (nextBridge.length === 0 && nextCampaigns.length === 0 && !nextEv) {
+      if (!nextAnnual && nextBridge.length === 0 && nextCampaigns.length === 0 && !nextEv) {
         setError('Failed to load reports.');
       }
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
-  }, [bridgeTake, campaignTake]);
+  }, [annualYear, bridgeTake, campaignTake]);
 
   useEffect(() => { load(); }, [load]);
   if (loading) return <Loading />;
@@ -1315,6 +1343,81 @@ function AdminReports() {
   }));
   return (
     <div>
+      <SectionTitle>Annual Accomplishment Report</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Caring, Healing, and Teaching services + beneficiary counts + outcomes.
+      </p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Year:
+          <select value={annualYear} onChange={(e) => setAnnualYear(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </label>
+        {annual?.generatedAtUtc && (
+          <span style={{ fontSize: 12, color: c.muted }}>Generated: {new Date(annual.generatedAtUtc).toLocaleString()}</span>
+        )}
+      </div>
+
+      {annual ? (
+        <>
+          <SectionTitle>Beneficiaries</SectionTitle>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
+            <StatCard label="Residents served (unique)" value={annual.beneficiaries.residentBeneficiaries ?? '—'} accent={c.goldLight} />
+            <StatCard label="Active residents (current)" value={annual.beneficiaries.activeResidentsNow ?? '—'} />
+          </div>
+
+          <SectionTitle>Services</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 18 }}>
+            <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: c.forest }}>Caring</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: c.muted }}>Safety, stability, and continuity of care.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+                <StatCard label="Home visits" value={annual.services.caring.homeVisits} />
+                <StatCard label="Intervention plans" value={annual.services.caring.interventionPlans} />
+                <StatCard label="Safety concerns" value={annual.services.caring.visitsWithSafetyConcern} accent={c.roseLight} />
+              </div>
+            </div>
+            <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: c.forest }}>Healing</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: c.muted }}>Counseling, wellbeing checks, and incident response.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+                <StatCard label="Process sessions" value={annual.services.healing.processSessions} />
+                <StatCard label="Progress noted" value={annual.services.healing.sessionsWithProgress} accent={c.goldLight} />
+                <StatCard label="Health records" value={annual.services.healing.healthRecords} />
+                <StatCard label="Incidents" value={annual.services.healing.incidentReports} accent={c.roseLight} />
+              </div>
+            </div>
+            <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: c.forest }}>Teaching</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: c.muted }}>Education support and learning progress.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+                <StatCard label="Education records" value={annual.services.teaching.educationRecords} />
+                <StatCard label="Enrolled records" value={annual.services.teaching.enrolledCount} accent={c.sageLight} />
+              </div>
+            </div>
+          </div>
+
+          <SectionTitle>Outcomes</SectionTitle>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+            <StatCard label="Reintegration ready (current)" value={annual.outcomes.reintegrationReadyNow} accent={c.goldLight} />
+            <StatCard label="Progress session rate" value={`${Math.round((annual.outcomes.progressSessionRate ?? 0) * 100)}%`} />
+            <StatCard label="Safety concern visit rate" value={`${Math.round((annual.outcomes.safetyConcernVisitRate ?? 0) * 100)}%`} />
+            <StatCard label="Incident resolved rate" value={`${Math.round((annual.outcomes.incidentResolvedRate ?? 0) * 100)}%`} />
+            <StatCard label="Stayed in school rate" value={`${Math.round((annual.outcomes.stayedInSchoolRate ?? 0) * 100)}%`} />
+            <StatCard label="Avg education progress" value={`${Number(annual.outcomes.avgEducationProgressPercent ?? 0).toFixed(1)}%`} />
+            <StatCard label="Avg health score" value={Number(annual.outcomes.avgGeneralHealthScore ?? 0).toFixed(1)} />
+          </div>
+        </>
+      ) : (
+        <p style={{ fontSize: 12, color: c.muted, marginBottom: 18 }}>
+          Annual report data is unavailable for the selected year.
+        </p>
+      )}
+
       <SectionTitle>Reports (pipelines)</SectionTitle>
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
         Aggregate analytics for planning. Source: <code>/api/insights/*</code>
