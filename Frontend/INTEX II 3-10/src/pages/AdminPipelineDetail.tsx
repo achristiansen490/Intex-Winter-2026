@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AdminPageShell } from '../components/AdminPageShell';
+import { PipelineOutputView } from '../components/pipeline/PipelineOutputView';
 
 const c = {
   forest: '#2A4A35',
@@ -28,6 +29,7 @@ export default function AdminPipelineDetail() {
   const pipelineId = rawId ? decodeURIComponent(rawId) : '';
 
   const [meta, setMeta] = useState<RegistryItem | null>(null);
+  const [payload, setPayload] = useState<unknown>(null);
   const [jsonText, setJsonText] = useState('');
   const [status, setStatus] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,7 @@ export default function AdminPipelineDetail() {
     setLoading(true);
     setErr('');
     setJsonText('');
+    setPayload(null);
     try {
       const reg = await api('/api/admin/pipelines/registry').then((r) => r.json());
       const list = Array.isArray(reg) ? (reg as RegistryItem[]) : [];
@@ -55,9 +58,11 @@ export default function AdminPipelineDetail() {
       setStatus(res.status);
       const text = await res.text();
       try {
-        const parsed = JSON.parse(text);
+        const parsed = JSON.parse(text) as unknown;
+        setPayload(parsed);
         setJsonText(JSON.stringify(parsed, null, 2));
       } catch {
+        setPayload(null);
         setJsonText(text);
       }
       if (!res.ok) setErr(`API returned ${res.status}`);
@@ -152,22 +157,42 @@ export default function AdminPipelineDetail() {
           <p style={{ color: c.muted }}>Loading…</p>
         ) : (
           meta && (
-            <pre
-              style={{
-                background: '#1e1e1e',
-                color: '#d4d4d4',
-                padding: 16,
-                borderRadius: 8,
-                overflow: 'auto',
-                fontSize: 12,
-                lineHeight: 1.45,
-                maxHeight: 'min(70vh, 720px)',
-                border: `1px solid ${c.sageLight}`,
-              }}
-            >
-              {status != null && `/* HTTP ${status} */\n`}
-              {jsonText || '(empty)'}
-            </pre>
+            <>
+              {status != null && (
+                <p style={{ fontSize: 12, color: c.muted, marginBottom: 12 }}>
+                  HTTP {status} · Data from live API (same aggregates as staff/donor dashboards).
+                </p>
+              )}
+              <PipelineOutputView pipelineId={pipelineId} data={payload} />
+              <details style={{ marginTop: 20 }}>
+                <summary
+                  style={{
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: c.forest,
+                    marginBottom: 8,
+                  }}
+                >
+                  Raw JSON response
+                </summary>
+                <pre
+                  style={{
+                    background: '#1e1e1e',
+                    color: '#d4d4d4',
+                    padding: 16,
+                    borderRadius: 8,
+                    overflow: 'auto',
+                    fontSize: 11,
+                    lineHeight: 1.45,
+                    maxHeight: 'min(50vh, 480px)',
+                    border: `1px solid ${c.sageLight}`,
+                  }}
+                >
+                  {jsonText || '(empty)'}
+                </pre>
+              </details>
+            </>
           )
         )}
       </div>
