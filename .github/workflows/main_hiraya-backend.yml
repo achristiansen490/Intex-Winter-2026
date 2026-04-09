@@ -70,6 +70,14 @@ jobs:
           dotnet tool install --global dotnet-ef
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
+      - name: Restore backend project for migrations
+        if: ${{ env.AZURE_SQL_CONNECTION_STRING != '' }}
+        run: dotnet restore Backend/HirayaHaven.Api/HirayaHaven.Api.csproj
+
+      - name: Build backend project for migrations
+        if: ${{ env.AZURE_SQL_CONNECTION_STRING != '' }}
+        run: dotnet build Backend/HirayaHaven.Api/HirayaHaven.Api.csproj --configuration Release --no-restore
+
       - name: Apply SQL Server migrations
         if: ${{ env.AZURE_SQL_CONNECTION_STRING != '' }}
         env:
@@ -78,6 +86,7 @@ jobs:
         run: |
           dotnet ef database update \
             --project Backend/HirayaHaven.Api/HirayaHaven.Api.csproj \
+            --startup-project Backend/HirayaHaven.Api/HirayaHaven.Api.csproj \
             --context HirayaSqlServerContext
 
       - name: Deploy to Azure Web App
