@@ -1,6 +1,7 @@
 using System.Text;
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,11 +17,54 @@ builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
+builder.Services.AddHttpClient("PipelineTraining", client => client.Timeout = TimeSpan.FromMinutes(15));
+builder.Services.AddScoped<IPipelineTrainingService, PipelineTrainingService>();
+builder.Services.AddHostedService<PipelineScheduleHostedService>();
 
 var dbProvider = (builder.Configuration["Database:Provider"] ?? "sqlite").Trim().ToLowerInvariant();
 var sqliteConnection = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=../../Data/hiraya.db";
 var azureSqlConnection = builder.Configuration.GetConnectionString("AzureSqlConnection");
+
+string ResolveSqliteConnection(string configuredConnection, string contentRootPath)
+{
+    // Make local dev resilient when API is started from different working directories.
+    var csb = new SqliteConnectionStringBuilder(configuredConnection);
+    var configuredPath = csb.DataSource;
+    if (string.IsNullOrWhiteSpace(configuredPath))
+        return configuredConnection;
+
+    if (Path.IsPathRooted(configuredPath))
+        return configuredConnection;
+
+    // Try the configured relative path first.
+    var firstCandidate = Path.GetFullPath(Path.Combine(contentRootPath, configuredPath));
+    if (File.Exists(firstCandidate))
+    {
+        csb.DataSource = firstCandidate;
+        return csb.ConnectionString;
+    }
+
+    // Then try common repo layouts (run from repo root vs API project dir).
+    var fallbackCandidates = new[]
+    {
+        Path.GetFullPath(Path.Combine(contentRootPath, "Data", "hiraya.db")),
+        Path.GetFullPath(Path.Combine(contentRootPath, "..", "..", "Data", "hiraya.db")),
+        Path.GetFullPath(Path.Combine(contentRootPath, "..", "Data", "hiraya.db")),
+    };
+
+    var existing = fallbackCandidates.FirstOrDefault(File.Exists);
+    if (!string.IsNullOrWhiteSpace(existing))
+    {
+        csb.DataSource = existing;
+        return csb.ConnectionString;
+    }
+
+    // Fall back to the configured value if none exist.
+    return configuredConnection;
+}
+
+var resolvedSqliteConnection = ResolveSqliteConnection(sqliteConnection, builder.Environment.ContentRootPath);
 
 builder.Services.AddDbContext<HirayaContext>(options =>
 {
@@ -32,11 +76,18 @@ builder.Services.AddDbContext<HirayaContext>(options =>
                 "Database provider is set to sqlserver, but ConnectionStrings:AzureSqlConnection is missing.");
         }
 
-        options.UseSqlServer(azureSqlConnection);
+        options.UseSqlServer(azureSqlConnection, sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 6,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+            sqlOptions.CommandTimeout(120); // Serverless cold-start can take ~60-90s
+        });
     }
     else
     {
-        options.UseSqlite(sqliteConnection);
+        options.UseSqlite(resolvedSqliteConnection);
     }
 });
 
@@ -97,22 +148,33 @@ builder.Services.AddHsts(options =>
 
 builder.Services.AddCors(options =>
 {
-    var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+    var configuredOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+        .Select(o => o?.Trim())
+        .Where(o => !string.IsNullOrWhiteSpace(o))
+        .Select(o => o!.TrimEnd('/'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+    var configuredOriginSet = configuredOrigins.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     options.AddPolicy("Frontend", policy =>
     {
-        if (configuredOrigins.Length > 0)
-        {
-            policy.WithOrigins(configuredOrigins)
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-            return;
-        }
-
         policy.SetIsOriginAllowed(origin =>
-                Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
-                uri.Scheme == Uri.UriSchemeHttp &&
-                (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1"))
+            Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+            (
+                // Explicitly configured origins from config/app settings
+                configuredOriginSet.Contains(origin.TrimEnd('/'))
+                // Local dev
+                || (
+                    uri.Scheme == Uri.UriSchemeHttp &&
+                    (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
+                )
+                // Azure Static Web Apps production host fallback
+                || (
+                    uri.Scheme == Uri.UriSchemeHttps &&
+                    uri.Host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
+                )
+            ))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -120,7 +182,66 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-await SeedAsync(app.Services);
+// Apply pending EF migrations before seeding (avoids "no such table" after pulling new migrations).
+await using (var migrateScope = app.Services.CreateAsyncScope())
+{
+    var migrateDb = migrateScope.ServiceProvider.GetRequiredService<HirayaContext>();
+    const int maxAttempts = 6;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await migrateDb.Database.MigrateAsync();
+            app.Logger.LogInformation("Database migrations applied successfully.");
+            break;
+        }
+        catch (Exception ex)
+        {
+            if (attempt == maxAttempts)
+            {
+                app.Logger.LogError(ex, "Database migration failed after {Attempts} attempts.", maxAttempts);
+                if (app.Environment.IsDevelopment())
+                {
+                    throw;
+                }
+                // In production, keep the app alive so health checks and diagnostics remain available.
+                break;
+            }
+
+            var delaySeconds = Math.Min(30, attempt * 5);
+            app.Logger.LogWarning(ex, "Database migration attempt {Attempt}/{MaxAttempts} failed. Retrying in {Delay}s...", attempt, maxAttempts, delaySeconds);
+            await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+        }
+    }
+}
+
+const int seedMaxAttempts = 6;
+for (var attempt = 1; attempt <= seedMaxAttempts; attempt++)
+{
+    try
+    {
+        await SeedAsync(app.Services);
+        app.Logger.LogInformation("Database seeding completed successfully.");
+        break;
+    }
+    catch (Exception ex)
+    {
+        if (attempt == seedMaxAttempts)
+        {
+            app.Logger.LogError(ex, "Database seed failed after {Attempts} attempts.", seedMaxAttempts);
+            if (app.Environment.IsDevelopment())
+            {
+                throw;
+            }
+            // Keep production app alive for diagnostics and non-DB routes.
+            break;
+        }
+
+        var delaySeconds = Math.Min(30, attempt * 5);
+        app.Logger.LogWarning(ex, "Database seed attempt {Attempt}/{MaxAttempts} failed. Retrying in {Delay}s...", attempt, seedMaxAttempts, delaySeconds);
+        await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -293,6 +414,18 @@ static async Task SeedAsync(IServiceProvider services)
         var result = await userManager.CreateAsync(user, password);
         if (result.Succeeded)
             await userManager.AddToRoleAsync(user, acct.Role);
+    }
+
+    if (!await db.PipelineScheduleSettings.AnyAsync())
+    {
+        db.PipelineScheduleSettings.Add(new PipelineScheduleSettings
+        {
+            SettingsId = 1,
+            Enabled = false,
+            HourUtc = 2,
+            MinuteUtc = 0
+        });
+        await db.SaveChangesAsync();
     }
 }
 

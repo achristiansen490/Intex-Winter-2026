@@ -40,6 +40,8 @@ public partial class HirayaContext : IdentityDbContext<AppUser, IdentityRole<int
     public DbSet<IncidentReport> IncidentReports => Set<IncidentReport>();
     public DbSet<SafehouseMonthlyMetric> SafehouseMonthlyMetrics => Set<SafehouseMonthlyMetric>();
     public DbSet<PublicImpactSnapshot> PublicImpactSnapshots => Set<PublicImpactSnapshot>();
+    public DbSet<PipelineTrainingRun> PipelineTrainingRuns => Set<PipelineTrainingRun>();
+    public DbSet<PipelineScheduleSettings> PipelineScheduleSettings => Set<PipelineScheduleSettings>();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

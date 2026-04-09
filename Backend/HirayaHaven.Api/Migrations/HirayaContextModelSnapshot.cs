@@ -862,6 +862,77 @@ namespace HirayaHaven.Api.Migrations
                     b.ToTable("partner_assignments", (string)null);
                 });
 
+            modelBuilder.Entity("HirayaHaven.Api.Models.PipelineScheduleSettings", b =>
+                {
+                    b.Property<int>("SettingsId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("settings_id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
+                    b.Property<int>("HourUtc")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("hour_utc");
+
+                    b.Property<string>("LastScheduledRunDate")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_scheduled_run_date");
+
+                    b.Property<int>("MinuteUtc")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("minute_utc");
+
+                    b.HasKey("SettingsId");
+
+                    b.ToTable("pipeline_schedule_settings", (string)null);
+                });
+
+            modelBuilder.Entity("HirayaHaven.Api.Models.PipelineTrainingRun", b =>
+                {
+                    b.Property<int>("RunId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("run_id");
+
+                    b.Property<string>("DetailMessage")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("detail_message");
+
+                    b.Property<string>("FinishedUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("finished_utc");
+
+                    b.Property<string>("PipelineKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pipeline_key");
+
+                    b.Property<string>("StartedUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("started_utc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trigger_type");
+
+                    b.Property<string>("TriggeredByUserName")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("triggered_by_user_name");
+
+                    b.HasKey("RunId");
+
+                    b.ToTable("pipeline_training_runs", (string)null);
+                });
+
             modelBuilder.Entity("HirayaHaven.Api.Models.ProcessRecording", b =>
                 {
                     b.Property<int>("RecordingId")

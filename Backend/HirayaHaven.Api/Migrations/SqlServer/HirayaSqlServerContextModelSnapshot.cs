@@ -894,6 +894,79 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                     b.ToTable("partner_assignments", (string)null);
                 });
 
+            modelBuilder.Entity("HirayaHaven.Api.Models.PipelineScheduleSettings", b =>
+                {
+                    b.Property<int>("SettingsId")
+                        .HasColumnType("int")
+                        .HasColumnName("settings_id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("enabled");
+
+                    b.Property<int>("HourUtc")
+                        .HasColumnType("int")
+                        .HasColumnName("hour_utc");
+
+                    b.Property<string>("LastScheduledRunDate")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_scheduled_run_date");
+
+                    b.Property<int>("MinuteUtc")
+                        .HasColumnType("int")
+                        .HasColumnName("minute_utc");
+
+                    b.HasKey("SettingsId");
+
+                    b.ToTable("pipeline_schedule_settings", (string)null);
+                });
+
+            modelBuilder.Entity("HirayaHaven.Api.Models.PipelineTrainingRun", b =>
+                {
+                    b.Property<int>("RunId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("run_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RunId"));
+
+                    b.Property<string>("DetailMessage")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("detail_message");
+
+                    b.Property<string>("FinishedUtc")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("finished_utc");
+
+                    b.Property<string>("PipelineKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("pipeline_key");
+
+                    b.Property<string>("StartedUtc")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("started_utc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("trigger_type");
+
+                    b.Property<string>("TriggeredByUserName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("triggered_by_user_name");
+
+                    b.HasKey("RunId");
+
+                    b.ToTable("pipeline_training_runs", (string)null);
+                });
+
             modelBuilder.Entity("HirayaHaven.Api.Models.ProcessRecording", b =>
                 {
                     b.Property<int>("RecordingId")

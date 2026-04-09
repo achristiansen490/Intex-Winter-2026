@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 
 const c = {
@@ -11,12 +12,15 @@ interface SidebarProps {
   id: string;
   items: string[];
   active: string;
-  setActive: (item: string) => void;
+  /** Used when <code>onSelectNavItem</code> is not provided. */
+  setActive?: (item: string) => void;
+  /** When set, called instead of <code>setActive</code> (for cross-route admin navigation). */
+  onSelectNavItem?: (item: string) => void;
   user: string;
   onLogout?: () => void;
 }
 
-export function Sidebar({ id, items, active, setActive, user, onLogout }: SidebarProps) {
+export function Sidebar({ id, items, active, setActive, onSelectNavItem, user, onLogout }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
@@ -87,14 +91,25 @@ export function Sidebar({ id, items, active, setActive, user, onLogout }: Sideba
             marginBottom: '0.75rem',
           }}
         >
-          <Logo light />
+          <Link
+            to="/"
+            onClick={() => setOpen(false)}
+            aria-label="Hiraya Haven - return to home page"
+            style={{ textDecoration: 'none', display: 'inline-flex' }}
+          >
+            <Logo light />
+          </Link>
         </div>
 
         <ul style={{ listStyle: 'none', flex: 1, margin: 0, padding: 0 }}>
           {items.map((item) => (
             <li key={item}>
               <button
-                onClick={() => { setActive(item); setOpen(false); }}
+                onClick={() => {
+                  if (onSelectNavItem) onSelectNavItem(item);
+                  else setActive?.(item);
+                  setOpen(false);
+                }}
                 onMouseEnter={() => setHoveredItem(item)}
                 onMouseLeave={() => setHoveredItem(null)}
                 aria-current={active === item ? 'page' : undefined}

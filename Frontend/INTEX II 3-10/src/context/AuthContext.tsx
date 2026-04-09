@@ -6,6 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { apiUrl } from '../lib/api';
 
 export type Role =
   | 'Admin'
@@ -58,7 +59,7 @@ function getPrimaryRole(roles: Role[]): Role | null {
 }
 
 async function fetchMe(token: string): Promise<AuthUser> {
-  const res = await fetch('/api/auth/me', {
+  const res = await fetch(apiUrl('/api/auth/me'), {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Token invalid');
@@ -96,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * resolved primary role so the caller can navigate immediately.
    */
   const login = useCallback(async (email: string, password: string): Promise<Role | null> => {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -126,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     if (token) {
-      fetch('/api/auth/logout', {
+      fetch(apiUrl('/api/auth/logout'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});

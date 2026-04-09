@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type 
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../lib/api';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
@@ -25,7 +26,7 @@ function getNavItems(role: string | null): string[] {
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
-  fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
+  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 function filterTableRows(
   rows: Record<string, unknown>[],
@@ -579,16 +580,28 @@ function StaffReports() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [b, c, m, ev] = await Promise.all([
-        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(r => r.json()),
-        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
-        api('/api/insights/donations/monthly?take=120').then(r => r.json()),
-        api('/api/insights/social/engagement-vs-vanity').then(r => r.json()),
+      const [bridgeRes, campaignRes, monthlyRes, evRes] = await Promise.allSettled([
+        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(async (r) => (r.ok ? r.json() : [])),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(async (r) => (r.ok ? r.json() : [])),
+        api('/api/insights/donations/monthly?take=120').then(async (r) => (r.ok ? r.json() : [])),
+        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
       ]);
-      setBridge(Array.isArray(b) ? b : []);
-      setCampaigns(Array.isArray(c) ? c : []);
-      setMonthly(Array.isArray(m) ? m : []);
-      setEvSummary(ev && typeof ev === 'object' && 'segments' in ev ? ev as EngagementVsVanitySummary : null);
+
+      const nextBridge = bridgeRes.status === 'fulfilled' && Array.isArray(bridgeRes.value) ? bridgeRes.value : [];
+      const nextCampaigns = campaignRes.status === 'fulfilled' && Array.isArray(campaignRes.value) ? campaignRes.value : [];
+      const nextMonthly = monthlyRes.status === 'fulfilled' && Array.isArray(monthlyRes.value) ? monthlyRes.value : [];
+      const nextEv = evRes.status === 'fulfilled' && evRes.value && typeof evRes.value === 'object' && 'segments' in evRes.value
+        ? evRes.value as EngagementVsVanitySummary
+        : null;
+
+      setBridge(nextBridge);
+      setCampaigns(nextCampaigns);
+      setMonthly(nextMonthly);
+      setEvSummary(nextEv);
+
+      if (nextBridge.length === 0 && nextCampaigns.length === 0 && nextMonthly.length === 0 && !nextEv) {
+        setError('Failed to load reports.');
+      }
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
   }, [bridgeTake, campaignTake]);

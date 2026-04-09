@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useId, type ReactNode } from
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../lib/api';
 
 const c = {
   ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
@@ -13,7 +14,7 @@ const navItems = ['My Profile', 'My Progress', 'Health & Wellbeing', 'Education'
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string) =>
-  fetch(url, { headers: { Authorization: `Bearer ${tok()}` } });
+  fetch(apiUrl(url), { headers: { Authorization: `Bearer ${tok()}` } });
 
 function filterRecordsByText(rows: Record<string, unknown>[], query: string): Record<string, unknown>[] {
   const needle = query.trim().toLowerCase();

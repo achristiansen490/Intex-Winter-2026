@@ -597,6 +597,31 @@ public partial class HirayaContext
             MapBool(entity, e => e.IsPublished, "is_published");
             MapText(entity, e => e.PublishedAt, "published_at");
         });
+
+        modelBuilder.Entity<PipelineTrainingRun>(entity =>
+        {
+            entity.ToTable("pipeline_training_runs");
+            entity.HasKey(e => e.RunId);
+            entity.Property(e => e.RunId).HasColumnName("run_id").ValueGeneratedOnAdd();
+            MapText(entity, e => e.PipelineKey, "pipeline_key");
+            MapText(entity, e => e.TriggerType, "trigger_type");
+            MapText(entity, e => e.Status, "status");
+            MapText(entity, e => e.DetailMessage, "detail_message");
+            MapText(entity, e => e.StartedUtc, "started_utc");
+            MapText(entity, e => e.FinishedUtc, "finished_utc");
+            MapText(entity, e => e.TriggeredByUserName, "triggered_by_user_name");
+        });
+
+        modelBuilder.Entity<PipelineScheduleSettings>(entity =>
+        {
+            entity.ToTable("pipeline_schedule_settings");
+            entity.HasKey(e => e.SettingsId);
+            entity.Property(e => e.SettingsId).HasColumnName("settings_id").ValueGeneratedNever();
+            entity.Property(e => e.Enabled).HasColumnName("enabled");
+            entity.Property(e => e.HourUtc).HasColumnName("hour_utc");
+            entity.Property(e => e.MinuteUtc).HasColumnName("minute_utc");
+            MapText(entity, e => e.LastScheduledRunDate, "last_scheduled_run_date");
+        });
     }
 
     private static void MapText<T>(
