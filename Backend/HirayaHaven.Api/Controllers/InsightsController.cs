@@ -107,8 +107,11 @@ public class InsightsController(HirayaContext db) : ControllerBase
         if (from.HasValue) filtered = filtered.Where(x => x.Dt.HasValue && x.Dt.Value >= from.Value);
         if (to.HasValue) filtered = filtered.Where(x => x.Dt.HasValue && x.Dt.Value <= to.Value);
 
-        var byCampaign = filtered
-            .GroupBy(x => string.IsNullOrWhiteSpace(x.CampaignName) ? "(none)" : x.CampaignName!)
+        // Uncategorized gifts (null/blank campaign) still count in monthly/bridge totals; exclude from campaign breakdown only.
+        var forCampaignBreakdown = filtered.Where(x => !string.IsNullOrWhiteSpace(x.CampaignName));
+
+        var byCampaign = forCampaignBreakdown
+            .GroupBy(x => x.CampaignName!.Trim())
             .Select(g => new
             {
                 campaignName = g.Key,

@@ -1003,6 +1003,9 @@ function StaffReports() {
       )}
 
       <SectionTitle>Campaign effectiveness (top by total PHP)</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -8, marginBottom: 12 }}>
+        Labeled campaigns only; uncategorized gifts are excluded from this breakdown and included in monthly / bridge totals.
+      </p>
       {campaignChartData.length > 0 && (
         <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Top campaigns (total PHP)</p>

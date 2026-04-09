@@ -100,8 +100,8 @@ public class DashboardController(HirayaContext context) : ControllerBase
             p.HasCallToAction == true && (p.DonationReferrals ?? 0) > 0);
 
         var topCampaignByReferrals = await context.SocialMediaPosts
-            .Where(p => p.CampaignName != null)
-            .GroupBy(p => p.CampaignName!)
+            .Where(p => p.CampaignName != null && !string.IsNullOrWhiteSpace(p.CampaignName))
+            .GroupBy(p => p.CampaignName!.Trim())
             .Select(g => new
             {
                 campaignName = g.Key,

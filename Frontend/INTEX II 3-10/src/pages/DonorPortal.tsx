@@ -279,7 +279,7 @@ function ActiveCampaigns() {
   if (error) return <ApiError msg={error} retry={load} />;
 
   const campaignChartData = (campaigns as any[]).map((r) => ({
-    name: String(r.campaignName ?? '(none)'),
+    name: String(r.campaignName ?? '—'),
     total: Number(r.totalValuePhp ?? 0),
   }));
   const monthlyChartData = (monthly as any[]).map((r) => ({
@@ -308,7 +308,8 @@ function ActiveCampaigns() {
         </label>
       </div>
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 14 }}>
-        Top campaigns by total donation value (amount, falling back to estimated value). Source: <code>/api/insights/donations/by-campaign</code>
+        Top campaigns by total donation value (amount, falling back to estimated value). Gifts without a campaign name are omitted here but still included in monthly totals below. Source:{' '}
+        <code>/api/insights/donations/by-campaign</code>
       </p>
 
       {campaignChartData.length > 0 && (
