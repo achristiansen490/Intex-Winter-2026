@@ -148,30 +148,26 @@ builder.Services.AddCors(options =>
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToArray();
 
+    var configuredOriginSet = configuredOrigins.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     options.AddPolicy("Frontend", policy =>
     {
-        if (configuredOrigins.Length > 0)
-        {
-            policy.WithOrigins(configuredOrigins)
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-            return;
-        }
-
         policy.SetIsOriginAllowed(origin =>
-                Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
-                (
-                    // Local dev
-                    (
-                        uri.Scheme == Uri.UriSchemeHttp &&
-                        (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
-                    )
-                    // Azure Static Web Apps production host fallback
-                    || (
-                        uri.Scheme == Uri.UriSchemeHttps &&
-                        uri.Host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
-                    )
-                ))
+            Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+            (
+                // Explicitly configured origins from config/app settings
+                configuredOriginSet.Contains(origin.TrimEnd('/'))
+                // Local dev
+                || (
+                    uri.Scheme == Uri.UriSchemeHttp &&
+                    (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
+                )
+                // Azure Static Web Apps production host fallback
+                || (
+                    uri.Scheme == Uri.UriSchemeHttps &&
+                    uri.Host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
+                )
+            ))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
