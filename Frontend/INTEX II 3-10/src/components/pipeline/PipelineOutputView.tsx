@@ -11,6 +11,8 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  ComposedChart,
+  Line,
 } from 'recharts';
 
 const MonthlyLineChart = lazy(() => import('../charts/MonthlyLineChart'));
@@ -124,6 +126,152 @@ const PIE_COLORS = [c.forest, c.gold, c.rose, c.sage, '#8B7355', '#4A6FA5'];
 export function PipelineOutputView({ pipelineId, data }: { pipelineId: string; data: unknown }) {
   if (data == null) {
     return <p style={{ color: c.muted }}>No data.</p>;
+  }
+
+  // —— social-posting-windows: nested byHour / byDayOfWeek ——
+  if (pipelineId === 'social-posting-windows' && typeof data === 'object' && data !== null && !Array.isArray(data)) {
+    const o = data as Record<string, unknown>;
+    const byHour = asObjectArray(o.byHour);
+    const byDay = asObjectArray(o.byDayOfWeek);
+    const notes = o.notes;
+    const totalPosts = o.totalPosts;
+    const hourChart =
+      byHour?.map((r) => ({
+        name: `${String(r.hourUtc ?? '—')}:00`,
+        hour: Number(r.hourUtc ?? 0),
+        posts: Number(r.postCount ?? 0),
+        avgReferrals: Number(r.avgDonationReferrals ?? 0),
+        estPhp: Number(r.totalEstimatedValuePhp ?? 0),
+        ctrPct:
+          typeof r.clickThroughRate === 'number' && r.clickThroughRate != null
+            ? Math.round(Number(r.clickThroughRate) * 10000) / 100
+            : null,
+        engagement: Number(r.avgEngagement ?? 0),
+      })) ?? [];
+    hourChart.sort((a, b) => a.hour - b.hour);
+
+    const dayChart =
+      byDay?.map((r) => ({
+        name: String(r.dayOfWeek ?? '—').slice(0, 12),
+        posts: Number(r.postCount ?? 0),
+        avgReferrals: Number(r.avgDonationReferrals ?? 0),
+        estPhp: Number(r.totalEstimatedValuePhp ?? 0),
+        ctrPct:
+          typeof r.clickThroughRate === 'number' && r.clickThroughRate != null
+            ? Math.round(Number(r.clickThroughRate) * 10000) / 100
+            : null,
+      })) ?? [];
+
+    return (
+      <>
+        <Section title="Summary">
+          <p style={{ fontSize: 13, color: c.muted }}>
+            Total posts in dataset: <strong style={{ color: c.forest }}>{String(totalPosts ?? '—')}</strong>
+          </p>
+          {typeof notes === 'string' && notes.length > 0 && (
+            <p style={{ fontSize: 12, color: c.muted, fontStyle: 'italic', marginTop: 8, lineHeight: 1.5 }}>{notes}</p>
+          )}
+        </Section>
+        <Section title="By hour — avg. donation referrals & CTR (%)">
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <ComposedChart data={hourChart} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="rgba(44,43,40,0.08)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={2} height={36} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} width={44} label={{ value: 'Avg referrals', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11 }}
+                  width={44}
+                  label={{ value: 'CTR %', angle: 90, position: 'insideRight', style: { fontSize: 10 } }}
+                />
+                <Tooltip
+                  formatter={(v: unknown, name) => {
+                    const n = String(name ?? '');
+                    if (n === 'ctrPct') return [v != null && v !== '' ? `${v}%` : '—', 'CTR %'];
+                    return [String(v), n === 'avgReferrals' ? 'Avg referrals' : n];
+                  }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="avgReferrals" name="Avg referrals" fill={c.forest} radius={[2, 2, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="ctrPct" name="CTR %" stroke={c.gold} strokeWidth={2} dot={{ r: 2 }} connectNulls />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+        <Section title="By hour — detail">
+          {byHour && byHour.length > 0 ? <GenericTable rows={byHour} /> : <p style={{ fontSize: 13, color: c.muted }}>No hourly rows.</p>}
+        </Section>
+        <Section title="By weekday — estimated value (PHP)">
+          <div style={{ width: '100%', height: 260 }}>
+            <ResponsiveContainer>
+              <BarChart data={dayChart} margin={{ top: 8, right: 16, bottom: 48, left: 8 }}>
+                <CartesianGrid stroke="rgba(44,43,40,0.08)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} height={56} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCompact(Number(v))} />
+                <Tooltip formatter={(v: unknown) => [`₱${formatCompact(Number(v))}`, 'Est. value']} />
+                <Bar dataKey="estPhp" name="Total est. PHP" fill={c.sage} radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+        <Section title="By weekday — detail">
+          {byDay && byDay.length > 0 ? <GenericTable rows={byDay} /> : <p style={{ fontSize: 13, color: c.muted }}>No weekday rows.</p>}
+        </Section>
+      </>
+    );
+  }
+
+  // —— social-content-drivers: nested dimension arrays ——
+  if (pipelineId === 'social-content-drivers' && typeof data === 'object' && data !== null && !Array.isArray(data)) {
+    const o = data as Record<string, unknown>;
+    const notes = o.notes;
+    const take = o.take;
+    const renderDim = (title: string, key: string) => {
+      const arr = asObjectArray(o[key]);
+      if (!arr || arr.length === 0) return null;
+      const barData = arr.map((r) => ({
+        name: String(r.key ?? '—').slice(0, 22),
+        total: Number(r.totalEstimatedValuePhp ?? 0),
+      }));
+      return (
+        <div key={key} style={{ marginBottom: 28 }}>
+          <Section title={title}>
+            <div style={{ width: '100%', height: 260 }}>
+              <ResponsiveContainer>
+                <BarChart data={barData} margin={{ top: 8, right: 16, bottom: 56, left: 8 }}>
+                  <CartesianGrid stroke="rgba(44,43,40,0.08)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} height={70} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCompact(Number(v))} />
+                  <Tooltip formatter={(v: unknown) => [`₱${formatCompact(Number(v))}`, 'Est. value']} />
+                  <Bar dataKey="total" fill={c.forest} radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <GenericTable rows={arr} />
+          </Section>
+        </div>
+      );
+    };
+
+    return (
+      <>
+        <Section title="Summary">
+          <p style={{ fontSize: 13, color: c.muted }}>
+            {typeof take === 'number' ? `Top ${take} per dimension · ` : null}
+            Exploratory rollups — not causal.
+          </p>
+          {typeof notes === 'string' && notes.length > 0 && (
+            <p style={{ fontSize: 12, color: c.muted, fontStyle: 'italic', marginTop: 8 }}>{notes}</p>
+          )}
+        </Section>
+        {renderDim('Content topic — estimated gift value (PHP)', 'byTopic')}
+        {renderDim('Media type', 'byMediaType')}
+        {renderDim('Post type', 'byPostType')}
+        {renderDim('Call to action', 'byCallToAction')}
+      </>
+    );
   }
 
   // —— Special: engagement object with segments ——
