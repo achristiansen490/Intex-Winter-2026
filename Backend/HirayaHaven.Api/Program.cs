@@ -438,7 +438,7 @@ static async Task SeedAsync(IServiceProvider services)
 }
 
 /// <summary>
-/// Older databases may lack <c>supporters</c> (and donor <c>donations</c> Create) rows; API permission checks use resource name <c>supporters</c>.
+/// Older databases may lack donor rows for <c>supporters</c> Read, <c>donations</c> Read/Create; API checks use resource names <c>supporters</c> and <c>donations</c>.
 /// </summary>
 static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
 {
@@ -462,6 +462,7 @@ static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
     }
 
     await EnsureAsync("Donor", "supporters", "Read", "Own records only");
+    await EnsureAsync("Donor", "donations", "Read", "Own records only");
     await EnsureAsync("Donor", "donations", "Create", "Own records only");
 
     foreach (var a in new[] { "Create", "Read", "Update", "Delete" })
