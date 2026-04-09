@@ -196,7 +196,12 @@ function ExampleDonateModal({
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { message?: string; title?: string };
-        setFormError(err.message ?? err.title ?? 'Could not save donation.');
+        const detail = err.message ?? err.title ?? 'Could not save donation.';
+        setFormError(
+          res.status === 403
+            ? 'Access denied. The API must allow Donors to read and create their own donations (roles_permissions). Deploy the latest backend or ask an admin, then sign out and sign in again.'
+            : detail,
+        );
         return;
       }
       onRecorded();
