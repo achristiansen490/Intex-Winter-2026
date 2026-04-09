@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
+import { DONOR_NAV_ITEMS, donorNavItemToSlug, donorSlugToNavItem } from '../lib/portalTabs';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const MonthlyLineChart = lazy(() => import('../components/charts/MonthlyLineChart'));
@@ -13,7 +14,7 @@ const c = {
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
 const DASH_BANNER_BG = 'linear-gradient(135deg, #2A4A35 0%, #5E7C5A 58%, #9E8B67 100%)';
-const navItems = ['My Impact', 'Donation History', 'Active Campaigns', 'My Profile'];
+const navItems = [...DONOR_NAV_ITEMS];
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
@@ -477,7 +478,21 @@ function MyProfile() {
 export default function DonorPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState('My Impact');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabSlug = searchParams.get('tab');
+  const activeNav = useMemo(() => {
+    const n = donorSlugToNavItem(tabSlug);
+    return (navItems as readonly string[]).includes(n) ? n : 'My Impact';
+  }, [tabSlug]);
+
+  useEffect(() => {
+    const desired = donorNavItemToSlug(activeNav);
+    if (searchParams.get('tab') !== desired) {
+      setSearchParams({ tab: desired }, { replace: true });
+    }
+  }, [activeNav, searchParams, setSearchParams]);
+
+  const setTab = (item: string) => setSearchParams({ tab: donorNavItemToSlug(item) }, { replace: true });
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -495,7 +510,7 @@ export default function DonorPortal() {
 
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="donor-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
+      <Sidebar id="donor-sidebar" items={navItems} active={activeNav} setActive={setTab}
         user={`${user?.userName ?? 'Donor'} · Donor`} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Welcome"
@@ -506,7 +521,7 @@ export default function DonorPortal() {
               <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Donor'}</h1>
             </div>
             <button
-              onClick={() => setActiveNav('Active Campaigns')}
+              onClick={() => setTab('Active Campaigns')}
               style={{ background: c.gold, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>
               Donate Again
             </button>

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
+import { adminNavItemToSlug, adminSlugToNavItem } from '../lib/portalTabs';
 import { apiUrl } from '../lib/api';
 import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
 import { SocialMediaImpactSection } from '../components/reports/SocialMediaImpactSection';
@@ -2521,17 +2522,28 @@ function AdminDonations() {
 export default function AdminPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [activeNav, setActiveNav] = useState('Dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabSlug = searchParams.get('tab');
 
   useEffect(() => {
-    const st = location.state as { nav?: string } | null | undefined;
-    const nav = st?.nav;
-    if (nav && (ADMIN_NAV_ITEMS as readonly string[]).includes(nav)) {
-      setActiveNav(nav);
-      navigate(location.pathname, { replace: true, state: {} });
+    if (tabSlug === 'pipelines') {
+      navigate('/admin/pipelines', { replace: true });
     }
-  }, [location.state, location.pathname, navigate]);
+  }, [tabSlug, navigate]);
+
+  const activeNav = useMemo(() => {
+    if (tabSlug === 'pipelines') return 'Dashboard';
+    const n = adminSlugToNavItem(tabSlug);
+    return n !== 'Pipelines' && (ADMIN_NAV_ITEMS as readonly string[]).includes(n) ? n : 'Dashboard';
+  }, [tabSlug]);
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'pipelines') return;
+    const desired = adminNavItemToSlug(activeNav);
+    if (searchParams.get('tab') !== desired) {
+      setSearchParams({ tab: desired }, { replace: true });
+    }
+  }, [activeNav, searchParams, setSearchParams]);
 
   const handleLogout = () => {
     logout();
@@ -2580,7 +2592,7 @@ export default function AdminPortal() {
         active={activeNav}
         onSelectNavItem={(item) => {
           if (item === 'Pipelines') navigate('/admin/pipelines');
-          else setActiveNav(item);
+          else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
         }}
         user={`${user?.userName ?? 'Admin'} · Admin`}
         onLogout={handleLogout}

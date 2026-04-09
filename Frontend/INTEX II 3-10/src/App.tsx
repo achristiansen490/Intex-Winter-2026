@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { isSafeReturnPath, resolvePostLoginTarget } from './lib/postLoginRouting';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { CookieConsent } from './components/CookieConsent';
 import { Footer } from './components/Footer';
@@ -21,19 +22,14 @@ import AdminPipelineDetail from './pages/AdminPipelineDetail';
 /** Redirects already-logged-in users away from /login and /register */
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, role, isLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const returnUrlRaw = searchParams.get('returnUrl');
+  const returnUrl = returnUrlRaw && isSafeReturnPath(returnUrlRaw) ? returnUrlRaw : null;
 
   if (isLoading) return null;
 
-  if (isAuthenticated) {
-    switch (role) {
-      case 'Admin': return <Navigate to="/admin" replace />;
-      case 'Supervisor':
-      case 'CaseManager':
-      case 'SocialWorker':
-      case 'FieldWorker': return <Navigate to="/staff" replace />;
-      case 'Resident': return <Navigate to="/resident" replace />;
-      case 'Donor': return <Navigate to="/donor" replace />;
-    }
+  if (isAuthenticated && role) {
+    return <Navigate to={resolvePostLoginTarget(role, returnUrl)} replace />;
   }
 
   return <>{children}</>;

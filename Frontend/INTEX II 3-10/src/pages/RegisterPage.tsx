@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Logo';
 import { apiUrl } from '../lib/api';
+import { isSafeReturnPath } from '../lib/postLoginRouting';
 
 const c = {
   ivory: '#FBF8F2',
@@ -14,6 +15,9 @@ const c = {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrlRaw = searchParams.get('returnUrl');
+  const returnUrl = returnUrlRaw && isSafeReturnPath(returnUrlRaw) ? returnUrlRaw : null;
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -56,7 +60,8 @@ export default function RegisterPage() {
       if (role === 'FieldWorker') {
         navigate('/pending-approval');
       } else {
-        navigate('/login', { state: { registered: true } });
+        const loginPath = returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/login';
+        navigate(loginPath, { state: { registered: true } });
       }
     } catch {
       setError('Network error. Please try again.');
@@ -175,7 +180,12 @@ export default function RegisterPage() {
 
         <p style={{ textAlign: 'center', fontSize: 13, color: c.muted, marginTop: '1.5rem' }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: c.forest, fontWeight: 500 }}>Sign in</Link>
+          <Link
+            to={returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/login'}
+            style={{ color: c.forest, fontWeight: 500 }}
+          >
+            Sign in
+          </Link>
         </p>
       </div>
     </main>
