@@ -206,10 +206,12 @@ public class DashboardController(HirayaContext context) : ControllerBase
         double? latestAvgEducationProgress = null;
         if (!string.IsNullOrWhiteSpace(latestEducationMonth))
         {
-            latestAvgEducationProgress = await context.EducationRecords
+            var monthEdu = context.EducationRecords
                 .AsNoTracking()
-                .Where(r => r.RecordDate != null && r.RecordDate!.StartsWith(latestEducationMonth))
-                .AverageAsync(r => (double?)r.ProgressPercent);
+                .Where(r => r.RecordDate != null && r.RecordDate!.StartsWith(latestEducationMonth)
+                    && r.ProgressPercent != null);
+            if (await monthEdu.AnyAsync())
+                latestAvgEducationProgress = await monthEdu.AverageAsync(r => r.ProgressPercent!.Value);
         }
 
         return Ok(new

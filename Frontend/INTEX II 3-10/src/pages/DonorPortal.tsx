@@ -4,6 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
+import { displayImpactHeadline } from '../lib/impactHeadline';
 import { DONOR_NAV_ITEMS, donorNavItemToSlug, donorSlugToNavItem } from '../lib/portalTabs';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
@@ -456,7 +457,7 @@ function MyImpact({ refreshSignal = 0 }: { refreshSignal?: number }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {snapshots.map((s: any) => (
               <div key={s.snapshotId} style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 10, padding: '1rem 1.25rem' }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: c.forest }}>{s.headline ?? 'Impact Update'}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: c.forest }}>{displayImpactHeadline(s.headline as string | null)}</p>
                 {s.summaryText && <p style={{ fontSize: 13, color: c.text, marginTop: 6, lineHeight: 1.5 }}>{s.summaryText}</p>}
                 <p style={{ fontSize: 11, color: c.muted, marginTop: 8 }}>{s.snapshotDate ? new Date(s.snapshotDate).toLocaleDateString() : '—'}</p>
               </div>
@@ -867,7 +868,7 @@ function ActiveCampaigns() {
               padding: '1.25rem 1.5rem',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: c.forest, margin: 0, fontFamily: 'Georgia, serif' }}>{s.headline ?? 'Impact Update'}</h3>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: c.forest, margin: 0, fontFamily: 'Georgia, serif' }}>{displayImpactHeadline(s.headline as string | null)}</h3>
                 <span style={{ fontSize: 11, color: c.muted }}>{s.snapshotDate ? new Date(s.snapshotDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : '—'}</span>
               </div>
               {s.summaryText && <p style={{ fontSize: 13, color: c.text, marginTop: 10, lineHeight: 1.6 }}>{s.summaryText}</p>}

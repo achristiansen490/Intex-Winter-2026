@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NavBar } from '../components/NavBar';
 import { apiUrl } from '../lib/api';
+import { displayImpactHeadline } from '../lib/impactHeadline';
 import './LandingPage.css';
 
 const c = {
@@ -257,7 +258,8 @@ export default function LandingPage() {
             )}
             {!loading && latestSnapshot?.headline && (
               <p style={{ color: 'rgba(251,248,242,0.75)', fontSize: 12, marginTop: 0, marginBottom: 10 }}>
-                Latest impact update: <span style={{ color: c.ivory, fontWeight: 600 }}>{latestSnapshot.headline}</span>
+                Latest impact update:{' '}
+                <span style={{ color: c.ivory, fontWeight: 600 }}>{displayImpactHeadline(latestSnapshot.headline)}</span>
               </p>
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap' }}>
