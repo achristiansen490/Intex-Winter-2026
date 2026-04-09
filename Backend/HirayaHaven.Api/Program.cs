@@ -76,7 +76,14 @@ builder.Services.AddDbContext<HirayaContext>(options =>
                 "Database provider is set to sqlserver, but ConnectionStrings:AzureSqlConnection is missing.");
         }
 
-        options.UseSqlServer(azureSqlConnection);
+        options.UseSqlServer(azureSqlConnection, sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 6,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+            sqlOptions.CommandTimeout(120); // Serverless cold-start can take ~60-90s
+        });
     }
     else
     {
@@ -208,7 +215,33 @@ await using (var migrateScope = app.Services.CreateAsyncScope())
     }
 }
 
-await SeedAsync(app.Services);
+const int seedMaxAttempts = 6;
+for (var attempt = 1; attempt <= seedMaxAttempts; attempt++)
+{
+    try
+    {
+        await SeedAsync(app.Services);
+        app.Logger.LogInformation("Database seeding completed successfully.");
+        break;
+    }
+    catch (Exception ex)
+    {
+        if (attempt == seedMaxAttempts)
+        {
+            app.Logger.LogError(ex, "Database seed failed after {Attempts} attempts.", seedMaxAttempts);
+            if (app.Environment.IsDevelopment())
+            {
+                throw;
+            }
+            // Keep production app alive for diagnostics and non-DB routes.
+            break;
+        }
+
+        var delaySeconds = Math.Min(30, attempt * 5);
+        app.Logger.LogWarning(ex, "Database seed attempt {Attempt}/{MaxAttempts} failed. Retrying in {Delay}s...", attempt, seedMaxAttempts, delaySeconds);
+        await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {

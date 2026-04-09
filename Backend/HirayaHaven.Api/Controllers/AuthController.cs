@@ -214,8 +214,8 @@ public class AuthController(
 
         await LogAuthEventAsync(user.Id, "LOGIN", ip);
 
-        var token = await GenerateJwtAsync(user);
         var roles = await userManager.GetRolesAsync(user);
+        var token = GenerateJwt(user, roles);
 
         return Ok(new { token, roles });
     }
@@ -272,13 +272,11 @@ public class AuthController(
         await db.SaveChangesAsync();
     }
 
-    private async Task<string> GenerateJwtAsync(AppUser user)
+    private string GenerateJwt(AppUser user, IList<string> roles)
     {
         var jwtSection = configuration.GetSection("Jwt");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var roles = await userManager.GetRolesAsync(user);
 
         var claims = new List<Claim>
         {
@@ -308,6 +306,7 @@ public class AuthController(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
+
 
 public record RegisterRequest(string Username, string Email, string Password, string? Role = "Donor");
 public record CreateUserRequest(string Username, string Email, string Password, string Role,
