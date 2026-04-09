@@ -15,7 +15,7 @@ const c = {
   roseLight: '#F0D8D4', sage: '#6B9E7E', sageLight: '#D4EAD9', goldLight: '#F5E6C8',
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
-const ADMIN_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.82) 0%,rgba(196,134,122,0.38) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
+const ADMIN_BANNER_BG = 'linear-gradient(135deg, #2A4A35 0%, #3E6B4D 55%, #6B9E7E 100%)';
 const navItems = [...ADMIN_NAV_ITEMS];
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
@@ -2589,8 +2589,8 @@ export default function AdminPortal() {
         <section aria-label="Admin dashboard"
           style={{ background: ADMIN_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>Admin Console</p>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>{user?.userName ?? 'Admin'}</h1>
+            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Admin Dashboard</p>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Admin'}</h1>
           </div>
         </section>
         {renderContent()}

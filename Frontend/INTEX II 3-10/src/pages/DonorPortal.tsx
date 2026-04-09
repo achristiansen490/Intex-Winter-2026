@@ -12,7 +12,7 @@ const c = {
   roseLight: '#F0D8D4', sage: '#6B9E7E', sageLight: '#D4EAD9', goldLight: '#F5E6C8',
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
-const DASH_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.74) 0%,rgba(196,134,122,0.44) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
+const DASH_BANNER_BG = 'linear-gradient(135deg, #2A4A35 0%, #5E7C5A 58%, #9E8B67 100%)';
 const navItems = ['My Impact', 'Donation History', 'Active Campaigns', 'My Profile'];
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
@@ -502,8 +502,8 @@ export default function DonorPortal() {
           style={{ background: DASH_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>Welcome back</p>
-              <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>{user?.userName ?? 'Donor'}</h1>
+              <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Donor Dashboard</p>
+              <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Donor'}</h1>
             </div>
             <button
               onClick={() => setActiveNav('Active Campaigns')}

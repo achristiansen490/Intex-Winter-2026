@@ -15,7 +15,7 @@ const c = {
   roseLight: '#F0D8D4', sage: '#6B9E7E', sageLight: '#D4EAD9', goldLight: '#F5E6C8',
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
-const STAFF_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.76) 0%,rgba(107,158,126,0.5) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
+const STAFF_BANNER_BG = 'linear-gradient(135deg, #2F5A40 0%, #4E7F61 55%, #7CA98A 100%)';
 
 function getNavItems(role: string | null): string[] {
   switch (role) {
@@ -1447,9 +1447,9 @@ export default function StaffPortal() {
         <section aria-label="Command center"
           style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
           <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>{displayRole} Portal</p>
+            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>{displayRole} Dashboard</p>
             <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
-              Good morning, {user?.userName ?? 'Staff'}
+              Welcome, {user?.userName ?? 'Staff'}
             </h1>
           </div>
         </section>
