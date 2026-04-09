@@ -13,6 +13,8 @@ type Props = {
   height?: number;
   gridColor?: string;
   barColor?: string;
+  /** Use compact for counts/scores; default PHP formatting for monetary bars. */
+  numberFormat?: 'php' | 'compact';
 };
 
 function formatCompact(n: number): string {
@@ -30,6 +32,7 @@ export default function CampaignBarChart({
   height = 260,
   gridColor = 'rgba(44,43,40,0.08)',
   barColor = '#D4A44C',
+  numberFormat = 'php',
 }: Props) {
   return (
     <div style={{ width: '100%', height }}>
@@ -38,7 +41,13 @@ export default function CampaignBarChart({
           <CartesianGrid stroke={gridColor} vertical={false} />
           <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} height={60} />
           <YAxis tick={{ fontSize: 11 }} width={60} tickFormatter={(v) => formatCompact(Number(v))} />
-          <Tooltip formatter={(v: any) => [formatPhp(Number(v)), 'Total']} />
+          <Tooltip
+            formatter={(v: any) => {
+              const n = Number(v);
+              if (numberFormat === 'compact') return [formatCompact(n), 'Value'];
+              return [formatPhp(n), 'Total'];
+            }}
+          />
           <Bar dataKey="total" fill={barColor} radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
