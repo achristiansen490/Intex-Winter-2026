@@ -16,6 +16,9 @@ const c = {
 const DASH_BANNER_BG = 'linear-gradient(135deg, #2A4A35 0%, #5E7C5A 58%, #9E8B67 100%)';
 const navItems = [...DONOR_NAV_ITEMS];
 
+const EXAMPLE_DONATION_DEFAULT_NOTES = 'Example Donation';
+const RECURRING_FREQUENCY_OPTIONS = ['Weekly', 'Biweekly', 'Monthly', 'Quarterly', 'Annually'] as const;
+
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
   fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
@@ -106,17 +109,56 @@ function ExampleDonateModal({
   const [amount, setAmount] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [channelSource, setChannelSource] = useState('');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(EXAMPLE_DONATION_DEFAULT_NOTES);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<string>(RECURRING_FREQUENCY_OPTIONS[2]);
   const [donationDate, setDonationDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [campaignOptions, setCampaignOptions] = useState<string[]>([]);
+  const [channelOptions, setChannelOptions] = useState<string[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsError, setOptionsError] = useState('');
 
   useEffect(() => {
     if (!open) {
       setFormError('');
       setSubmitting(false);
+      return;
     }
+    setFormError('');
+    setAmount('');
+    setCampaignName('');
+    setChannelSource('');
+    setNotes(EXAMPLE_DONATION_DEFAULT_NOTES);
+    setIsRecurring(false);
+    setRecurringFrequency(RECURRING_FREQUENCY_OPTIONS[2]);
+    setDonationDate(new Date().toISOString().slice(0, 10));
+    setOptionsError('');
+    let cancelled = false;
+    (async () => {
+      setOptionsLoading(true);
+      try {
+        const r = await api('/api/donations/form-options');
+        const j = (await r.json()) as { campaigns?: string[]; channels?: string[] };
+        if (cancelled) return;
+        if (!r.ok) {
+          setOptionsError('Could not load campaign and channel lists.');
+          setCampaignOptions([]);
+          setChannelOptions([]);
+          return;
+        }
+        setCampaignOptions(Array.isArray(j.campaigns) ? j.campaigns : []);
+        setChannelOptions(Array.isArray(j.channels) ? j.channels : []);
+      } catch {
+        if (!cancelled) setOptionsError('Could not load campaign and channel lists.');
+      } finally {
+        if (!cancelled) setOptionsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   if (!open) return null;
@@ -128,6 +170,12 @@ function ExampleDonateModal({
     if (!Number.isFinite(n) || n <= 0) {
       setFormError('Enter a valid amount greater than zero.');
       return;
+    }
+    const baseNotes = notes.trim();
+    let finalNotes: string | null = baseNotes || null;
+    if (isRecurring) {
+      const freqLine = `Recurring frequency: ${recurringFrequency}`;
+      finalNotes = baseNotes ? `${baseNotes}\n${freqLine}` : freqLine;
     }
     setSubmitting(true);
     try {
@@ -141,7 +189,7 @@ function ExampleDonateModal({
           campaignName: campaignName.trim() || null,
           channelSource: channelSource.trim() || 'Donor portal (example form)',
           isRecurring,
-          notes: notes.trim() || null,
+          notes: finalNotes,
         }),
       });
       if (!res.ok) {
@@ -151,12 +199,6 @@ function ExampleDonateModal({
       }
       onRecorded();
       onClose();
-      setAmount('');
-      setCampaignName('');
-      setChannelSource('');
-      setNotes('');
-      setIsRecurring(false);
-      setDonationDate(new Date().toISOString().slice(0, 10));
     } catch {
       setFormError('Network error. Try again.');
     } finally {
@@ -225,6 +267,13 @@ function ExampleDonateModal({
             Demonstration only — no payment is processed. Submitting records a sample monetary donation tied to your supporter profile.
           </p>
 
+          {optionsLoading && (
+            <p style={{ fontSize: 12, color: c.muted, marginBottom: 10 }}>Loading campaign and channel lists…</p>
+          )}
+          {optionsError && !optionsLoading && (
+            <p style={{ fontSize: 12, color: c.rose, marginBottom: 10 }}>{optionsError} You can still submit; choose a campaign or channel if lists appear.</p>
+          )}
+
           <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             Amount (PHP) <span style={{ color: c.rose }}>*</span>
           </label>
@@ -246,38 +295,63 @@ function ExampleDonateModal({
             style={{ ...inputStyle, marginBottom: 14 }}
           />
 
-          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Campaign (optional)</label>
-          <input
-            type="text"
+          <label htmlFor="example-donate-campaign" style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Campaign (optional)</label>
+          <select
+            id="example-donate-campaign"
             value={campaignName}
             onChange={(e) => setCampaignName(e.target.value)}
-            placeholder="e.g. Summer of Safety"
-            style={{ ...inputStyle, marginBottom: 14 }}
-            autoComplete="off"
-          />
+            disabled={optionsLoading}
+            style={{ ...inputStyle, marginBottom: 14, cursor: optionsLoading ? 'wait' : 'pointer' }}
+          >
+            <option value="">— Select a campaign —</option>
+            {campaignOptions.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
 
-          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Channel (optional)</label>
-          <input
-            type="text"
+          <label htmlFor="example-donate-channel" style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Channel (optional)</label>
+          <select
+            id="example-donate-channel"
             value={channelSource}
             onChange={(e) => setChannelSource(e.target.value)}
-            placeholder="e.g. Web, bank transfer"
-            style={{ ...inputStyle, marginBottom: 14 }}
-            autoComplete="off"
-          />
+            disabled={optionsLoading}
+            style={{ ...inputStyle, marginBottom: 14, cursor: optionsLoading ? 'wait' : 'pointer' }}
+          >
+            <option value="">— Select a channel —</option>
+            {channelOptions.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
 
-          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes (optional)</label>
+          <label htmlFor="example-donate-notes" style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes (optional)</label>
           <textarea
+            id="example-donate-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             style={{ ...inputStyle, marginBottom: 12, resize: 'vertical' }}
           />
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: c.text, marginBottom: 14, cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: c.text, marginBottom: 10, cursor: 'pointer' }}>
             <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
             Recurring donation
           </label>
+
+          {isRecurring && (
+            <>
+              <label htmlFor="example-donate-frequency" style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Recurring frequency</label>
+              <select
+                id="example-donate-frequency"
+                value={recurringFrequency}
+                onChange={(e) => setRecurringFrequency(e.target.value)}
+                style={{ ...inputStyle, marginBottom: 14, cursor: 'pointer' }}
+              >
+                {RECURRING_FREQUENCY_OPTIONS.map((freq) => (
+                  <option key={freq} value={freq}>{freq}</option>
+                ))}
+              </select>
+            </>
+          )}
 
           {formError && (
             <p style={{ fontSize: 13, color: c.rose, marginBottom: 12 }}>{formError}</p>
@@ -395,32 +469,169 @@ function MyImpact({ refreshSignal = 0 }: { refreshSignal?: number }) {
 
 // ── Donation History ──────────────────────────────────────────────────────────
 
+type RecurringSeriesRow = {
+  recurringSeriesKey: string | null;
+  legacyDonationId: number | null;
+  startedAt: string | null;
+  donationCount: number;
+  totalAmount: number;
+  currencyCode: string | null;
+  campaignName: string | null;
+  channelSource: string | null;
+  frequency: string;
+  cancelledAt: string | null;
+};
+
 function DonationHistory({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const [donations, setDonations] = useState<Record<string, unknown>[]>([]);
+  const [recurringSeries, setRecurringSeries] = useState<RecurringSeriesRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const searchId = useId();
   const [donationQuery, setDonationQuery] = useState('');
+  const [cancellingKey, setCancellingKey] = useState<string | null>(null);
 
   const filteredDonations = useMemo(
     () => filterRecordsByText(donations, donationQuery),
     [donations, donationQuery],
   );
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
-    try { const d = await api('/api/donations').then(r => r.json()); setDonations(Array.isArray(d) ? d : []); }
-    catch { setError('Failed to load donation history.'); }
-    finally { setLoading(false); }
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
+    setError('');
+    try {
+      const [dRes, rRes] = await Promise.all([
+        api('/api/donations'),
+        api('/api/donations/recurring-series'),
+      ]);
+      const d = await dRes.json();
+      const r = await rRes.json();
+      if (dRes.ok) setDonations(Array.isArray(d) ? d : []);
+      else setDonations([]);
+      if (rRes.ok) setRecurringSeries(Array.isArray(r) ? (r as RecurringSeriesRow[]) : []);
+      else setRecurringSeries([]);
+      if (!dRes.ok) setError('Failed to load donation history.');
+      else if (!rRes.ok) setError('Failed to load recurring schedules.');
+      else setError('');
+    } catch {
+      setError('Failed to load donation history.');
+    } finally {
+      if (!opts?.silent) setLoading(false);
+    }
   }, []);
+
+  const cancelRecurring = useCallback(
+    async (row: RecurringSeriesRow) => {
+      const key = row.recurringSeriesKey ?? `legacy:${row.legacyDonationId ?? ''}`;
+      setCancellingKey(key);
+      setError('');
+      try {
+        const body = row.recurringSeriesKey
+          ? { recurringSeriesKey: row.recurringSeriesKey }
+          : { legacyDonationId: row.legacyDonationId };
+        const res = await api('/api/donations/recurring/cancel', { method: 'POST', body: JSON.stringify(body) });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as { message?: string };
+          setError(err.message ?? 'Could not cancel recurring donation.');
+          return;
+        }
+        await load({ silent: true });
+      } catch {
+        setError('Could not cancel recurring donation.');
+      } finally {
+        setCancellingKey(null);
+      }
+    },
+    [load],
+  );
 
   useEffect(() => { load(); }, [load, refreshSignal]);
   if (loading) return <Loading />;
-  if (error) return <ApiError msg={error} retry={load} />;
+  if (error && donations.length === 0 && recurringSeries.length === 0) return <ApiError msg={error} retry={load} />;
 
   return (
     <div>
       <SectionTitle>Your Donation History ({donations.length})</SectionTitle>
+      {error && (donations.length > 0 || recurringSeries.length > 0) && (
+        <p style={{ fontSize: 13, color: c.rose, marginBottom: 12 }}>{error}</p>
+      )}
+
+      {recurringSeries.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionTitle>Recurring donations</SectionTitle>
+          <p style={{ fontSize: 13, color: c.muted, marginBottom: 12, lineHeight: 1.45 }}>
+            Schedules created from your account (including the example form). Cancelling stops future recurring charges in this demo; past payments stay in your history.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {recurringSeries.map((row) => {
+              const rowKey = row.recurringSeriesKey ?? `legacy:${row.legacyDonationId ?? 0}`;
+              const started = row.startedAt ? new Date(row.startedAt).toLocaleDateString() : '—';
+              const cancelled = row.cancelledAt ? new Date(row.cancelledAt).toLocaleDateString() : null;
+              const isCancelling = cancellingKey === rowKey;
+              const isCancelled = Boolean(row.cancelledAt);
+              return (
+                <div
+                  key={rowKey}
+                  style={{
+                    background: c.white,
+                    border: `1px solid ${c.goldLight}`,
+                    borderRadius: 10,
+                    padding: '1rem 1.25rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: c.forest, margin: '0 0 6px' }}>
+                        {row.campaignName?.trim() ? row.campaignName : 'General / unspecified campaign'}
+                      </p>
+                      <p style={{ fontSize: 12, color: c.muted, margin: '0 0 4px' }}>
+                        Started {started} · {row.frequency === '—' ? 'Frequency not recorded' : `${row.frequency}`}
+                      </p>
+                      <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>
+                        {row.channelSource?.trim() ? `Channel: ${row.channelSource}` : 'Channel: —'}
+                      </p>
+                    </div>
+                    {isCancelled ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: c.muted, background: c.ivory, padding: '6px 12px', borderRadius: 20 }}>
+                        Cancelled{cancelled ? ` · ${cancelled}` : ''}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isCancelling}
+                        onClick={() => void cancelRecurring(row)}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          padding: '8px 16px',
+                          borderRadius: 8,
+                          border: `1px solid ${c.rose}`,
+                          background: c.white,
+                          color: c.rose,
+                          cursor: isCancelling ? 'wait' : 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {isCancelling ? 'Cancelling…' : 'Cancel recurring'}
+                      </button>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 13, color: c.text, marginTop: 12, marginBottom: 0 }}>
+                    <strong style={{ color: c.forest }}>{row.donationCount}</strong> donation{row.donationCount !== 1 ? 's' : ''} recorded
+                    {' · '}
+                    Total:{' '}
+                    <strong style={{ color: c.forest }}>
+                      ₱{Number(row.totalAmount).toLocaleString()}
+                    </strong>
+                    {row.currencyCode && row.currencyCode !== 'PHP' ? ` ${row.currencyCode}` : ''}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {donations.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', background: c.white, borderRadius: 10, border: `1px solid ${c.goldLight}` }}>
           <p style={{ fontSize: 15, color: c.forest, fontFamily: 'Georgia, serif', marginBottom: 8 }}>No donations recorded yet.</p>

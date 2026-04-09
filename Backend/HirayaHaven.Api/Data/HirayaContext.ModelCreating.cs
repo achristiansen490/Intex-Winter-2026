@@ -296,6 +296,8 @@ public partial class HirayaContext
             MapText(entity, e => e.DonationType, "donation_type");
             MapText(entity, e => e.DonationDate, "donation_date");
             MapBool(entity, e => e.IsRecurring, "is_recurring");
+            entity.Property(e => e.RecurringSeriesKey).HasColumnName("recurring_series_key").HasMaxLength(64);
+            entity.Property(e => e.RecurringCancelledAt).HasColumnName("recurring_cancelled_at");
             MapText(entity, e => e.CampaignName, "campaign_name");
             MapText(entity, e => e.ChannelSource, "channel_source");
             MapText(entity, e => e.CurrencyCode, "currency_code");
