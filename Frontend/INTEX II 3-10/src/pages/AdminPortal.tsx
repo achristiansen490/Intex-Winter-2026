@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
+import { DonationDetailModal } from '../components/admin/DonationDetailModal';
 import { apiUrl } from '../lib/api';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
@@ -1371,6 +1372,7 @@ function AdminDonations() {
   const [perPage, setPerPage] = useState(25);
   const [page, setPage] = useState(1);
   const searchId = useId();
+  const [selectedDonationId, setSelectedDonationId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -1417,6 +1419,9 @@ function AdminDonations() {
   return (
     <div>
       <SectionTitle>Donations ({rows.length})</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -6, marginBottom: 12 }}>
+        Tip: click a row to view details. In‑kind donations include editable line items.
+      </p>
 
       {/* Recurring filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -1451,7 +1456,21 @@ function AdminDonations() {
           </thead>
           <tbody>
             {paginated.map((row, i) => (
-              <tr key={row.donationId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+              <tr
+                key={row.donationId}
+                onClick={() => setSelectedDonationId(row.donationId)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedDonationId(row.donationId);
+                }}
+                style={{
+                  borderBottom: `1px solid ${c.sageLight}`,
+                  background: i % 2 === 0 ? c.ivory : c.white,
+                  cursor: 'pointer',
+                }}
+                aria-label={`Open donation ${row.donationId} details`}
+              >
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationId}</td>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationDate ? new Date(row.donationDate).toLocaleDateString() : '—'}</td>
                 <td style={{ padding: '8px 12px' }}>{row.donationType ?? '—'}</td>
@@ -1470,6 +1489,14 @@ function AdminDonations() {
         </table>
       </div>
       <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
+
+      {selectedDonationId != null && (
+        <DonationDetailModal
+          donationId={selectedDonationId}
+          onClose={() => setSelectedDonationId(null)}
+          onChanged={load}
+        />
+      )}
     </div>
   );
 }

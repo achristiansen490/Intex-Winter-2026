@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
+import { DonationDetailModal } from '../components/admin/DonationDetailModal';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
@@ -16,7 +17,7 @@ const STAFF_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.76) 0%,rgba(107,
 
 function getNavItems(role: string | null): string[] {
   switch (role) {
-    case 'Supervisor':   return ['Dashboard', 'Caseload', 'Donors', 'Session Notes', 'Visits & Conferences', 'Reports', 'Pending Approvals'];
+    case 'Supervisor':   return ['Dashboard', 'Caseload', 'Donors', 'Donations', 'Session Notes', 'Visits & Conferences', 'Reports', 'Pending Approvals'];
     case 'CaseManager':  return ['Dashboard', 'Caseload', 'Session Notes', 'Visits & Conferences', 'Intervention Plans', 'Reports'];
     case 'SocialWorker': return ['Dashboard', 'My Residents', 'Session Notes', 'Home Visits', 'Incident Reports'];
     case 'FieldWorker':  return ['Dashboard', 'Residents', 'Health Records', 'Education Records', 'Home Visits', 'Incident Reports'];
@@ -192,6 +193,110 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
           />
           <DataTable columns={columns} rows={filteredRows} keyField={keyField} totalCount={rows.length} />
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Donations (Supervisor view-only) ──────────────────────────────────────────
+
+type DonationRow = {
+  donationId: number;
+  donationDate: string;
+  donationType: string;
+  campaignName: string;
+  amount: number | null;
+  currencyCode: string;
+  channelSource: string;
+  isRecurring: boolean | null;
+};
+
+function StaffDonations() {
+  const [rows, setRows] = useState<DonationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [selectedDonationId, setSelectedDonationId] = useState<number | null>(null);
+  const searchId = useId();
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const data = await api('/api/donations').then(r => r.json());
+      setRows(Array.isArray(data) ? data : []);
+    } catch { setError('Failed to load donations.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter(r =>
+      [r.donationType, r.campaignName, r.channelSource, r.currencyCode, String(r.donationDate ?? ''), String(r.amount ?? '')]
+        .some(v => String(v ?? '').toLowerCase().includes(needle))
+    );
+  }, [rows, query]);
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  return (
+    <div>
+      <SectionTitle>Donations (view-only)</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Click a row to view donation details, in‑kind items, and allocations. Editing is restricted to Admins.
+      </p>
+
+      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search by type, campaign, channel…" />
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['ID', 'Date', 'Type', 'Campaign', 'Amount', 'Currency', 'Channel', 'Recurring'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr
+                key={row.donationId}
+                onClick={() => setSelectedDonationId(row.donationId)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedDonationId(row.donationId);
+                }}
+                style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white, cursor: 'pointer' }}
+                aria-label={`Open donation ${row.donationId} details`}
+              >
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationId}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationDate ? new Date(row.donationDate).toLocaleDateString() : '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.donationType ?? '—'}</td>
+                <td style={{ padding: '8px 12px', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.campaignName ?? '—'}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.amount != null ? Number(row.amount).toLocaleString() : '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.currencyCode ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.channelSource ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  {row.isRecurring === true
+                    ? <span style={{ background: c.sageLight, color: c.forest, borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>Yes</span>
+                    : <span style={{ background: c.ivory, color: c.muted, borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>No</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedDonationId != null && (
+        <DonationDetailModal
+          donationId={selectedDonationId}
+          onClose={() => setSelectedDonationId(null)}
+          readOnly
+        />
       )}
     </div>
   );
@@ -754,6 +859,9 @@ export default function StaffPortal() {
           { key: 'country', label: 'Country' }, { key: 'status', label: 'Status' },
           { key: 'firstDonationDate', label: 'First Donation' }, { key: 'acquisitionChannel', label: 'Channel' },
         ]} />;
+
+      case 'Donations':
+        return <StaffDonations />;
 
       case 'Reports': return <StaffReports />;
       case 'Pending Approvals': return <StaffPendingApprovals />;
