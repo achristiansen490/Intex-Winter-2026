@@ -189,7 +189,7 @@ def _write_combined(conn: sqlite3.Connection, out_path: Path, batch_size: int) -
             if table_exists(conn, table):
                 out.write(
                     f"IF OBJECT_ID(N'dbo.{table}', N'U') IS NOT NULL "
-                    f"ALTER TABLE dbo.{q_ident(table)} WITH CHECK CHECK CONSTRAINT ALL;\n"
+                    f"ALTER TABLE dbo.{q_ident(table)} WITH NOCHECK CHECK CONSTRAINT ALL;\n"
                 )
         out.write("COMMIT;\n")
 
@@ -298,7 +298,7 @@ def _write_split(conn: sqlite3.Connection, out_dir: Path, batch_size: int) -> No
         for table in existing:
             f.write(
                 f"IF OBJECT_ID(N'dbo.{table}', N'U') IS NOT NULL "
-                f"ALTER TABLE dbo.{q_ident(table)} WITH CHECK CHECK CONSTRAINT ALL;\n"
+                f"ALTER TABLE dbo.{q_ident(table)} WITH NOCHECK CHECK CONSTRAINT ALL;\n"
             )
     print(f"Wrote: {step_final}")
     print(f"\nRun files in numeric order in the Azure Query Editor.")
