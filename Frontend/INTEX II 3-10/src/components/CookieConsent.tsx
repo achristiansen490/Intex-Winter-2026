@@ -2,43 +2,94 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const COOKIE_KEY = 'hh_cookie_consent';
+const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180; // 180 days
 
 type ConsentValue = 'accepted' | 'declined';
 
+function readCookie(name: string): string | null {
+  const cookies = document.cookie ? document.cookie.split(';') : [];
+  for (const cookie of cookies) {
+    const [k, ...rest] = cookie.trim().split('=');
+    if (k === name) return decodeURIComponent(rest.join('='));
+  }
+  return null;
+}
+
+function writeCookie(name: string, value: string, maxAgeSeconds?: number): void {
+  const maxAge = typeof maxAgeSeconds === 'number' ? `; max-age=${maxAgeSeconds}` : '';
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/${maxAge}; samesite=lax`;
+}
+
+function deleteCookie(name: string): void {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax`;
+}
+
 export function getConsentStatus(): ConsentValue | null {
-  return (localStorage.getItem(COOKIE_KEY) as ConsentValue) ?? null;
+  const value = readCookie(COOKIE_KEY);
+  return value === 'accepted' || value === 'declined' ? value : null;
 }
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
+  const [hasChoice, setHasChoice] = useState(false);
 
   useEffect(() => {
     // Only show if no decision has been made yet
-    if (!getConsentStatus()) {
+    const status = getConsentStatus();
+    if (!status) {
       setVisible(true);
+      setHasChoice(false);
+    } else {
+      setHasChoice(true);
     }
   }, []);
 
   function accept() {
-    localStorage.setItem(COOKIE_KEY, 'accepted');
+    writeCookie(COOKIE_KEY, 'accepted', COOKIE_MAX_AGE_SECONDS);
+    setHasChoice(true);
     setVisible(false);
   }
 
   function decline() {
-    localStorage.setItem(COOKIE_KEY, 'declined');
+    writeCookie(COOKIE_KEY, 'declined', COOKIE_MAX_AGE_SECONDS);
     // Clear any non-essential cookies
     document.cookie.split(';').forEach((cookie) => {
       const name = cookie.split('=')[0].trim();
       // Keep essential auth token (stored in localStorage, not cookies)
       // Clear any preference cookies if set
       if (name === 'hh_theme') {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+        deleteCookie(name);
       }
     });
+    setHasChoice(true);
     setVisible(false);
   }
 
-  if (!visible) return null;
+  if (!visible) {
+    if (!hasChoice) return null;
+    return (
+      <button
+        onClick={() => setVisible(true)}
+        aria-label="Open cookie settings"
+        style={{
+          position: 'fixed',
+          right: '1rem',
+          bottom: '1rem',
+          zIndex: 8500,
+          background: '#2A4A35',
+          color: '#FBF8F2',
+          border: '1px solid rgba(251,248,242,0.25)',
+          borderRadius: 20,
+          padding: '8px 14px',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Cookie settings
+      </button>
+    );
+  }
 
   return (
     <div
@@ -92,6 +143,17 @@ export function CookieConsent() {
           }}
         >
           Essential only
+        </button>
+        <button
+          onClick={() => setVisible(false)}
+          style={{
+            background: 'transparent', color: 'rgba(251,248,242,0.75)',
+            fontSize: 13,
+            padding: '8px 20px', borderRadius: 20,
+            border: '1px solid rgba(251,248,242,0.25)', cursor: 'pointer',
+          }}
+        >
+          Close
         </button>
       </div>
     </div>
