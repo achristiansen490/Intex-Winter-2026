@@ -81,7 +81,7 @@ export function NavBar() {
               {!isAuthenticated ? (
                 <>
                   <a href="/#about" style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>About</a>
-                  <a href="/#impact" style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>Impact</a>
+                  <Link to="/impact" style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>Impact</Link>
                   <Link to="/login" style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>Log In</Link>
                   <Link
                     to="/register"
@@ -165,7 +165,7 @@ export function NavBar() {
               <>
                 <Link role="menuitem" to="/" onClick={() => setOpen(false)} style={{ fontSize: 15, color: c.text, textDecoration: 'none', padding: '8px 0', borderBottom: '0.5px solid rgba(44,43,40,0.08)' }}>Home</Link>
                 <a role="menuitem" href="/#about" onClick={() => setOpen(false)} style={{ fontSize: 15, color: c.text, textDecoration: 'none', padding: '8px 0', borderBottom: '0.5px solid rgba(44,43,40,0.08)' }}>About</a>
-                <a role="menuitem" href="/#impact" onClick={() => setOpen(false)} style={{ fontSize: 15, color: c.text, textDecoration: 'none', padding: '8px 0', borderBottom: '0.5px solid rgba(44,43,40,0.08)' }}>Impact</a>
+                <Link role="menuitem" to="/impact" onClick={() => setOpen(false)} style={{ fontSize: 15, color: c.text, textDecoration: 'none', padding: '8px 0', borderBottom: '0.5px solid rgba(44,43,40,0.08)' }}>Impact</Link>
                 <Link role="menuitem" to="/login" onClick={() => setOpen(false)} style={{ fontSize: 15, color: c.text, textDecoration: 'none', padding: '8px 0', borderBottom: '0.5px solid rgba(44,43,40,0.08)' }}>Log In</Link>
                 <Link
                   role="menuitem"

@@ -5,6 +5,7 @@ import { CookieConsent } from './components/CookieConsent';
 
 // Pages
 import LandingPage from './pages/LandingPage';
+import ImpactPage from './pages/ImpactPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
@@ -43,6 +44,7 @@ function AppRoutes() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/impact" element={<ImpactPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/pending-approval" element={<PendingApprovalPage />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />
