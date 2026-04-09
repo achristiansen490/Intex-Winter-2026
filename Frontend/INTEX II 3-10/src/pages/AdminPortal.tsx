@@ -39,28 +39,22 @@ function filterTableRows(
 
 // ── Pagination helpers ────────────────────────────────────────────────────────
 
-function paginationBtnStyle(disabled: boolean): React.CSSProperties {
-  return {
-    background: disabled ? c.ivory : c.white,
-    color: disabled ? c.muted : c.forest,
-    border: `1px solid ${c.sageLight}`,
-    borderRadius: 5,
-    padding: '4px 10px',
-    fontSize: 12,
-    cursor: disabled ? 'default' : 'pointer',
-    opacity: disabled ? 0.5 : 1,
-  };
-}
+const pageBtnBase: React.CSSProperties = { border: `1px solid ${c.sageLight}`, borderRadius: 5, padding: '4px 10px', fontSize: 12 };
+const pageBtnEnabled: React.CSSProperties = { ...pageBtnBase, background: c.white, color: c.forest, cursor: 'pointer' };
+const pageBtnDisabled: React.CSSProperties = { ...pageBtnBase, background: c.ivory, color: c.muted, cursor: 'default', opacity: 0.5 };
+
+const filterBtnActive: React.CSSProperties = { padding: '5px 14px', fontSize: 12, borderRadius: 6, fontWeight: 600, cursor: 'pointer', background: c.forest, color: c.ivory, border: `1px solid ${c.forest}` };
+const filterBtnInactive: React.CSSProperties = { padding: '5px 14px', fontSize: 12, borderRadius: 6, fontWeight: 400, cursor: 'pointer', background: c.white, color: c.text, border: `1px solid ${c.sageLight}` };
 
 function Pagination({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (p: number) => void }) {
   if (totalPages <= 1) return null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, justifyContent: 'flex-end' }}>
-      <button onClick={() => onPage(1)} disabled={page === 1} style={paginationBtnStyle(page === 1)}>«</button>
-      <button onClick={() => onPage(page - 1)} disabled={page === 1} style={paginationBtnStyle(page === 1)}>‹</button>
+      <button onClick={() => onPage(1)} disabled={page === 1} style={page === 1 ? pageBtnDisabled : pageBtnEnabled}>«</button>
+      <button onClick={() => onPage(page - 1)} disabled={page === 1} style={page === 1 ? pageBtnDisabled : pageBtnEnabled}>‹</button>
       <span style={{ fontSize: 12, color: c.muted, padding: '0 8px' }}>Page {page} of {totalPages}</span>
-      <button onClick={() => onPage(page + 1)} disabled={page === totalPages} style={paginationBtnStyle(page === totalPages)}>›</button>
-      <button onClick={() => onPage(totalPages)} disabled={page === totalPages} style={paginationBtnStyle(page === totalPages)}>»</button>
+      <button onClick={() => onPage(page + 1)} disabled={page === totalPages} style={page === totalPages ? pageBtnDisabled : pageBtnEnabled}>›</button>
+      <button onClick={() => onPage(totalPages)} disabled={page === totalPages} style={page === totalPages ? pageBtnDisabled : pageBtnEnabled}>»</button>
     </div>
   );
 }
@@ -2120,7 +2114,8 @@ function AdminAllUsers() {
 // ── Residents with inline edit + create ──────────────────────────────────────
 
 type ResidentRow = {
-  residentId: number; caseControlNo: string; safehouseId: number | null;
+  residentId: number; residentFirstName: string; residentLastName: string;
+  caseControlNo: string; safehouseId: number | null;
   caseStatus: string; dateOfAdmission: string; currentRiskLevel: string;
   reintegrationStatus: string; assignedSocialWorker: string;
   reintegrationType: string; dateEnrolled: string;
@@ -2132,6 +2127,7 @@ const REINTEGRATION_STATUSES = ['Not Started', 'In Progress', 'Completed', 'On H
 const REINTEGRATION_TYPES = ['Family Reunification', 'Foster Care', 'Adoption (Domestic)', 'Adoption (Inter-Country)', 'Independent Living', 'None'];
 
 const RESIDENT_BLANK: Omit<ResidentRow, 'residentId'> = {
+  residentFirstName: '', residentLastName: '',
   caseControlNo: '', safehouseId: null, caseStatus: 'Active',
   dateOfAdmission: '', currentRiskLevel: 'Low', reintegrationStatus: 'Not Started',
   reintegrationType: 'None', assignedSocialWorker: '', dateEnrolled: '',
@@ -2169,7 +2165,7 @@ export function AdminResidents() {
     const needle = query.trim().toLowerCase();
     if (!needle) return rows;
     return rows.filter(r =>
-      [r.caseControlNo, r.caseStatus, r.currentRiskLevel, r.reintegrationStatus, r.assignedSocialWorker]
+      [r.residentFirstName, r.residentLastName, r.caseControlNo, r.caseStatus, r.currentRiskLevel, r.reintegrationStatus, r.assignedSocialWorker]
         .some(v => v?.toLowerCase().includes(needle))
     );
   }, [rows, query]);
@@ -2256,7 +2252,7 @@ export function AdminResidents() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['ID', 'Case No.', 'Safehouse', 'Status', 'Admitted', 'Risk', 'Reintegration', 'Social Worker', 'Actions'].map(h => (
+              {['ID', 'Name', 'Case No.', 'Safehouse', 'Status', 'Admitted', 'Risk', 'Reintegration', 'Social Worker', 'Actions'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -2265,6 +2261,7 @@ export function AdminResidents() {
             {paginated.map((row, i) => (
               <tr key={row.residentId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentId}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{[row.residentFirstName, row.residentLastName].filter(Boolean).join(' ') || '—'}</td>
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.caseControlNo ?? '—'}</td>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.safehouseId ?? '—'}</td>
                 <td style={{ padding: '8px 12px' }}>
@@ -2292,6 +2289,8 @@ export function AdminResidents() {
           <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
             <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 1rem' }}>Add Resident</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              {residentField('First Name', createForm.residentFirstName, v => setCreateForm(f => ({ ...f, residentFirstName: v })), 'text')}
+              {residentField('Last Name', createForm.residentLastName, v => setCreateForm(f => ({ ...f, residentLastName: v })), 'text')}
               {residentField('Case Control No.', createForm.caseControlNo, v => setCreateForm(f => ({ ...f, caseControlNo: v })), 'text')}
               {residentField('Safehouse ID', String(createForm.safehouseId ?? ''), v => setCreateForm(f => ({ ...f, safehouseId: v === '' ? null : Number(v) })), 'number')}
               {residentField('Case Status', createForm.caseStatus, v => setCreateForm(f => ({ ...f, caseStatus: v })), 'select', CASE_STATUSES)}
@@ -2315,7 +2314,7 @@ export function AdminResidents() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
             <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 0.25rem' }}>Edit Resident Record</h3>
-            <p style={{ fontSize: 12, color: c.muted, marginBottom: 1.25 * 16 }}>Case #{editRow.caseControlNo} · ID {editRow.residentId}</p>
+            <p style={{ fontSize: 12, color: c.muted, marginBottom: 1.25 * 16 }}>{[editRow.residentFirstName, editRow.residentLastName].filter(Boolean).join(' ') || 'Resident'} · Case #{editRow.caseControlNo}</p>
             {([
               ['caseStatus', 'Case Status', CASE_STATUSES],
               ['currentRiskLevel', 'Current Risk Level', RISK_LEVELS],
@@ -2394,20 +2393,14 @@ function AdminDonations() {
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
-  const filterBtnStyle = (active: boolean): React.CSSProperties => ({
-    padding: '5px 14px', fontSize: 12, borderRadius: 6, fontWeight: active ? 600 : 400, cursor: 'pointer',
-    background: active ? c.forest : c.white, color: active ? c.ivory : c.text,
-    border: `1px solid ${active ? c.forest : c.sageLight}`,
-  });
-
-  if (loading) return <Loading />;
-  if (error) return <ApiError msg={error} retry={load} />;
-
-  const recurringCounts = {
+  const recurringCounts = useMemo(() => ({
     all: rows.length,
     recurring: rows.filter(r => r.isRecurring === true).length,
     'one-time': rows.filter(r => r.isRecurring !== true).length,
-  };
+  }), [rows]);
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
 
   return (
     <div>
@@ -2415,13 +2408,13 @@ function AdminDonations() {
 
       {/* Recurring filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        <button style={filterBtnStyle(recurringFilter === 'all')} onClick={() => { setRecurringFilter('all'); setPage(1); }}>
+        <button style={recurringFilter === 'all' ? filterBtnActive : filterBtnInactive} onClick={() => { setRecurringFilter('all'); setPage(1); }}>
           All ({recurringCounts.all})
         </button>
-        <button style={filterBtnStyle(recurringFilter === 'recurring')} onClick={() => { setRecurringFilter('recurring'); setPage(1); }}>
+        <button style={recurringFilter === 'recurring' ? filterBtnActive : filterBtnInactive} onClick={() => { setRecurringFilter('recurring'); setPage(1); }}>
           Recurring ({recurringCounts.recurring})
         </button>
-        <button style={filterBtnStyle(recurringFilter === 'one-time')} onClick={() => { setRecurringFilter('one-time'); setPage(1); }}>
+        <button style={recurringFilter === 'one-time' ? filterBtnActive : filterBtnInactive} onClick={() => { setRecurringFilter('one-time'); setPage(1); }}>
           One-time ({recurringCounts['one-time']})
         </button>
       </div>

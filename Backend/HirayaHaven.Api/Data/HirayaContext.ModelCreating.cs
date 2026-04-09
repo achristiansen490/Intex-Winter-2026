@@ -42,6 +42,9 @@ public partial class HirayaContext
                 .WithMany()
                 .HasForeignKey(e => e.ResetInitiatedBy)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(e => e.FirstName).HasColumnName("first_name");
+            entity.Property(e => e.LastName).HasColumnName("last_name");
         });
 
         modelBuilder.Entity<Organization>(entity =>
@@ -361,6 +364,8 @@ public partial class HirayaContext
             entity.ToTable("residents");
             entity.HasKey(e => e.ResidentId);
             entity.Property(e => e.ResidentId).HasColumnName("resident_id").ValueGeneratedOnAdd();
+            MapText(entity, e => e.ResidentFirstName, "resident_first_name");
+            MapText(entity, e => e.ResidentLastName, "resident_last_name");
             MapText(entity, e => e.CaseControlNo, "case_control_no");
             MapText(entity, e => e.InternalCode, "internal_code");
             entity.Property(e => e.SafehouseId).HasColumnName("safehouse_id");

@@ -3,6 +3,7 @@ using System;
 using HirayaHaven.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HirayaHaven.Api.Migrations
 {
     [DbContext(typeof(HirayaContext))]
-    partial class HirayaContextModelSnapshot : ModelSnapshot
+    [Migration("20260409194901_AddResidentAndUserNames")]
+    partial class AddResidentAndUserNames
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.1");
@@ -656,39 +659,6 @@ namespace HirayaHaven.Api.Migrations
                     b.HasIndex("ResidentId");
 
                     b.ToTable("intervention_plans", (string)null);
-                });
-
-            modelBuilder.Entity("HirayaHaven.Api.Models.OkrTarget", b =>
-                {
-                    b.Property<int>("TargetId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("target_id");
-
-                    b.Property<string>("MetricKey")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("metric_key");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("notes");
-
-                    b.Property<int>("Quarter")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("quarter");
-
-                    b.Property<double>("TargetValue")
-                        .HasColumnType("REAL")
-                        .HasColumnName("target_value");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("year");
-
-                    b.HasKey("TargetId");
-
-                    b.ToTable("okr_targets", (string)null);
                 });
 
             modelBuilder.Entity("HirayaHaven.Api.Models.Organization", b =>
