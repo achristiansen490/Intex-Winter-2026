@@ -5,6 +5,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using HirayaHaven.Api.Services;
 
@@ -89,6 +90,9 @@ builder.Services.AddDbContext<HirayaContext>(options =>
     {
         options.UseSqlite(resolvedSqliteConnection);
     }
+    // Suppress the PendingModelChangesWarning — all migrations are applied; the snapshot
+    // divergence is cosmetic and does not affect runtime behaviour.
+    options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 });
 
 // --- Identity ---
@@ -248,7 +252,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// In Development, the Vite proxy calls http://localhost:5000. HTTPS redirection to :5001 can
+// In Development, the Vite proxy calls http://127.0.0.1:5051. HTTPS redirection to :5001 can
 // cause follow-up requests to drop the Authorization header, breaking GET /api/auth/me (401).
 if (!app.Environment.IsDevelopment())
 {

@@ -12,11 +12,11 @@ const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChar
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
 
 const c = {
-  ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
-  roseLight: '#F0D8D4', sage: '#6B9E7E', sageLight: '#D4EAD9', goldLight: '#F5E6C8',
+  ivory: '#F9FCFB', forest: '#4A7C68', gold: '#D4A44C', rose: '#C4867A',
+  roseLight: '#F0D8D4', sage: '#7FA89C', sageLight: '#E0EBE8', goldLight: '#F5E6C8',
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
-const STAFF_BANNER_BG = 'linear-gradient(135deg, #2F5A40 0%, #4E7F61 55%, #7CA98A 100%)';
+const STAFF_BANNER_BG = 'linear-gradient(135deg, #6B9E8E 0%, #8BB5A8 55%, #A7C8BC 100%)';
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
@@ -195,6 +195,8 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
 
 type ResidentRow = {
   residentId: number;
+  residentFirstName?: string;
+  residentLastName?: string;
   caseControlNo: string;
   caseStatus: string;
   sex: string;
@@ -231,13 +233,20 @@ function ResidentsPanel({
   useEffect(() => { load(); }, [load]);
 
   const columns = useMemo(() => ([
-    { key: 'residentId', label: 'ID' }, { key: 'caseControlNo', label: 'Case No.' },
+    { key: 'residentId', label: 'ID' }, { key: 'residentName', label: 'Name' }, { key: 'caseControlNo', label: 'Case No.' },
     { key: 'caseStatus', label: 'Status' }, { key: 'sex', label: 'Sex' },
     { key: 'dateOfAdmission', label: 'Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
     { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'SW' },
   ]), []);
 
-  const filtered = useMemo(() => filterTableRows(rows as unknown as Record<string, unknown>[], columns, query) as unknown as ResidentRow[], [rows, columns, query]);
+  const rowsWithName = useMemo(() => (
+    rows.map((row) => ({
+      ...row,
+      residentName: [row.residentFirstName, row.residentLastName].filter(Boolean).join(' ').trim() || '—',
+    }))
+  ), [rows]);
+
+  const filtered = useMemo(() => filterTableRows(rowsWithName as unknown as Record<string, unknown>[], columns, query) as unknown as (ResidentRow & { residentName: string })[], [rowsWithName, columns, query]);
 
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
@@ -278,6 +287,7 @@ function ResidentsPanel({
                 aria-label={`Open resident ${row.residentId} details`}
               >
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentId}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.residentName}</td>
                 <td style={{ padding: '8px 12px' }}>{row.caseControlNo ?? '—'}</td>
                 <td style={{ padding: '8px 12px' }}>{row.caseStatus ?? '—'}</td>
                 <td style={{ padding: '8px 12px' }}>{row.sex ?? '—'}</td>
@@ -294,7 +304,7 @@ function ResidentsPanel({
       {selectedResident && (
         <ResidentProcessRecordingsModal
           residentId={selectedResident.residentId}
-          residentLabel={`#${selectedResident.residentId} · ${selectedResident.caseControlNo ?? 'Resident'}`}
+          residentLabel={`${[selectedResident.residentFirstName, selectedResident.residentLastName].filter(Boolean).join(' ').trim() || `#${selectedResident.residentId}`} · ${selectedResident.caseControlNo ?? 'Resident'}`}
           onClose={() => setSelectedResident(null)}
           canCreate={canCreate}
           canEdit={canEdit}
@@ -330,6 +340,7 @@ function CrudDataPanel({
   const [viewRow, setViewRow] = useState<Record<string, unknown> | null>(null);
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
   const [createRow, setCreateRow] = useState<Record<string, unknown> | null>(null);
+  const [residentNameById, setResidentNameById] = useState<Map<number, string>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -345,15 +356,66 @@ function CrudDataPanel({
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        if (!mounted || !Array.isArray(data)) return;
+        const next = new Map<number, string>();
+        data.forEach((item) => {
+          const row = item as { residentId?: unknown; residentFirstName?: unknown; residentLastName?: unknown };
+          const id = Number(row.residentId);
+          if (!Number.isFinite(id)) return;
+          const name = [row.residentFirstName, row.residentLastName]
+            .map((v) => String(v ?? '').trim())
+            .filter(Boolean)
+            .join(' ');
+          if (name) next.set(id, name);
+        });
+        setResidentNameById(next);
+      } catch {
+        if (mounted) setResidentNameById(new Map());
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const notify = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 2800);
   };
 
-  const filteredRows = useMemo(
-    () => filterTableRows(rows, columns, query),
-    [rows, columns, query],
-  );
+  const filteredRows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter((row) =>
+      columns.some((col) => {
+        const raw = row[col.key];
+        if (col.key === 'residentId') {
+          const id = Number(raw);
+          const name = Number.isFinite(id) ? residentNameById.get(id) : '';
+          const residentText = `${String(raw ?? '')} ${name ?? ''}`.toLowerCase();
+          return residentText.includes(needle);
+        }
+        if (raw == null || raw === '') return false;
+        return String(raw).toLowerCase().includes(needle);
+      }),
+    );
+  }, [rows, columns, query, residentNameById]);
+
+  const renderCellValue = (row: Record<string, unknown>, key: string) => {
+    if (key === 'residentId') {
+      const raw = row[key];
+      if (raw == null || raw === '') return '—';
+      const id = Number(raw);
+      const name = Number.isFinite(id) ? residentNameById.get(id) : undefined;
+      return name ? `${name} (#${String(raw)})` : `#${String(raw)}`;
+    }
+    return String(row[key] ?? '—');
+  };
 
   const normalizeRowForSave = (row: Record<string, unknown>) => {
     const payload: Record<string, unknown> = {};
@@ -500,7 +562,7 @@ function CrudDataPanel({
                     <tr key={String(row[keyField] ?? i)} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                       {columns.map((col) => (
                         <td key={col.key} style={{ padding: '8px 12px', color: c.text, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {String(row[col.key] ?? '—')}
+                          {renderCellValue(row, col.key)}
                         </td>
                       ))}
                       <td style={{ padding: '8px 12px' }}>

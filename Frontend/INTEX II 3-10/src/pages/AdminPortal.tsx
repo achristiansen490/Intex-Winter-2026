@@ -12,11 +12,11 @@ const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChar
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
 
 const c = {
-  ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
-  roseLight: '#F0D8D4', sage: '#6B9E7E', sageLight: '#D4EAD9', goldLight: '#F5E6C8',
+  ivory: '#F9FCFB', forest: '#4A7C68', gold: '#D4A44C', rose: '#C4867A',
+  roseLight: '#F0D8D4', sage: '#7FA89C', sageLight: '#E0EBE8', goldLight: '#F5E6C8',
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
-const ADMIN_BANNER_BG = 'linear-gradient(135deg, #2A4A35 0%, #3E6B4D 55%, #6B9E7E 100%)';
+const ADMIN_BANNER_BG = 'linear-gradient(135deg, #6B9E8E 0%, #8BB5A8 55%, #A7C8BC 100%)';
 const navItems = [...ADMIN_NAV_ITEMS];
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
@@ -145,12 +145,14 @@ function Table({
   rows,
   keyField,
   totalCount,
+  residentNameById,
 }: {
   columns: { key: string; label: string }[];
   rows: Record<string, unknown>[];
   keyField: string;
   /** When filtering, pass full dataset length for “N of M” label */
   totalCount?: number;
+  residentNameById?: Map<number, string>;
 }) {
   if (rows.length === 0) {
     const emptyMsg =
@@ -175,7 +177,15 @@ function Table({
             <tr key={String(row[keyField])} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
               {columns.map(col => (
                 <td key={col.key} style={{ padding: '8px 12px', color: c.text, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {String(row[col.key] ?? '—')}
+                  {col.key === 'residentId'
+                    ? (() => {
+                        const raw = row[col.key];
+                        if (raw == null || raw === '') return '—';
+                        const id = Number(raw);
+                        const name = Number.isFinite(id) ? residentNameById?.get(id) : undefined;
+                        return name ? `${name} (#${String(raw)})` : `#${String(raw)}`;
+                      })()
+                    : String(row[col.key] ?? '—')}
                 </td>
               ))}
             </tr>
@@ -258,22 +268,16 @@ function AdminDashboard() {
     <div>
       <SectionTitle>System Counts</SectionTitle>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatCard label="Residents" value={check.residents ?? '—'} />
-        <StatCard label="Supporters" value={check.supporters ?? '—'} accent={c.goldLight} />
-        <StatCard label="Safehouses" value={check.safehouses ?? '—'} />
-        <StatCard label="Donations" value={check.donations ?? '—'} accent={c.goldLight} />
-        <StatCard label="Social Posts" value={check.socialPosts ?? '—'} accent={c.roseLight} />
+        <StatCard label="Active Residents" value={ops.activeResidents ?? '—'} accent={c.sageLight} />
+        <StatCard label="Total Supporters" value={check.supporters ?? '—'} accent={c.sageLight} />
+        <StatCard label="Number of Donations" value={check.donations ?? '—'} accent={c.goldLight} />
       </div>
 
       <SectionTitle>Operations</SectionTitle>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatCard label="Active Residents" value={ops.activeResidents ?? '—'} accent={c.sageLight} />
-        <StatCard label="High Risk" value={ops.highRiskResidents ?? '—'} accent={c.roseLight} />
-        <StatCard label="Reintegration Ready" value={ops.reintegrationReadyResidents ?? '—'} accent={c.goldLight} />
-        <StatCard label="Process Sessions" value={ops.processSessions ?? '—'}
-          sub={ops.processSessions ? `${((ops.sessionsWithProgress / ops.processSessions) * 100).toFixed(0)}% with progress` : undefined} />
-        <StatCard label="Home Visits" value={ops.homeVisits ?? '—'}
-          sub={ops.homeVisits ? `${((ops.visitsWithSafetyConcern / ops.homeVisits) * 100).toFixed(0)}% safety concerns` : undefined} accent={c.roseLight} />
+        <StatCard label="Total Residents" value={check.residents ?? '—'} accent={c.sageLight} />
+        <StatCard label="High Risk Residents" value={ops.highRiskResidents ?? '—'} accent={c.roseLight} />
+        <StatCard label="Social Posts" value={check.socialPosts ?? '—'} accent={c.goldLight} />
       </div>
 
       <SectionTitle>OKR — Education Attendance (Quarterly)</SectionTitle>
@@ -534,7 +538,7 @@ function AdminResidentsPanel() {
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const columns = useMemo(() => [
-    { key: 'residentId', label: 'ID' }, { key: 'caseControlNo', label: 'Case No.' },
+    { key: 'residentId', label: 'ID' }, { key: 'residentName', label: 'Name' }, { key: 'caseControlNo', label: 'Case No.' },
     { key: 'safehouseId', label: 'Safehouse' }, { key: 'caseStatus', label: 'Status' },
     { key: 'sex', label: 'Sex' }, { key: 'dateOfAdmission', label: 'Admitted' },
     { key: 'currentRiskLevel', label: 'Risk' }, { key: 'reintegrationStatus', label: 'Reintegration' },
@@ -557,9 +561,20 @@ function AdminResidentsPanel() {
   const riskOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.currentRiskLevel ?? '').trim()).filter(Boolean))).sort()], [rows]);
   const safehouseOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.safehouseId ?? '').trim()).filter(Boolean))).sort((a, b) => Number(a) - Number(b))], [rows]);
 
+  const rowsWithName = useMemo(
+    () =>
+      rows.map((row) => ({
+        ...row,
+        residentName: [row['residentFirstName'], row['residentLastName']]
+          .map((v) => String(v ?? '').trim())
+          .filter(Boolean)
+          .join(' ') || '—',
+      })),
+    [rows],
+  );
   const searchedRows = useMemo(
-    () => filterTableRows(rows, columns, query),
-    [rows, columns, query],
+    () => filterTableRows(rowsWithName, columns, query),
+    [rowsWithName, columns, query],
   );
   const filteredRows = useMemo(() => searchedRows.filter((row) => {
     if (statusFilter !== 'All' && String(row.caseStatus ?? '') !== statusFilter) return false;
@@ -1040,6 +1055,7 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(25);
   const [page, setPage] = useState(1);
+  const [residentNameById, setResidentNameById] = useState<Map<number, string>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -1051,6 +1067,33 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
   }, [url]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        if (!mounted || !Array.isArray(data)) return;
+        const next = new Map<number, string>();
+        data.forEach((item) => {
+          const row = item as { residentId?: unknown; residentFirstName?: unknown; residentLastName?: unknown };
+          const id = Number(row.residentId);
+          if (!Number.isFinite(id)) return;
+          const name = [row.residentFirstName, row.residentLastName]
+            .map((v) => String(v ?? '').trim())
+            .filter(Boolean)
+            .join(' ');
+          if (name) next.set(id, name);
+        });
+        setResidentNameById(next);
+      } catch {
+        if (mounted) setResidentNameById(new Map());
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const filteredRows = useMemo(
     () => filterTableRows(rows, columns, query),
@@ -1079,7 +1122,7 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
             />
             <PerPageSelector value={perPage} onChange={v => { setPerPage(v); setPage(1); }} />
           </div>
-          <Table columns={columns} rows={pageRows} keyField={keyField} totalCount={filteredRows.length} />
+          <Table columns={columns} rows={pageRows} keyField={keyField} totalCount={filteredRows.length} residentNameById={residentNameById} />
           <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
         </>
       )}
@@ -1098,6 +1141,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
   const [viewRow, setViewRow] = useState<Record<string, unknown> | null>(null);
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
   const [createRow, setCreateRow] = useState<Record<string, unknown> | null>(null);
+  const [residentNameById, setResidentNameById] = useState<Map<number, string>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -1110,12 +1154,61 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
 
   useEffect(() => { load(); }, [load]);
 
-  const filteredRows = useMemo(
-    () => filterTableRows(rows, columns, query),
-    [rows, columns, query],
-  );
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        if (!mounted || !Array.isArray(data)) return;
+        const next = new Map<number, string>();
+        data.forEach((item) => {
+          const row = item as { residentId?: unknown; residentFirstName?: unknown; residentLastName?: unknown };
+          const id = Number(row.residentId);
+          if (!Number.isFinite(id)) return;
+          const name = [row.residentFirstName, row.residentLastName]
+            .map((v) => String(v ?? '').trim())
+            .filter(Boolean)
+            .join(' ');
+          if (name) next.set(id, name);
+        });
+        setResidentNameById(next);
+      } catch {
+        if (mounted) setResidentNameById(new Map());
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const filteredRows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter((row) =>
+      columns.some((col) => {
+        const raw = row[col.key];
+        if (col.key === 'residentId') {
+          const id = Number(raw);
+          const name = Number.isFinite(id) ? residentNameById.get(id) : '';
+          return `${String(raw ?? '')} ${name ?? ''}`.toLowerCase().includes(needle);
+        }
+        if (raw == null || raw === '') return false;
+        return String(raw).toLowerCase().includes(needle);
+      }),
+    );
+  }, [rows, columns, query, residentNameById]);
 
   const editableColumns = columns.filter((col) => col.key !== keyField);
+  const renderCellValue = (row: Record<string, unknown>, key: string) => {
+    if (key === 'residentId') {
+      const raw = row[key];
+      if (raw == null || raw === '') return '—';
+      const id = Number(raw);
+      const name = Number.isFinite(id) ? residentNameById.get(id) : undefined;
+      return name ? `${name} (#${String(raw)})` : `#${String(raw)}`;
+    }
+    return String(row[key] ?? '—');
+  };
   const notify = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 2800);
@@ -1267,7 +1360,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
                     <tr key={String(row[keyField] ?? i)} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                       {columns.map((col) => (
                         <td key={col.key} style={{ padding: '8px 12px', color: c.text, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {String(row[col.key] ?? '—')}
+                          {renderCellValue(row, col.key)}
                         </td>
                       ))}
                       <td style={{ padding: '8px 12px' }}>
@@ -2607,6 +2700,7 @@ export default function AdminPortal() {
             <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Admin Dashboard</p>
             <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Admin'}</h1>
           </div>
+          <button onClick={handleLogout} style={{ background: c.white, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>Logout</button>
         </section>
         {renderContent()}
       </div>
