@@ -92,7 +92,7 @@ export function NavBar() {
                       border: 'none', cursor: 'pointer', textDecoration: 'none',
                     }}
                   >
-                    Give Hope
+                    Create an account
                   </Link>
                 </>
               ) : (
@@ -178,7 +178,7 @@ export function NavBar() {
                     textDecoration: 'none', marginTop: 4, alignSelf: 'flex-start',
                   }}
                 >
-                  Give Hope
+                  Create an account
                 </Link>
               </>
             ) : (
