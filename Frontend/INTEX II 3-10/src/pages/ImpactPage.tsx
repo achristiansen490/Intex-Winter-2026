@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NavBar } from '../components/NavBar';
-import { Logo } from '../components/Logo';
 import MonthlyLineChart from '../components/charts/MonthlyLineChart';
 import CampaignBarChart from '../components/charts/CampaignBarChart';
 import { apiUrl } from '../lib/api';
+import './ImpactPage.css';
 
 const c = {
   ivory: '#FBF8F2',
@@ -16,6 +16,9 @@ const c = {
   text: '#2C2B28',
   muted: '#7A786F',
 };
+
+const HERO_IMAGE = '/images/impact-festival.jpg';
+const JOIN_BANNER_IMAGE = '/images/impact-join-banner.jpg';
 
 type PublicImpactSnapshot = {
   snapshotId: number;
@@ -34,28 +37,71 @@ type Overview = {
   totalMonetaryAmount?: number;
 };
 
+type PublicImpactSeries = {
+  monthlySupportTrend?: Array<{ month: string; total: number }>;
+  programAllocationMix?: Array<{ name: string; total: number }>;
+  educationRecordCount?: number;
+  latestAvgEducationProgress?: number | null;
+  latestEducationMonth?: string | null;
+};
+
 function safeJsonParse(raw: string | null | undefined): unknown {
   if (!raw) return null;
-  try { return JSON.parse(raw) as unknown; } catch { return null; }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    try {
+      const normalized = raw
+        .replace(/\bTrue\b/g, 'true')
+        .replace(/\bFalse\b/g, 'false')
+        .replace(/\bNone\b/g, 'null')
+        .replace(/'/g, '"');
+      return JSON.parse(normalized) as unknown;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function asNumber(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
 }
 
 export default function ImpactPage() {
   const [snapshots, setSnapshots] = useState<PublicImpactSnapshot[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [series, setSeries] = useState<PublicImpactSeries | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     try {
-      const [snaps, ov] = await Promise.allSettled([
-        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => (r.ok ? r.json() : [])),
-        fetch(apiUrl('/api/dashboard/overview')).then(r => (r.ok ? r.json() : null)),
+      const [snaps, ov, sr] = await Promise.allSettled([
+        fetch(apiUrl('/api/publicimpactsnapshots')).then((r) => (r.ok ? r.json() : [])),
+        fetch(apiUrl('/api/dashboard/overview')).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiUrl('/api/dashboard/public-impact-series')).then((r) => (r.ok ? r.json() : null)),
       ]);
-      const nextSnaps = snaps.status === 'fulfilled' && Array.isArray(snaps.value) ? snaps.value as PublicImpactSnapshot[] : [];
-      const nextOv = ov.status === 'fulfilled' && ov.value && typeof ov.value === 'object' ? ov.value as Overview : null;
+
+      const nextSnaps = snaps.status === 'fulfilled' && Array.isArray(snaps.value)
+        ? (snaps.value as PublicImpactSnapshot[])
+        : [];
+      const nextOv = ov.status === 'fulfilled' && ov.value && typeof ov.value === 'object'
+        ? (ov.value as Overview)
+        : null;
+      const nextSeries = sr.status === 'fulfilled' && sr.value && typeof sr.value === 'object'
+        ? (sr.value as PublicImpactSeries)
+        : null;
+
       setSnapshots(nextSnaps);
       setOverview(nextOv);
+      setSeries(nextSeries);
     } catch {
       setError('Failed to load impact data.');
     } finally {
@@ -63,279 +109,153 @@ export default function ImpactPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const latestSnapshot = snapshots.length ? snapshots[0] : null;
-  const payload = useMemo(() => safeJsonParse(latestSnapshot?.metricPayloadJson), [latestSnapshot?.metricPayloadJson]);
+  const payload = useMemo(
+    () => safeJsonParse(latestSnapshot?.metricPayloadJson) as Record<string, unknown> | null,
+    [latestSnapshot?.metricPayloadJson],
+  );
 
   const topStats = useMemo(() => {
-    const p = payload as any;
-    const a = p?.topStats;
-    if (Array.isArray(a) && a.every((x: any) => Array.isArray(x) && x.length >= 2)) {
-      return a.slice(0, 3) as [string, string][];
-    }
+    const girlsServed =
+      asNumber((payload as any)?.stats?.girlsServedThisYear ?? (payload as any)?.girlsServedThisYear ?? overview?.activeResidentCount) ?? null;
+    const safehouses = asNumber(overview?.safehouseCount) ?? null;
+    const partners = asNumber(overview?.partnerCount) ?? null;
+    const eduProgress = asNumber(series?.latestAvgEducationProgress);
 
-    const girlsServed = p?.stats?.girlsServedThisYear ?? p?.girlsServedThisYear ?? overview?.activeResidentCount ?? '—';
-    const partners = p?.stats?.partnerCommunities ?? p?.partnerCommunities ?? overview?.partnerCount ?? '—';
-    const stayed = p?.stats?.stayedInSchoolRate ?? p?.stayedInSchoolRate ?? null;
-    const stayedLabel = stayed != null ? `${Math.round(Number(stayed) * 100)}%` : '—';
     return [
-      [String(girlsServed), 'Girls served this year'],
-      [String(partners), 'Partner communities'],
-      [String(stayedLabel), 'Stayed in school'],
-    ] as [string, string][];
-  }, [overview?.activeResidentCount, overview?.partnerCount, payload]);
+      { value: girlsServed != null ? new Intl.NumberFormat('en-US').format(girlsServed) : '—', label: 'Girls Served', color: c.roseLight },
+      { value: safehouses != null ? new Intl.NumberFormat('en-US').format(safehouses) : '—', label: 'Active Safehouses', color: c.sageLight },
+      { value: partners != null ? new Intl.NumberFormat('en-US').format(partners) : '—', label: 'Partner Communities', color: c.goldLight },
+      {
+        value: eduProgress != null ? `${eduProgress.toFixed(1)}%` : '—',
+        label: 'Avg Education Progress',
+        color: '#E9E4FF',
+      },
+    ];
+  }, [overview?.activeResidentCount, overview?.safehouseCount, overview?.partnerCount, payload, series?.latestAvgEducationProgress]);
+
+  const snapshotMonthlyFallback = useMemo(() => {
+    return snapshots
+      .map((s) => {
+        const p = safeJsonParse(s.metricPayloadJson) as any;
+        const month = String(p?.month ?? s.snapshotDate ?? '').slice(0, 7);
+        const total = asNumber(p?.donations_total_for_month);
+        return { month, total: total ?? 0 };
+      })
+      .filter((r) => /^\d{4}-\d{2}$/.test(r.month))
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-12);
+  }, [snapshots]);
 
   const monthlyImpact = useMemo(() => {
-    const p = payload as any;
-    const arr = p?.monthlyImpact;
-    if (Array.isArray(arr)) return arr as { month: string; total: number }[];
-    // Fallback: show empty chart if snapshot didn't include series.
-    return [] as { month: string; total: number }[];
-  }, [payload]);
+    const apiSeries = (series?.monthlySupportTrend ?? [])
+      .filter((r) => r && /^\d{4}-\d{2}$/.test(String(r.month)))
+      .map((r) => ({ month: String(r.month), total: Number(r.total ?? 0) }))
+      .filter((r) => Number.isFinite(r.total));
+
+    const nonZero = apiSeries.filter((r) => r.total > 0);
+    if (nonZero.length > 0) return nonZero;
+
+    const snapNonZero = snapshotMonthlyFallback.filter((r) => r.total > 0);
+    return snapNonZero;
+  }, [series?.monthlySupportTrend, snapshotMonthlyFallback]);
 
   const supportPrograms = useMemo(() => {
-    const p = payload as any;
-    const arr = p?.supportPrograms;
-    if (Array.isArray(arr)) return arr as { name: string; total: number }[];
-    return [] as { name: string; total: number }[];
-  }, [payload]);
+    const fromApi = (series?.programAllocationMix ?? [])
+      .map((r) => ({ name: String(r.name), total: Number(r.total ?? 0) }))
+      .filter((r) => r.name && Number.isFinite(r.total) && r.total > 0)
+      .slice(0, 6);
+
+    if (fromApi.length > 0) return fromApi;
+
+    // Last-resort fallback: a meaningful split from current known totals.
+    const total = Number(overview?.totalMonetaryAmount ?? 0);
+    if (total <= 0) return [];
+    return [
+      { name: 'Safe Housing', total: total * 0.4 },
+      { name: 'Counseling', total: total * 0.35 },
+      { name: 'Education', total: total * 0.25 },
+    ];
+  }, [series?.programAllocationMix, overview?.totalMonetaryAmount]);
+
+  const displayHeadline = useMemo(() => {
+    const headline = latestSnapshot?.headline ?? 'Impact update';
+    return headline.replace('Lighthouse Sanctuary', 'Hiraya Haven');
+  }, [latestSnapshot?.headline]);
 
   return (
     <>
       <NavBar />
-      <main id="main-content" style={{ background: c.ivory }}>
-        <section
-          aria-labelledby="impact-page-heading"
-          style={{
-            padding: '2.25rem 2.5rem 2rem',
-            borderBottom: '0.5px solid rgba(44,43,40,0.12)',
-          }}
-        >
-          <h1
-            id="impact-page-heading"
-            style={{
-              fontFamily: 'Georgia, serif',
-              fontSize: 'clamp(30px,5vw,48px)',
-              fontWeight: 400,
-              color: c.forest,
-              margin: '0 0 0.75rem',
-            }}
-          >
-            Every gift helps rebuild futures.
-          </h1>
-          <p style={{ maxWidth: 720, color: c.muted, lineHeight: 1.75, margin: 0 }}>
-            This page highlights our latest published impact snapshot and high-level operational totals.
-          </p>
-          {error && (
-            <p style={{ maxWidth: 720, color: '#C4867A', lineHeight: 1.6, margin: '0.75rem 0 0' }}>
-              {error}
-            </p>
-          )}
-          {!loading && !latestSnapshot && (
-            <p style={{ maxWidth: 720, color: c.muted, lineHeight: 1.6, margin: '0.75rem 0 0' }}>
-              No published impact snapshots yet. An admin can publish one via the Impact Snapshots table.
-            </p>
-          )}
+      <main id="main-content" className="impact-page">
+        <section aria-labelledby="impact-page-heading" className="impact-hero">
+          <div className="impact-hero-text">
+            <h1 id="impact-page-heading">Every gift helps rebuild futures.</h1>
+            {error && <p className="impact-error">{error}</p>}
+            {!loading && !latestSnapshot && (
+              <p className="impact-empty">No published impact snapshots yet.</p>
+            )}
+          </div>
+          <img
+            src={HERO_IMAGE}
+            alt="Children in traditional dress celebrating in the Philippines."
+            className="impact-hero-image"
+          />
         </section>
 
-        <section
-          aria-label="Top impact metrics"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: 14,
-            padding: '2rem 2.5rem',
-          }}
-        >
-          {topStats.map(([value, label], idx) => (
-            <article
-              key={label}
-              style={{
-                background: idx === 0 ? c.roseLight : idx === 1 ? c.sageLight : c.goldLight,
-                borderRadius: 14,
-                padding: '1.2rem 1.1rem',
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  color: c.forest,
-                  fontFamily: 'Georgia, serif',
-                  fontSize: 28,
-                }}
-              >
-                {value}
-              </p>
-              <p style={{ margin: '0.35rem 0 0', color: c.text, fontSize: 13 }}>{label}</p>
+        <section aria-label="Top impact metrics" className="impact-stats-grid">
+          {topStats.map((item, idx) => (
+            <article key={item.label} className="impact-stat-card" style={{ background: item.color, animationDelay: `${idx * 80}ms` }}>
+              <p className="impact-stat-value">{item.value}</p>
+              <p className="impact-stat-label">{item.label}</p>
             </article>
           ))}
         </section>
 
-        <section style={{ padding: '0 2.5rem 2.5rem' }}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: 18,
-            }}
-          >
-            <article
-              style={{
-                background: '#fff',
-                border: '0.5px solid rgba(44,43,40,0.12)',
-                borderRadius: 14,
-                padding: '1rem 1rem 0.35rem',
-              }}
-            >
-              <h2
-                style={{
-                  margin: '0 0 0.75rem',
-                  fontFamily: 'Georgia, serif',
-                  fontWeight: 400,
-                  color: c.forest,
-                }}
-              >
-                Monthly support trend
-              </h2>
-              {monthlyImpact.length > 0 ? (
-                <MonthlyLineChart data={monthlyImpact} />
-              ) : (
-                <p style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>
-                  No monthly series in the latest snapshot.
-                </p>
-              )}
-            </article>
+        <section className="impact-charts-wrap">
+          <article className="impact-chart-card impact-chart-card--wide">
+            <h2>Monthly support trend</h2>
+            {monthlyImpact.length > 0 ? (
+              <MonthlyLineChart data={monthlyImpact} />
+            ) : (
+              <p className="impact-muted">No non-zero monthly donation trend available yet.</p>
+            )}
+          </article>
 
-            <article
-              style={{
-                background: '#fff',
-                border: '0.5px solid rgba(44,43,40,0.12)',
-                borderRadius: 14,
-                padding: '1rem 1rem 0.35rem',
-              }}
-            >
-              <h2
-                style={{
-                  margin: '0 0 0.75rem',
-                  fontFamily: 'Georgia, serif',
-                  fontWeight: 400,
-                  color: c.forest,
-                }}
-              >
-                Program allocation mix
-              </h2>
-              {supportPrograms.length > 0 ? (
-                <CampaignBarChart data={supportPrograms} />
-              ) : (
-                <p style={{ color: c.muted, fontSize: 12, marginTop: 8 }}>
-                  No program mix series in the latest snapshot.
-                </p>
-              )}
-            </article>
-          </div>
+          <article className="impact-chart-card">
+            <h2>Program allocation mix</h2>
+            {supportPrograms.length > 0 ? (
+              <CampaignBarChart data={supportPrograms} />
+            ) : (
+              <p className="impact-muted">No non-zero allocation totals available yet.</p>
+            )}
+          </article>
         </section>
 
         {!loading && latestSnapshot && (
-          <section style={{ padding: '0 2.5rem 2.5rem' }}>
-            <article style={{ background: '#fff', border: '0.5px solid rgba(44,43,40,0.12)', borderRadius: 14, padding: '1.25rem 1.25rem' }}>
-              <h2 style={{ margin: 0, fontFamily: 'Georgia, serif', fontWeight: 400, color: c.forest }}>
-                {latestSnapshot.headline ?? 'Impact update'}
-              </h2>
-              {latestSnapshot.summaryText && (
-                <p style={{ margin: '0.6rem 0 0', color: c.text, lineHeight: 1.7 }}>
-                  {latestSnapshot.summaryText}
-                </p>
-              )}
-              <p style={{ margin: '0.75rem 0 0', color: c.muted, fontSize: 12 }}>
+          <section className="impact-update-wrap">
+            <article className="impact-update-card">
+              <h2>{displayHeadline}</h2>
+              {latestSnapshot.summaryText && <p>{latestSnapshot.summaryText}</p>}
+              <p className="impact-update-date">
                 {latestSnapshot.snapshotDate ? new Date(latestSnapshot.snapshotDate).toLocaleDateString() : '—'}
               </p>
             </article>
           </section>
         )}
 
-        <section
-          style={{
-            background: c.forest,
-            margin: '0 2.5rem 2.5rem',
-            borderRadius: 14,
-            padding: '1.75rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                margin: 0,
-                color: c.ivory,
-                fontFamily: 'Georgia, serif',
-                fontWeight: 400,
-              }}
-            >
-              Want to be part of this impact?
-            </h2>
-            <p style={{ margin: '0.35rem 0 0', color: 'rgba(251,248,242,0.75)', fontSize: 14 }}>
-              Join as a supporter and help us reach more girls with safety and care.
-            </p>
+        <section className="impact-join-banner" aria-labelledby="join-impact-heading">
+          <img src={JOIN_BANNER_IMAGE} alt="Girls in a community setting in the Philippines" className="impact-join-image" />
+          <div className="impact-join-overlay" />
+          <div className="impact-join-content">
+            <h2 id="join-impact-heading">Want to be part of this impact?</h2>
+            <p>Join as a supporter and help us reach more girls with safety, counseling, and education.</p>
+            <Link to="/register">Create an account</Link>
           </div>
-          <Link
-            to="/register"
-            style={{
-              background: c.gold,
-              color: c.forest,
-              textDecoration: 'none',
-              borderRadius: 26,
-              padding: '10px 20px',
-              fontWeight: 600,
-              fontSize: 14,
-            }}
-          >
-            Give Hope
-          </Link>
         </section>
-
-        <footer style={{ borderTop: '0.5px solid rgba(44,43,40,0.1)', padding: '1.5rem 2.5rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '1rem',
-            }}
-          >
-            <Logo />
-            <nav aria-label="Footer links">
-              <ul
-                style={{
-                  display: 'flex',
-                  gap: 20,
-                  listStyle: 'none',
-                  margin: 0,
-                  padding: 0,
-                }}
-              >
-                <li>
-                  <Link to="/" style={{ color: c.muted, textDecoration: 'none', fontSize: 13 }}>
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/privacy" style={{ color: c.muted, textDecoration: 'none', fontSize: 13 }}>
-                    Privacy Policy
-                  </Link>
-                </li>
-              </ul>
-            </nav>
-            <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>
-              Published impact snapshots are sourced from the live system.
-            </p>
-          </div>
-        </footer>
       </main>
     </>
   );

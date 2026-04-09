@@ -105,6 +105,26 @@ export default function LandingPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('.reveal-on-scroll'));
+    if (nodes.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            observer.unobserve(entry.target);
+          }
+        }
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -8% 0px' },
+    );
+
+    for (const node of nodes) observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   const latestSnapshot = snapshots.length ? snapshots[0] : null;
   const payload = useMemo(() => safeJsonParse(latestSnapshot?.metricPayloadJson), [latestSnapshot?.metricPayloadJson]);
 
@@ -139,14 +159,11 @@ export default function LandingPage() {
           <img src={HERO_IMAGE} alt="Girl in Metro Manila standing in daylight, representing resilience and hope." className="landing-hero-image" />
           <div className="landing-hero-overlay" />
           <div className="landing-hero-content">
-            <p aria-hidden="true" className="landing-kicker">
-              Metro Manila | Survivor-centered care
-            </p>
             <h1 id="hero-heading">
               Healing <em>hearts</em>, rebuilding <span>futures.</span>
             </h1>
             <p>
-              Hiraya Haven provides safe homes and long-term restoration support for girls who are survivors of abuse and exploitation in the Philippines.
+              Hiraya Haven provides safe homes and long-term restoration support for girls who are survivors of abuse and exploitation in Metro Manila and nearby communities.
             </p>
             <div className="landing-hero-actions">
               <Link to="/register" style={{ background: c.gold, color: c.forest, fontSize: 14, fontWeight: 600, padding: '12px 28px', borderRadius: 28, textDecoration: 'none', display: 'inline-block' }}>
@@ -160,7 +177,7 @@ export default function LandingPage() {
         </section>
 
         {/* Stats */}
-        <section className="landing-impact" aria-label="Impact at a glance">
+        <section className="landing-impact reveal-on-scroll" aria-label="Impact at a glance">
           <div className="landing-impact-grid" role="list">
             {statItems.map((item, idx) => (
               <article
@@ -178,7 +195,7 @@ export default function LandingPage() {
         </section>
 
         {/* Pillars */}
-        <section id="about" aria-labelledby="mission-pillars-heading" className="landing-pillars">
+        <section id="about" aria-labelledby="mission-pillars-heading" className="landing-pillars reveal-on-scroll">
           <h2 id="mission-pillars-heading">How we restore dignity and hope</h2>
           <div className="landing-pillars-grid">
             {[
@@ -208,21 +225,30 @@ export default function LandingPage() {
         </section>
 
         {/* Our mission */}
-        <section aria-labelledby="our-mission-heading" className="landing-mission">
+        <section aria-labelledby="our-mission-heading" className="landing-mission reveal-on-scroll">
           <img src={MISSION_IMAGE} alt="Metro Manila city and community backdrop representing local restoration efforts." className="landing-mission-image" />
           <div className="landing-mission-overlay" />
           <div className="landing-mission-copy">
             <p className="mission-kicker">Our Mission</p>
-            <h2 id="our-mission-heading">Standing with girls in Metro Manila through every stage of restoration.</h2>
-            <p>
-              Our mission is to provide safe, nurturing homes across Metro Manila where survivors of abuse and exploitation can heal, rebuild their lives, and rediscover hope. Through compassionate care, culturally grounded support, and strong community partnerships, we empower each individual to achieve lasting restoration while fostering transparency and meaningful connections with those who make this transformation possible.
-            </p>
+            <h2 id="our-mission-heading">Restoration in Metro Manila, with dignity and accountability.</h2>
+            <ul className="mission-bullets">
+              {[
+                'Provide safe, nurturing homes for girls recovering from abuse and exploitation.',
+                'Deliver trauma-informed counseling, education support, and daily care.',
+                'Partner with local communities to build stable reintegration pathways.',
+                'Share transparent impact reporting with donors and advocates.',
+              ].map((item, idx) => (
+                <li key={item} className="mission-bullet" style={{ animationDelay: `${idx * 130}ms` }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
         <div className="landing-cta-transition" aria-hidden="true" />
 
         {/* CTA */}
-        <section id="impact" aria-labelledby="cta-heading" className="landing-cta-section">
+        <section id="impact" aria-labelledby="cta-heading" className="landing-cta-section reveal-on-scroll">
           <div className="landing-cta-card">
             {error && (
               <p style={{ color: 'rgba(251,248,242,0.75)', fontSize: 12, marginTop: 0, marginBottom: 10 }}>
