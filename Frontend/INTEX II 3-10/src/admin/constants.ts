@@ -9,6 +9,7 @@ export const ADMIN_NAV_ITEMS = [
   'Donations',
   'Audit Log',
   'Reports',
+  'Social Media Impact',
   'Pipelines',
   'Settings',
 ] as const;

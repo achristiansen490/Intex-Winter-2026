@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type 
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { apiUrl } from '../lib/api';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
@@ -667,7 +668,7 @@ function StaffReports() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['Campaign', 'Donations', 'Total (PHP)', 'Avg (PHP)'].map(h => (
+              {['Campaign', 'Donations', 'Total (PHP)', 'Average (PHP)'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -707,7 +708,7 @@ function StaffReports() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Avg Edu', 'Avg Health'].map(h => (
+              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Average Education', 'Average Health'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -736,11 +737,11 @@ function StaffReports() {
           keyField="supporterId"
           columns={[
             { key: 'supporterName', label: 'Supporter' },
-            { key: 'expectedNextValuePhp', label: 'Expected next (PHP)' },
-            { key: 'recencyDays', label: 'Recency (days)' },
+            { key: 'expectedNextValuePhp', label: 'Expected Next (PHP)' },
+            { key: 'recencyDays', label: 'Recency (Days)' },
             { key: 'donationCount', label: 'Donations' },
-            { key: 'lastValuePhp', label: 'Last gift (PHP)' },
-            { key: 'lastDonationDate', label: 'Last date' },
+            { key: 'lastValuePhp', label: 'Last Gift (PHP)' },
+            { key: 'lastDonationDate', label: 'Last Date' },
           ]}
         />
 
@@ -751,10 +752,10 @@ function StaffReports() {
           columns={[
             { key: 'key', label: 'Platform' },
             { key: 'postCount', label: 'Posts' },
-            { key: 'willReferRate', label: 'Refer rate' },
-            { key: 'avgReferrals', label: 'Avg referrals' },
-            { key: 'totalEstimatedValuePhp', label: 'Total est. PHP' },
-            { key: 'boostedRate', label: 'Boosted rate' },
+            { key: 'willReferRate', label: 'Refer Rate' },
+            { key: 'avgReferrals', label: 'Average Referrals' },
+            { key: 'totalEstimatedValuePhp', label: 'Total Est. PHP' },
+            { key: 'boostedRate', label: 'Boosted Rate' },
           ]}
         />
 
@@ -766,10 +767,10 @@ function StaffReports() {
             { key: 'safehouseName', label: 'Safehouse' },
             { key: 'month', label: 'Month' },
             { key: 'stressIndexZ', label: 'Stress (z)' },
-            { key: 'forecastNextMonthIncidents', label: 'Forecast next incidents' },
+            { key: 'forecastNextMonthIncidents', label: 'Forecast Next Incidents' },
             { key: 'incidentCount', label: 'Incidents' },
-            { key: 'incidentLag1', label: 'Incidents lag1' },
-            { key: 'activeResidents', label: 'Active residents' },
+            { key: 'incidentLag1', label: 'Incidents Lag 1' },
+            { key: 'activeResidents', label: 'Active Residents' },
           ]}
         />
 
@@ -781,8 +782,8 @@ function StaffReports() {
             { key: 'planCategory', label: 'Category' },
             { key: 'planCount', label: 'Plans' },
             { key: 'residentCount', label: 'Residents' },
-            { key: 'avgLatestProgressPercent', label: 'Avg progress %' },
-            { key: 'avgLatestHealthScore', label: 'Avg health' },
+            { key: 'avgLatestProgressPercent', label: 'Average Progress %' },
+            { key: 'avgLatestHealthScore', label: 'Average Health' },
           ]}
         />
 
@@ -795,9 +796,9 @@ function StaffReports() {
             { key: 'riskBand', label: 'Band' },
             { key: 'riskScore', label: 'Score' },
             { key: 'incidents90d', label: 'Incidents 90d' },
-            { key: 'concernSessions90d', label: 'Concern sessions 90d' },
-            { key: 'safetyVisitFlags90d', label: 'Safety flags 90d' },
-            { key: 'currentRiskLevel', label: 'Current risk' },
+            { key: 'concernSessions90d', label: 'Concern Sessions 90d' },
+            { key: 'safetyVisitFlags90d', label: 'Safety Flags 90d' },
+            { key: 'currentRiskLevel', label: 'Current Risk' },
             { key: 'safehouseId', label: 'Safehouse' },
           ]}
         />
@@ -813,7 +814,7 @@ function StaffReports() {
             { key: 'latestProgressPercent', label: 'Progress %' },
             { key: 'latestHealthScore', label: 'Health' },
             { key: 'incidentsLast365d', label: 'Incidents 365d' },
-            { key: 'homeVisitsLast180d', label: 'Visits 180d' },
+            { key: 'homeVisitsLast180d', label: 'Home Visits 180d' },
           ]}
         />
       </div>
@@ -861,7 +862,7 @@ function StaffReports() {
 
 // ── Pending Approvals (Supervisor) ────────────────────────────────────────────
 
-function StaffPendingApprovals() {
+function StaffPendingApprovals({ onQueueChanged }: { onQueueChanged?: () => void }) {
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -905,7 +906,7 @@ function StaffPendingApprovals() {
     setBusy(id);
     try {
       const r = await api(`/api/auditlogs/${id}/${type}`, { method: 'POST' });
-      if (r.ok) { notify(type === 'approve' ? '✓ Approved and applied.' : 'Rejected.'); await load(); }
+      if (r.ok) { notify(type === 'approve' ? '✓ Approved and applied.' : 'Rejected.'); await load(); onQueueChanged?.(); }
       else notify(`${type} failed.`);
     } finally { setBusy(null); }
   };
@@ -987,6 +988,8 @@ export default function StaffPortal() {
   const navItems = getNavItems(role);
   const [activeNav, setActiveNav] = useState('Dashboard');
   const displayRole = role ?? 'Staff';
+  const supervisor = role === 'Supervisor';
+  const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(supervisor);
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -1002,8 +1005,8 @@ export default function StaffPortal() {
         return <DataPanel title="Residents" url="/api/residents" keyField="residentId" columns={[
           { key: 'residentId', label: 'ID' }, { key: 'caseControlNo', label: 'Case No.' },
           { key: 'caseStatus', label: 'Status' }, { key: 'sex', label: 'Sex' },
-          { key: 'dateOfAdmission', label: 'Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
-          { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'SW' },
+          { key: 'dateOfAdmission', label: 'Date Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
+          { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'Social Worker' },
         ]} />;
 
       case 'Session Notes':
@@ -1011,7 +1014,7 @@ export default function StaffPortal() {
           { key: 'recordingId', label: 'ID' }, { key: 'sessionDate', label: 'Date' },
           { key: 'residentId', label: 'Resident' }, { key: 'socialWorker', label: 'Social Worker' },
           { key: 'sessionType', label: 'Type' }, { key: 'sessionDurationMinutes', label: 'Duration (min)' },
-          { key: 'emotionalStateObserved', label: 'Emotion (start)' }, { key: 'emotionalStateEnd', label: 'Emotion (end)' },
+          { key: 'emotionalStateObserved', label: 'Emotion (Start)' }, { key: 'emotionalStateEnd', label: 'Emotion (End)' },
           { key: 'progressNoted', label: 'Progress' }, { key: 'concernsFlagged', label: 'Concerns' },
         ]} />;
 
@@ -1081,7 +1084,7 @@ export default function StaffPortal() {
         ]} />;
 
       case 'Reports': return <StaffReports />;
-      case 'Pending Approvals': return <StaffPendingApprovals />;
+      case 'Pending Approvals': return <StaffPendingApprovals onQueueChanged={refreshPendingAuditCount} />;
 
       default: return <p style={{ fontSize: 14, color: c.muted }}>{activeNav} — coming soon</p>;
     }
@@ -1089,8 +1092,15 @@ export default function StaffPortal() {
 
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="staff-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
-        user={`${user?.userName ?? 'Staff'} · ${displayRole}`} onLogout={handleLogout} />
+      <Sidebar
+        id="staff-sidebar"
+        items={navItems}
+        active={activeNav}
+        setActive={setActiveNav}
+        badgeCounts={supervisor ? { 'Pending Approvals': pendingAuditCount } : undefined}
+        user={`${user?.userName ?? 'Staff'} · ${displayRole}`}
+        onLogout={handleLogout}
+      />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Command center"
           style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
