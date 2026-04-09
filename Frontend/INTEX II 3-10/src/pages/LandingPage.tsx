@@ -1,5 +1,7 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NavBar } from '../components/NavBar';
+import { apiUrl } from '../lib/api';
 
 const c = {
   ivory: '#FBF8F2', rose: '#C4867A', roseLight: '#F0D8D4',
@@ -10,7 +12,72 @@ const c = {
 
 const HERO_BG = `linear-gradient(135deg,rgba(42,74,53,0.56) 0%,rgba(196,134,122,0.34) 58%,rgba(212,164,76,0.22) 100%), url("/Smiles under the sun.png") center top/cover no-repeat`;
 
+type PublicImpactSnapshot = {
+  snapshotId: number;
+  snapshotDate: string | null;
+  headline: string | null;
+  summaryText: string | null;
+  metricPayloadJson: string | null;
+  isPublished: boolean | null;
+  publishedAt: string | null;
+};
+
+type Overview = {
+  safehouseCount?: number;
+  activeResidentCount?: number;
+  partnerCount?: number;
+  totalMonetaryAmount?: number;
+};
+
+function safeJsonParse(raw: string | null | undefined): unknown {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as unknown; } catch { return null; }
+}
+
 export default function LandingPage() {
+  const [snapshots, setSnapshots] = useState<PublicImpactSnapshot[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [snaps, ov] = await Promise.allSettled([
+        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => (r.ok ? r.json() : [])),
+        fetch(apiUrl('/api/dashboard/overview')).then(r => (r.ok ? r.json() : null)),
+      ]);
+
+      const nextSnaps = snaps.status === 'fulfilled' && Array.isArray(snaps.value) ? snaps.value as PublicImpactSnapshot[] : [];
+      const nextOv = ov.status === 'fulfilled' && ov.value && typeof ov.value === 'object' ? ov.value as Overview : null;
+      setSnapshots(nextSnaps);
+      setOverview(nextOv);
+    } catch {
+      setError('Failed to load impact metrics.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const latestSnapshot = snapshots.length ? snapshots[0] : null;
+  const payload = useMemo(() => safeJsonParse(latestSnapshot?.metricPayloadJson), [latestSnapshot?.metricPayloadJson]);
+
+  const statItems = useMemo(() => {
+    // Prefer snapshot-defined stats; fallback to dashboard overview; otherwise show em-dash.
+    const p = payload as any;
+    const girlsServed = p?.stats?.girlsServed ?? p?.girlsServed ?? overview?.activeResidentCount ?? null;
+    const safehouses = p?.stats?.activeSafehouses ?? p?.activeSafehouses ?? overview?.safehouseCount ?? null;
+    const years = p?.stats?.yearsImpact ?? p?.yearsImpact ?? null;
+
+    return [
+      [girlsServed != null ? String(girlsServed) : '—', 'Girls served'],
+      [safehouses != null ? String(safehouses) : '—', 'Active safehouses'],
+      [years != null ? String(years) : '—', 'Years of impact'],
+    ] as const;
+  }, [overview?.activeResidentCount, overview?.safehouseCount, payload]);
+
   return (
     <>
       <NavBar />
@@ -42,7 +109,7 @@ export default function LandingPage() {
 
         {/* Stats bar */}
         <div role="list" aria-label="Impact at a glance" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', background: c.ivory, borderBottom: '0.5px solid rgba(44,43,40,0.1)' }}>
-          {[['247', 'Girls served'], ['8', 'Active safehouses'], ['7 years', 'Of impact']].map(([num, label]) => (
+          {statItems.map(([num, label]) => (
             <div key={label} role="listitem" style={{ padding: '1.5rem', textAlign: 'center', borderRight: '0.5px solid rgba(44,43,40,0.1)' }}>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: 400, color: c.forest }} aria-label={`${num} ${label}`}>{num}</div>
               <div aria-hidden="true" style={{ fontSize: 13, color: c.muted, marginTop: 3 }}>{label}</div>
@@ -68,6 +135,16 @@ export default function LandingPage() {
 
         {/* CTA */}
         <section id="impact" aria-labelledby="cta-heading" style={{ background: c.forest, padding: '3rem 2.5rem' }}>
+          {error && (
+            <p style={{ color: 'rgba(251,248,242,0.75)', fontSize: 12, marginTop: 0, marginBottom: 10 }}>
+              {error}
+            </p>
+          )}
+          {!loading && latestSnapshot?.headline && (
+            <p style={{ color: 'rgba(251,248,242,0.75)', fontSize: 12, marginTop: 0, marginBottom: 10 }}>
+              Latest impact update: <span style={{ color: c.ivory, fontWeight: 600 }}>{latestSnapshot.headline}</span>
+            </p>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap' }}>
             <div>
               <h2 id="cta-heading" style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: c.ivory, marginBottom: 8, fontWeight: 400 }}>Ready to make a difference?</h2>
