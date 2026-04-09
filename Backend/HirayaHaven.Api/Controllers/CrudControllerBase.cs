@@ -124,11 +124,12 @@ public abstract class CrudControllerBase<TEntity>(
                 query = query.Where(e => EF.Property<int>(e, "ResidentId") == user.ResidentId.Value);
         }
 
-        // Donor: own records only
-        if (role == "Donor" && user.SupporterId.HasValue)
+        // Donor: own records only (never return unscoped rows if SupporterId is missing)
+        if (role == "Donor" && typeof(TEntity).GetProperty("SupporterId") is not null)
         {
-            if (typeof(TEntity).GetProperty("SupporterId") is not null)
-                query = query.Where(e => EF.Property<int>(e, "SupporterId") == user.SupporterId.Value);
+            if (!user.SupporterId.HasValue)
+                return query.Where(_ => false);
+            query = query.Where(e => EF.Property<int>(e, "SupporterId") == user.SupporterId.Value);
         }
 
         return query;

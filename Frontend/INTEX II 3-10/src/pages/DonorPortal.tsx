@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
@@ -93,9 +93,239 @@ function ApiError({ msg, retry }: { msg: string; retry: () => void }) {
   );
 }
 
+function ExampleDonateModal({
+  open,
+  onClose,
+  onRecorded,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onRecorded: () => void;
+}) {
+  const titleId = useId();
+  const [amount, setAmount] = useState('');
+  const [campaignName, setCampaignName] = useState('');
+  const [channelSource, setChannelSource] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [donationDate, setDonationDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setFormError('');
+      setSubmitting(false);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+    const n = parseFloat(amount);
+    if (!Number.isFinite(n) || n <= 0) {
+      setFormError('Enter a valid amount greater than zero.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await api('/api/donations', {
+        method: 'POST',
+        body: JSON.stringify({
+          donationType: 'Monetary',
+          donationDate,
+          amount: n,
+          currencyCode: 'PHP',
+          campaignName: campaignName.trim() || null,
+          channelSource: channelSource.trim() || 'Donor portal (example form)',
+          isRecurring,
+          notes: notes.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { message?: string; title?: string };
+        setFormError(err.message ?? err.title ?? 'Could not save donation.');
+        return;
+      }
+      onRecorded();
+      onClose();
+      setAmount('');
+      setCampaignName('');
+      setChannelSource('');
+      setNotes('');
+      setIsRecurring(false);
+      setDonationDate(new Date().toISOString().slice(0, 10));
+    } catch {
+      setFormError('Network error. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '9px 12px',
+    fontSize: 14,
+    border: `1px solid ${c.goldLight}`,
+    borderRadius: 8,
+    color: c.text,
+    background: c.white,
+    boxSizing: 'border-box' as const,
+  };
+
+  return (
+    <div
+      role="presentation"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(42, 74, 53, 0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        style={{
+          background: c.white,
+          borderRadius: 12,
+          maxWidth: 440,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
+          border: `1px solid ${c.goldLight}`,
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <form onSubmit={handleSubmit} style={{ padding: '1.35rem 1.5rem 1.5rem' }}>
+          <p
+            id={titleId}
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: c.forest,
+              fontFamily: 'Georgia, serif',
+              margin: '0 0 4px',
+            }}
+          >
+            Example donate form
+          </p>
+          <p style={{ fontSize: 12, color: c.muted, margin: '0 0 1rem', lineHeight: 1.45 }}>
+            Demonstration only — no payment is processed. Submitting records a sample monetary donation tied to your supporter profile.
+          </p>
+
+          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Amount (PHP) <span style={{ color: c.rose }}>*</span>
+          </label>
+          <input
+            type="number"
+            min={0.01}
+            step="0.01"
+            required
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            style={{ ...inputStyle, marginBottom: 14 }}
+          />
+
+          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Date</label>
+          <input
+            type="date"
+            value={donationDate}
+            onChange={(e) => setDonationDate(e.target.value)}
+            style={{ ...inputStyle, marginBottom: 14 }}
+          />
+
+          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Campaign (optional)</label>
+          <input
+            type="text"
+            value={campaignName}
+            onChange={(e) => setCampaignName(e.target.value)}
+            placeholder="e.g. Summer of Safety"
+            style={{ ...inputStyle, marginBottom: 14 }}
+            autoComplete="off"
+          />
+
+          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Channel (optional)</label>
+          <input
+            type="text"
+            value={channelSource}
+            onChange={(e) => setChannelSource(e.target.value)}
+            placeholder="e.g. Web, bank transfer"
+            style={{ ...inputStyle, marginBottom: 14 }}
+            autoComplete="off"
+          />
+
+          <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes (optional)</label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            style={{ ...inputStyle, marginBottom: 12, resize: 'vertical' }}
+          />
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: c.text, marginBottom: 14, cursor: 'pointer' }}>
+            <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+            Recurring donation
+          </label>
+
+          {formError && (
+            <p style={{ fontSize: 13, color: c.rose, marginBottom: 12 }}>{formError}</p>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              style={{
+                fontSize: 13,
+                padding: '10px 18px',
+                borderRadius: 8,
+                border: `1px solid ${c.forest}`,
+                background: c.white,
+                color: c.forest,
+                cursor: submitting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                padding: '10px 20px',
+                borderRadius: 8,
+                border: 'none',
+                background: c.gold,
+                color: c.forest,
+                cursor: submitting ? 'wait' : 'pointer',
+              }}
+            >
+              {submitting ? 'Saving…' : 'Record example donation'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── My Impact ────────────────────────────────────────────────────────────────
 
-function MyImpact() {
+function MyImpact({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [snapshots, setSnapshots] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,7 +344,7 @@ function MyImpact() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshSignal]);
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
@@ -165,7 +395,7 @@ function MyImpact() {
 
 // ── Donation History ──────────────────────────────────────────────────────────
 
-function DonationHistory() {
+function DonationHistory({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const [donations, setDonations] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -184,13 +414,13 @@ function DonationHistory() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshSignal]);
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
   return (
     <div>
-      <SectionTitle>Donation History ({donations.length})</SectionTitle>
+      <SectionTitle>Your Donation History ({donations.length})</SectionTitle>
       {donations.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', background: c.white, borderRadius: 10, border: `1px solid ${c.goldLight}` }}>
           <p style={{ fontSize: 15, color: c.forest, fontFamily: 'Georgia, serif', marginBottom: 8 }}>No donations recorded yet.</p>
@@ -480,6 +710,8 @@ export default function DonorPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [donateModalOpen, setDonateModalOpen] = useState(false);
+  const [donationRefreshSignal, setDonationRefreshSignal] = useState(0);
   const tabSlug = searchParams.get('tab');
   const activeNav = useMemo(() => {
     const n = donorSlugToNavItem(tabSlug);
@@ -501,8 +733,8 @@ export default function DonorPortal() {
 
   const renderContent = () => {
     switch (activeNav) {
-      case 'My Impact':        return <MyImpact />;
-      case 'Donation History': return <DonationHistory />;
+      case 'My Impact':        return <MyImpact refreshSignal={donationRefreshSignal} />;
+      case 'Donation History': return <DonationHistory refreshSignal={donationRefreshSignal} />;
       case 'Active Campaigns': return <ActiveCampaigns />;
       case 'My Profile':       return <MyProfile />;
       default: return null;
@@ -522,13 +754,19 @@ export default function DonorPortal() {
               <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Donor'}</h1>
             </div>
             <button
-              onClick={() => setTab('Active Campaigns')}
+              type="button"
+              onClick={() => setDonateModalOpen(true)}
               style={{ background: c.gold, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>
               Donate Again
             </button>
           </div>
         </section>
         {renderContent()}
+        <ExampleDonateModal
+          open={donateModalOpen}
+          onClose={() => setDonateModalOpen(false)}
+          onRecorded={() => setDonationRefreshSignal((s) => s + 1)}
+        />
       </div>
     </main>
   );
