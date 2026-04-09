@@ -141,7 +141,12 @@ builder.Services.AddHsts(options =>
 
 builder.Services.AddCors(options =>
 {
-    var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+    var configuredOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+        .Select(o => o?.Trim())
+        .Where(o => !string.IsNullOrWhiteSpace(o))
+        .Select(o => o!.TrimEnd('/'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
 
     options.AddPolicy("Frontend", policy =>
     {
@@ -155,8 +160,18 @@ builder.Services.AddCors(options =>
 
         policy.SetIsOriginAllowed(origin =>
                 Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
-                uri.Scheme == Uri.UriSchemeHttp &&
-                (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1"))
+                (
+                    // Local dev
+                    (
+                        uri.Scheme == Uri.UriSchemeHttp &&
+                        (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
+                    )
+                    // Azure Static Web Apps production host fallback
+                    || (
+                        uri.Scheme == Uri.UriSchemeHttps &&
+                        uri.Host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
+                    )
+                ))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
