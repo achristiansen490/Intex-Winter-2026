@@ -1,0 +1,2 @@
+# Netlify / similar static hosts: serve SPA for all non-file routes (same idea as Azure SWA navigationFallback)
+/*    /index.html   200
