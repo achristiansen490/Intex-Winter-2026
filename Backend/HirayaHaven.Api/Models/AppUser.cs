@@ -8,6 +8,8 @@ public class AppUser : IdentityUser<int>
     public int? StaffId { get; set; }
     public int? ResidentId { get; set; }
     public int? SupporterId { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsApproved { get; set; } = false;
     public int? ApprovedBy { get; set; }
