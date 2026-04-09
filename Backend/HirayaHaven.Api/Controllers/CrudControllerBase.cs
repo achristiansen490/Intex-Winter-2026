@@ -41,6 +41,7 @@ public abstract class CrudControllerBase<TEntity>(
         "organization" => "organization",
         "rolepermission" => "roles_permissions",
         "publicimpactsnapshot" => "reports",
+        "supporter" => "supporters",
         _ => typeof(TEntity).Name.ToLowerInvariant()
     };
 
