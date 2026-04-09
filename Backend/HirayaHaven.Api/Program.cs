@@ -179,7 +179,33 @@ var app = builder.Build();
 await using (var migrateScope = app.Services.CreateAsyncScope())
 {
     var migrateDb = migrateScope.ServiceProvider.GetRequiredService<HirayaContext>();
-    await migrateDb.Database.MigrateAsync();
+    const int maxAttempts = 6;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await migrateDb.Database.MigrateAsync();
+            app.Logger.LogInformation("Database migrations applied successfully.");
+            break;
+        }
+        catch (Exception ex)
+        {
+            if (attempt == maxAttempts)
+            {
+                app.Logger.LogError(ex, "Database migration failed after {Attempts} attempts.", maxAttempts);
+                if (app.Environment.IsDevelopment())
+                {
+                    throw;
+                }
+                // In production, keep the app alive so health checks and diagnostics remain available.
+                break;
+            }
+
+            var delaySeconds = Math.Min(30, attempt * 5);
+            app.Logger.LogWarning(ex, "Database migration attempt {Attempt}/{MaxAttempts} failed. Retrying in {Delay}s...", attempt, maxAttempts, delaySeconds);
+            await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+        }
+    }
 }
 
 await SeedAsync(app.Services);
