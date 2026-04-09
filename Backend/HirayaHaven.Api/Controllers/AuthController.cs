@@ -180,6 +180,88 @@ public class AuthController(
         return Ok(pending);
     }
 
+    /// <summary>
+    /// Admin lists all user accounts with their roles.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpGet("users")]
+    public async Task<IActionResult> GetAllUsers(CancellationToken ct)
+    {
+        var users = await db.Users
+            .AsNoTracking()
+            .OrderBy(u => u.UserName)
+            .ToListAsync(ct);
+
+        var result = new List<object>();
+        foreach (var u in users)
+        {
+            var roles = await userManager.GetRolesAsync(u);
+            result.Add(new
+            {
+                u.Id,
+                u.UserName,
+                u.Email,
+                u.UserType,
+                u.IsActive,
+                u.IsApproved,
+                u.CreatedAt,
+                u.LastLogin,
+                Roles = roles
+            });
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Admin updates a user's role.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPut("users/{userId:int}/role")]
+    public async Task<IActionResult> UpdateUserRole([FromRoute] int userId, [FromBody] UpdateRoleRequest request)
+    {
+        if (!AllRoles.Contains(request.Role))
+            return BadRequest(new { message = $"Invalid role: {request.Role}" });
+
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return NotFound(new { message = "User not found." });
+
+        var existingRoles = await userManager.GetRolesAsync(user);
+        await userManager.RemoveFromRolesAsync(user, existingRoles);
+        await userManager.AddToRoleAsync(user, request.Role);
+
+        user.UserType = request.Role switch
+        {
+            "Donor" => "Donor",
+            "Resident" => "Resident",
+            _ => "Staff"
+        };
+        await userManager.UpdateAsync(user);
+
+        return Ok(new { message = $"User role updated to {request.Role}." });
+    }
+
+    /// <summary>
+    /// Admin deletes a user account.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("users/{userId:int}")]
+    public async Task<IActionResult> DeleteUser([FromRoute] int userId)
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId == userId.ToString())
+            return BadRequest(new { message = "You cannot delete your own account." });
+
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return NotFound(new { message = "User not found." });
+
+        var result = await userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+
+        return Ok(new { message = "User deleted." });
+    }
+
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
@@ -312,3 +394,4 @@ public record RegisterRequest(string Username, string Email, string Password, st
 public record CreateUserRequest(string Username, string Email, string Password, string Role,
     int? StaffId = null, int? ResidentId = null, int? SupporterId = null);
 public record LoginRequest(string Email, string Password);
+public record UpdateRoleRequest(string Role);

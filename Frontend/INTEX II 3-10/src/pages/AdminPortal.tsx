@@ -781,6 +781,540 @@ function AdminReports() {
   );
 }
 
+// ── Staff CRUD ───────────────────────────────────────────────────────────────
+
+const STAFF_ROLES = ['Social Worker', 'Case Manager', 'Field Worker', 'Supervisor', 'Admin'];
+const EMPLOYMENT_TYPES = ['Internal', 'External', 'Contract'];
+const EMPLOYMENT_STATUSES = ['Active', 'Inactive', 'On Leave'];
+
+type StaffRow = {
+  staffId: number; staffCode: string; firstName: string; lastName: string;
+  age: number | null; email: string; phone: string; role: string;
+  employmentType: string; specialization: string; safehouseId: number | null;
+  employmentStatus: string; dateHired: string; dateEnded: string;
+};
+
+const STAFF_BLANK: Omit<StaffRow, 'staffId'> = {
+  staffCode: '', firstName: '', lastName: '', age: null, email: '', phone: '',
+  role: 'Social Worker', employmentType: 'Internal', specialization: '',
+  safehouseId: null, employmentStatus: 'Active', dateHired: '', dateEnded: '',
+};
+
+function AdminStaff() {
+  const [rows, setRows] = useState<StaffRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [modal, setModal] = useState<'create' | 'edit' | null>(null);
+  const [form, setForm] = useState<Omit<StaffRow, 'staffId'>>(STAFF_BLANK);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState('');
+  const searchId = useId();
+
+  const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const data = await api('/api/staff').then(r => r.json());
+      setRows(Array.isArray(data) ? data : []);
+    } catch { setError('Failed to load staff.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter(r =>
+      [r.staffCode, r.firstName, r.lastName, r.role, r.email, r.employmentStatus]
+        .some(v => v?.toLowerCase().includes(needle))
+    );
+  }, [rows, query]);
+
+  const openCreate = () => { setForm(STAFF_BLANK); setEditId(null); setModal('create'); };
+  const openEdit = (row: StaffRow) => {
+    const { staffId, ...rest } = row;
+    setForm(rest as Omit<StaffRow, 'staffId'>);
+    setEditId(staffId);
+    setModal('edit');
+  };
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = modal === 'create'
+        ? await api('/api/staff', { method: 'POST', body: JSON.stringify(form) })
+        : await api(`/api/staff/${editId}`, { method: 'PUT', body: JSON.stringify({ ...form, staffId: editId }) });
+      if (r.ok) { notify(modal === 'create' ? '✓ Staff member created.' : '✓ Staff member updated.'); setModal(null); await load(); }
+      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Save failed.'); }
+    } finally { setBusy(false); }
+  };
+
+  const remove = async (row: StaffRow) => {
+    if (!window.confirm(`Delete staff member "${row.firstName} ${row.lastName}" (${row.staffCode})? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      const r = await api(`/api/staff/${row.staffId}`, { method: 'DELETE' });
+      if (r.ok) { notify('Staff member deleted.'); await load(); }
+      else notify('Delete failed.');
+    } finally { setBusy(false); }
+  };
+
+  const field = (key: keyof typeof form, label: string, type: 'text' | 'number' | 'email' | 'select', options?: string[]) => (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</label>
+      {type === 'select' ? (
+        <select value={String(form[key] ?? '')} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+          {options!.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input type={type} value={String(form[key] ?? '')}
+          onChange={e => setForm(f => ({ ...f, [key]: type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value }))}
+          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+      )}
+    </div>
+  );
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  return (
+    <div>
+      {toast && <div style={{ background: c.sageLight, color: c.forest, borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <SectionTitle>Staff ({rows.length})</SectionTitle>
+        <button onClick={openCreate} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Add Staff</button>
+      </div>
+      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search by name, code, role, email…" />
+      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>{filtered.length !== rows.length ? `${filtered.length} of ${rows.length} records` : `${rows.length} records`}</p>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['ID', 'Code', 'First', 'Last', 'Role', 'Type', 'Safehouse', 'Status', 'Email', 'Actions'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr key={row.staffId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.staffId}</td>
+                <td style={{ padding: '8px 12px' }}>{row.staffCode ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.firstName ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.lastName ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.role ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.employmentType ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.safehouseId ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <span style={{ background: row.employmentStatus === 'Active' ? c.sageLight : c.roseLight, color: row.employmentStatus === 'Active' ? c.forest : c.rose, borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>{row.employmentStatus ?? '—'}</span>
+                </td>
+                <td style={{ padding: '8px 12px', color: c.muted, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.email ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => openEdit(row)} style={{ background: c.goldLight, color: c.text, border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
+                    <button disabled={busy} onClick={() => remove(row)} style={{ background: c.roseLight, color: c.rose, border: `1px solid ${c.rose}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: busy ? 0.6 : 1 }}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 1rem' }}>{modal === 'create' ? 'Add Staff Member' : 'Edit Staff Member'}</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              {field('staffCode', 'Staff Code', 'text')}
+              {field('firstName', 'First Name', 'text')}
+              {field('lastName', 'Last Name', 'text')}
+              {field('age', 'Age', 'number')}
+              {field('email', 'Email', 'email')}
+              {field('phone', 'Phone', 'text')}
+              {field('role', 'Role', 'select', STAFF_ROLES)}
+              {field('employmentType', 'Employment Type', 'select', EMPLOYMENT_TYPES)}
+              {field('employmentStatus', 'Status', 'select', EMPLOYMENT_STATUSES)}
+              {field('specialization', 'Specialization', 'text')}
+              {field('safehouseId', 'Safehouse ID', 'number')}
+              {field('dateHired', 'Date Hired', 'text')}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => setModal(null)} style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button disabled={busy} onClick={save} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── All Users management ──────────────────────────────────────────────────────
+
+type UserRow = { id: number; userName: string; email: string; userType: string; isActive: boolean; isApproved: boolean; roles: string[]; lastLogin: string | null };
+
+function AdminAllUsers() {
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [pending, setPending] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState<number | null>(null);
+  const [toast, setToast] = useState('');
+  const [query, setQuery] = useState('');
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [newRole, setNewRole] = useState('');
+  const [createModal, setCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', role: 'Donor' });
+  const [createBusy, setCreateBusy] = useState(false);
+  const searchId = useId();
+
+  const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [u, p] = await Promise.all([
+        api('/api/auth/users').then(r => r.json()),
+        api('/api/auth/pending').then(r => r.json()),
+      ]);
+      setUsers(Array.isArray(u) ? u : []);
+      setPending(Array.isArray(p) ? p : []);
+    } catch { setError('Failed to load users.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return users;
+    return users.filter(u =>
+      [u.userName, u.email, u.userType, ...(u.roles ?? [])].some(v => v?.toLowerCase().includes(needle))
+    );
+  }, [users, query]);
+
+  const approve = async (userId: number, name: string) => {
+    setBusy(userId);
+    try {
+      const r = await api(`/api/auth/approve/${userId}`, { method: 'POST' });
+      if (r.ok) { notify(`✓ Approved ${name}`); await load(); } else notify('Approval failed.');
+    } finally { setBusy(null); }
+  };
+
+  const reject = async (userId: number, name: string) => {
+    if (!window.confirm(`Reject account for "${name}"? This will deactivate the account.`)) return;
+    setBusy(userId);
+    try {
+      const r = await api(`/api/auth/reject/${userId}`, { method: 'POST' });
+      if (r.ok) { notify(`Rejected ${name}`); await load(); } else notify('Rejection failed.');
+    } finally { setBusy(null); }
+  };
+
+  const openEditRole = (u: UserRow) => { setEditUser(u); setNewRole(u.roles?.[0] ?? 'Donor'); };
+
+  const saveRole = async () => {
+    if (!editUser) return;
+    setBusy(editUser.id);
+    try {
+      const r = await api(`/api/auth/users/${editUser.id}/role`, { method: 'PUT', body: JSON.stringify({ role: newRole }) });
+      if (r.ok) { notify(`✓ Role updated to ${newRole}`); setEditUser(null); await load(); } else notify('Role update failed.');
+    } finally { setBusy(null); }
+  };
+
+  const deleteUser = async (u: UserRow) => {
+    if (!window.confirm(`Permanently delete user "${u.userName}"? This cannot be undone.`)) return;
+    setBusy(u.id);
+    try {
+      const r = await api(`/api/auth/users/${u.id}`, { method: 'DELETE' });
+      if (r.ok) { notify(`User "${u.userName}" deleted.`); await load(); } else notify('Delete failed.');
+    } finally { setBusy(null); }
+  };
+
+  const createUser = async () => {
+    if (!createForm.username || !createForm.email || !createForm.password) { notify('All fields required.'); return; }
+    setCreateBusy(true);
+    try {
+      const r = await api('/api/auth/create-user', { method: 'POST', body: JSON.stringify({ username: createForm.username, email: createForm.email, password: createForm.password, role: createForm.role }) });
+      if (r.ok) { notify('✓ User created.'); setCreateModal(false); setCreateForm({ username: '', email: '', password: '', role: 'Donor' }); await load(); }
+      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? ((err as any).errors?.[0]) ?? 'Create failed.'); }
+    } finally { setCreateBusy(false); }
+  };
+
+  const ALL_ROLES = ['Admin', 'Supervisor', 'CaseManager', 'SocialWorker', 'FieldWorker', 'Resident', 'Donor'];
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  return (
+    <div>
+      {toast && <div style={{ background: c.sageLight, color: c.forest, borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+
+      {/* Pending approvals */}
+      {pending.length > 0 && (
+        <>
+          <SectionTitle>Pending Account Approvals ({pending.length})</SectionTitle>
+          <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: c.goldLight }}>
+                  {['ID', 'Username', 'Email', 'Type', 'Actions'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600 }}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {pending.map((u, i) => (
+                  <tr key={String(u.id)} style={{ borderBottom: `1px solid ${c.goldLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                    <td style={{ padding: '8px 12px', color: c.muted }}>{String(u.id)}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{String(u.userName ?? '—')}</td>
+                    <td style={{ padding: '8px 12px' }}>{String(u.email ?? '—')}</td>
+                    <td style={{ padding: '8px 12px', color: c.muted }}>{String(u.userType ?? '—')}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button disabled={busy === u.id} onClick={() => approve(u.id as number, String(u.userName))} style={{ background: c.sage, color: c.white, border: 'none', borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: busy === u.id ? 0.6 : 1 }}>Approve</button>
+                        <button disabled={busy === u.id} onClick={() => reject(u.id as number, String(u.userName))} style={{ background: c.roseLight, color: c.rose, border: `1px solid ${c.rose}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: busy === u.id ? 0.6 : 1 }}>Reject</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* All users */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <SectionTitle>All Users ({users.length})</SectionTitle>
+        <button onClick={() => setCreateModal(true)} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Create User</button>
+      </div>
+      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search by username, email, role…" />
+      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>{filtered.length !== users.length ? `${filtered.length} of ${users.length}` : `${users.length}`} records</p>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['ID', 'Username', 'Email', 'Role(s)', 'Type', 'Approved', 'Active', 'Actions'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((u, i) => (
+              <tr key={u.id} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{u.id}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{u.userName}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{u.email}</td>
+                <td style={{ padding: '8px 12px' }}>{u.roles?.join(', ') || '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{u.userType}</td>
+                <td style={{ padding: '8px 12px' }}><span style={{ background: u.isApproved ? c.sageLight : c.goldLight, color: u.isApproved ? c.forest : '#7a5a00', borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>{u.isApproved ? 'Yes' : 'Pending'}</span></td>
+                <td style={{ padding: '8px 12px' }}><span style={{ background: u.isActive ? c.sageLight : c.roseLight, color: u.isActive ? c.forest : c.rose, borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>{u.isActive ? 'Yes' : 'No'}</span></td>
+                <td style={{ padding: '8px 12px' }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => openEditRole(u)} style={{ background: c.goldLight, color: c.text, border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>Edit Role</button>
+                    <button disabled={busy === u.id} onClick={() => deleteUser(u)} style={{ background: c.roseLight, color: c.rose, border: `1px solid ${c.rose}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: busy === u.id ? 0.6 : 1 }}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Edit role modal */}
+      {editUser && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 1rem' }}>Edit Role — {editUser.userName}</h3>
+            <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Role</label>
+            <select value={newRole} onChange={e => setNewRole(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, marginBottom: 16 }}>
+              {ALL_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditUser(null)} style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button disabled={busy === editUser.id} onClick={saveRole} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: busy === editUser.id ? 0.6 : 1 }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create user modal */}
+      {createModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: 400, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 1rem' }}>Create User</h3>
+            {(['username', 'email', 'password'] as const).map(k => (
+              <div key={k} style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{k}</label>
+                <input type={k === 'password' ? 'password' : 'text'} value={createForm[k]}
+                  onChange={e => setCreateForm(f => ({ ...f, [k]: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </div>
+            ))}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Role</label>
+              <select value={createForm.role} onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+                {ALL_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setCreateModal(false)} style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button disabled={createBusy} onClick={createUser} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: createBusy ? 0.6 : 1 }}>{createBusy ? 'Creating…' : 'Create'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Residents with inline edit ────────────────────────────────────────────────
+
+type ResidentRow = {
+  residentId: number; caseControlNo: string; safehouseId: number;
+  caseStatus: string; dateOfAdmission: string; currentRiskLevel: string;
+  reintegrationStatus: string; assignedSocialWorker: string;
+  reintegrationType: string; dateEnrolled: string;
+};
+
+function AdminResidents() {
+  const [rows, setRows] = useState<ResidentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [editRow, setEditRow] = useState<ResidentRow | null>(null);
+  const [editForm, setEditForm] = useState<Partial<ResidentRow>>({});
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState('');
+  const searchId = useId();
+
+  const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const data = await api('/api/residents').then(r => r.json());
+      setRows(Array.isArray(data) ? data : []);
+    } catch { setError('Failed to load residents.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter(r =>
+      [r.caseControlNo, r.caseStatus, r.currentRiskLevel, r.reintegrationStatus, r.assignedSocialWorker]
+        .some(v => v?.toLowerCase().includes(needle))
+    );
+  }, [rows, query]);
+
+  const openEdit = (row: ResidentRow) => {
+    setEditRow(row);
+    setEditForm({
+      caseStatus: row.caseStatus,
+      currentRiskLevel: row.currentRiskLevel,
+      reintegrationStatus: row.reintegrationStatus,
+      reintegrationType: row.reintegrationType,
+      assignedSocialWorker: row.assignedSocialWorker,
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+    setBusy(true);
+    try {
+      const body = { ...editRow, ...editForm };
+      const r = await api(`/api/residents/${editRow.residentId}`, { method: 'PUT', body: JSON.stringify(body) });
+      if (r.ok) { notify('✓ Resident record updated.'); setEditRow(null); await load(); }
+      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Save failed.'); }
+    } finally { setBusy(false); }
+  };
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  return (
+    <div>
+      {toast && <div style={{ background: c.sageLight, color: c.forest, borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+      <SectionTitle>Residents ({rows.length})</SectionTitle>
+      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search by case no., status, risk, social worker…" />
+      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>{filtered.length !== rows.length ? `${filtered.length} of ${rows.length}` : `${rows.length}`} records</p>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['ID', 'Case No.', 'Safehouse', 'Status', 'Admitted', 'Risk', 'Reintegration', 'Social Worker', 'Actions'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr key={row.residentId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentId}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.caseControlNo ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.safehouseId ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <span style={{ background: row.caseStatus === 'Active' ? c.sageLight : c.roseLight, color: row.caseStatus === 'Active' ? c.forest : c.rose, borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>{row.caseStatus ?? '—'}</span>
+                </td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.dateOfAdmission ? new Date(row.dateOfAdmission).toLocaleDateString() : '—'}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <span style={{ background: row.currentRiskLevel === 'Critical' || row.currentRiskLevel === 'High' ? c.roseLight : c.goldLight, color: row.currentRiskLevel === 'Critical' || row.currentRiskLevel === 'High' ? c.rose : '#7a5a00', borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>{row.currentRiskLevel ?? '—'}</span>
+                </td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.reintegrationStatus ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.assignedSocialWorker ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <button onClick={() => openEdit(row)} style={{ background: c.goldLight, color: c.text, border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editRow && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 0.25rem' }}>Edit Resident Record</h3>
+            <p style={{ fontSize: 12, color: c.muted, marginBottom: 1.25 * 16 }}>Case #{editRow.caseControlNo} · ID {editRow.residentId}</p>
+            {([
+              ['caseStatus', 'Case Status', ['Active', 'Closed', 'Transferred']],
+              ['currentRiskLevel', 'Current Risk Level', ['Low', 'Medium', 'High', 'Critical']],
+              ['reintegrationStatus', 'Reintegration Status', ['Not Started', 'In Progress', 'Completed', 'On Hold']],
+              ['reintegrationType', 'Reintegration Type', ['Family Reunification', 'Foster Care', 'Adoption (Domestic)', 'Adoption (Inter-Country)', 'Independent Living', 'None']],
+            ] as [keyof ResidentRow, string, string[]][]).map(([key, label, opts]) => (
+              <div key={key} style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</label>
+                <select value={String(editForm[key] ?? '')} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+                  {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Assigned Social Worker</label>
+              <input type="text" value={String(editForm.assignedSocialWorker ?? '')}
+                onChange={e => setEditForm(f => ({ ...f, assignedSocialWorker: e.target.value }))}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditRow(null)} style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button disabled={busy} onClick={saveEdit} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -804,24 +1338,10 @@ export default function AdminPortal() {
   const renderContent = () => {
     switch (activeNav) {
       case 'Dashboard': return <AdminDashboard />;
-      case 'Users': return <AdminUsers />;
+      case 'Users': return <AdminAllUsers />;
       case 'Pending Approvals': return <AdminPendingApprovals />;
-      case 'Residents':
-        return <DataPanel title="Residents" url="/api/residents" keyField="residentId" columns={[
-          { key: 'residentId', label: 'ID' }, { key: 'caseControlNo', label: 'Case No.' },
-          { key: 'safehouseId', label: 'Safehouse' }, { key: 'caseStatus', label: 'Status' },
-          { key: 'sex', label: 'Sex' }, { key: 'dateOfAdmission', label: 'Admitted' },
-          { key: 'currentRiskLevel', label: 'Risk' }, { key: 'reintegrationStatus', label: 'Reintegration' },
-          { key: 'assignedSocialWorker', label: 'Social Worker' },
-        ]} />;
-      case 'Staff':
-        return <DataPanel title="Staff" url="/api/staff" keyField="staffId" columns={[
-          { key: 'staffId', label: 'ID' }, { key: 'staffCode', label: 'Code' },
-          { key: 'firstName', label: 'First' }, { key: 'lastName', label: 'Last' },
-          { key: 'role', label: 'Role' }, { key: 'employmentType', label: 'Type' },
-          { key: 'safehouseId', label: 'Safehouse' }, { key: 'employmentStatus', label: 'Status' },
-          { key: 'email', label: 'Email' },
-        ]} />;
+      case 'Residents': return <AdminResidents />;
+      case 'Staff': return <AdminStaff />;
       case 'Safehouses':
         return <DataPanel title="Safehouses" url="/api/safehouses" keyField="safehouseId" columns={[
           { key: 'safehouseId', label: 'ID' }, { key: 'safehouseCode', label: 'Code' },
