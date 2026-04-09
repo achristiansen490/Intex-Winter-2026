@@ -4,6 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
 import { apiUrl } from '../lib/api';
+import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
@@ -211,19 +212,28 @@ function AdminDashboard() {
   const [kpis, setKpis] = useState<Record<string, unknown> | null>(null);
   const [proof, setProof] = useState<Record<string, unknown> | null>(null);
   const [okr, setOkr] = useState<EducationAttendanceOkrResponse | null>(null);
+  const [okrProcess, setOkrProcess] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrVisits, setOkrVisits] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrIncidents, setOkrIncidents] = useState<QuarterlyRateOkrResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [k, p, o] = await Promise.all([
+      const [k, p, o, op, ov, oi] = await Promise.all([
         api('/api/dashboard/kpis').then(r => r.json()),
         api('/api/dashboard/admin-proof').then(r => r.json()),
         api('/api/okrs/education/attendance/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/healing/process-sessions/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
       ]);
       setKpis(k); setProof(p);
       setOkr(o);
+      setOkrProcess(op);
+      setOkrVisits(ov);
+      setOkrIncidents(oi);
     } catch { setError('Failed to load dashboard.'); }
     finally { setLoading(false); }
   }, []);
@@ -315,6 +325,28 @@ function AdminDashboard() {
           </p>
         )}
       </div>
+
+      <QuarterlyOkrRateSection
+        title="OKR — Healing: Process sessions with progress (Quarterly)"
+        subtitle="Share of process sessions where progress was noted (numerator / total sessions)."
+        response={okrProcess}
+        unitLabel="Sessions"
+        emptyMessage="No quarterly data yet. Add process recordings with session dates and/or set targets."
+      />
+      <QuarterlyOkrRateSection
+        title="OKR — Caring: Home visits without safety concern (Quarterly)"
+        subtitle="Visits where no safety concern was noted, as a share of all dated home visits."
+        response={okrVisits}
+        unitLabel="Visits"
+        emptyMessage="No quarterly data yet. Add home visits with visit dates and/or set targets."
+      />
+      <QuarterlyOkrRateSection
+        title="OKR — Healing: Incident resolution (Quarterly)"
+        subtitle="Share of incident reports marked resolved in each quarter."
+        response={okrIncidents}
+        unitLabel="Incidents"
+        emptyMessage="No quarterly data yet. Add incident reports with incident dates and/or set targets."
+      />
 
       <SectionTitle>Donor KPIs</SectionTitle>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
