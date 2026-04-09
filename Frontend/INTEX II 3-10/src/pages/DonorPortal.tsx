@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type 
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../lib/api';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const MonthlyLineChart = lazy(() => import('../components/charts/MonthlyLineChart'));
@@ -16,7 +17,7 @@ const navItems = ['My Impact', 'Donation History', 'Active Campaigns', 'My Profi
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
-  fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
+  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 function filterRecordsByText(rows: Record<string, unknown>[], query: string): Record<string, unknown>[] {
   const needle = query.trim().toLowerCase();
@@ -104,7 +105,7 @@ function MyImpact() {
     try {
       const [s, snaps] = await Promise.all([
         api('/api/donations/summary').then(r => r.json()),
-        fetch('/api/publicimpactsnapshots').then(r => r.json()),
+        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => r.json()),
       ]);
       setSummary(s);
       setSnapshots(Array.isArray(snaps) ? snaps.slice(0, 3) : []);
@@ -260,7 +261,7 @@ function ActiveCampaigns() {
     setLoading(true); setError('');
     try {
       const [snaps, camps, mon] = await Promise.all([
-        fetch('/api/publicimpactsnapshots').then(r => r.json()),
+        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => r.json()),
         api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
         api(`/api/insights/donations/monthly?take=${monthlyTake}`).then(r => r.json()),
       ]);
