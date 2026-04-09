@@ -27,6 +27,8 @@ public class AdminPipelinesController(
                 sampleUrl += "?take=12";
             else if (e.Id.StartsWith("residents-", StringComparison.Ordinal))
                 sampleUrl += "?take=40";
+            else if (e.Id.StartsWith("outreach-social-", StringComparison.Ordinal) || e.InsightsPath.Contains("outreach/social", StringComparison.Ordinal))
+                sampleUrl += "?take=8";
             return new
             {
                 id = e.Id,

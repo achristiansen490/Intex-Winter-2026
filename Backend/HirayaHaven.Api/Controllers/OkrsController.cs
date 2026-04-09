@@ -15,13 +15,17 @@ public class OkrsController(HirayaContext context) : ControllerBase
     private const string ProcessSessionsProgressMetricKey = "healing.process_sessions.progress_rate";
     private const string HomeVisitsCleanRateMetricKey = "caring.home_visits.clean_rate";
     private const string IncidentsResolutionMetricKey = "healing.incidents.resolution_rate";
+    private const string SocialReferralConversionMetricKey = "outreach.social.referral_conversion_rate";
+    private const string SocialClickThroughMetricKey = "outreach.social.click_through_rate";
 
     private static readonly HashSet<string> SupportedMetricKeys =
     [
         EducationAttendanceMetricKey,
         ProcessSessionsProgressMetricKey,
         HomeVisitsCleanRateMetricKey,
-        IncidentsResolutionMetricKey
+        IncidentsResolutionMetricKey,
+        SocialReferralConversionMetricKey,
+        SocialClickThroughMetricKey
     ];
 
     private static bool TryParseQuarter(string? raw, out int year, out int quarter)
@@ -226,6 +230,78 @@ public class OkrsController(HirayaContext context) : ControllerBase
     [HttpPut("healing/incidents/targets/{year:int}/{quarter:int}")]
     public Task<IActionResult> UpsertIncidentsResolutionTarget([FromRoute] int year, [FromRoute] int quarter, [FromBody] double targetRate, CancellationToken ct)
         => UpsertTargetValue(IncidentsResolutionMetricKey, year, quarter, targetRate, ct);
+
+    /// <summary>Share of posts in the quarter with at least one recorded donation referral.</summary>
+    [HttpGet("outreach/social/referral-conversion/quarterly")]
+    public async Task<IActionResult> GetSocialReferralConversionQuarterly([FromQuery] int take = 8, CancellationToken ct = default)
+    {
+        if (take < 1) take = 1;
+        if (take > 40) take = 40;
+
+        var rows = await context.SocialMediaPosts.AsNoTracking()
+            .Select(p => new { p.CreatedAt, p.DonationReferrals })
+            .ToListAsync(ct);
+
+        var groups = new Dictionary<(int year, int quarter), (int withReferral, int total)>();
+        foreach (var r in rows)
+        {
+            if (!TryParseQuarter(r.CreatedAt, out var y, out var q)) continue;
+            if (!groups.TryGetValue((y, q), out var g))
+                g = (0, 0);
+            g.total++;
+            if ((r.DonationReferrals ?? 0) > 0) g.withReferral++;
+            groups[(y, q)] = g;
+        }
+
+        return Ok(await BuildRateOkrResponseAsync(
+            SocialReferralConversionMetricKey,
+            groups.ToDictionary(kv => kv.Key, kv => (kv.Value.withReferral, kv.Value.total)),
+            take,
+            ct));
+    }
+
+    /// <summary>Aggregate click-through rate (sum of clicks ÷ sum of impressions) per calendar quarter.</summary>
+    [HttpGet("outreach/social/click-through/quarterly")]
+    public async Task<IActionResult> GetSocialClickThroughQuarterly([FromQuery] int take = 8, CancellationToken ct = default)
+    {
+        if (take < 1) take = 1;
+        if (take > 40) take = 40;
+
+        var rows = await context.SocialMediaPosts.AsNoTracking()
+            .Select(p => new { p.CreatedAt, p.ClickThroughs, p.Impressions })
+            .ToListAsync(ct);
+
+        var groups = new Dictionary<(int year, int quarter), (long clicks, long impressions)>();
+        foreach (var r in rows)
+        {
+            if (!TryParseQuarter(r.CreatedAt, out var y, out var q)) continue;
+            if (!groups.TryGetValue((y, q), out var g))
+                g = (0, 0);
+            g.clicks += (r.ClickThroughs ?? 0);
+            g.impressions += (r.Impressions ?? 0);
+            groups[(y, q)] = g;
+        }
+
+        var asInts = groups.ToDictionary(
+            kv => kv.Key,
+            kv => ((int)Math.Min(int.MaxValue, kv.Value.clicks), (int)Math.Min(int.MaxValue, kv.Value.impressions)));
+
+        return Ok(await BuildRateOkrResponseAsync(
+            SocialClickThroughMetricKey,
+            asInts,
+            take,
+            ct));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("outreach/social/referral-conversion/targets/{year:int}/{quarter:int}")]
+    public Task<IActionResult> UpsertSocialReferralConversionTarget([FromRoute] int year, [FromRoute] int quarter, [FromBody] double targetRate, CancellationToken ct)
+        => UpsertTargetValue(SocialReferralConversionMetricKey, year, quarter, targetRate, ct);
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("outreach/social/click-through/targets/{year:int}/{quarter:int}")]
+    public Task<IActionResult> UpsertSocialClickThroughTarget([FromRoute] int year, [FromRoute] int quarter, [FromBody] double targetRate, CancellationToken ct)
+        => UpsertTargetValue(SocialClickThroughMetricKey, year, quarter, targetRate, ct);
 
     /// <summary>Sets a quarterly target (0..1) for any supported OKR metric.</summary>
     [Authorize(Roles = "Admin")]
