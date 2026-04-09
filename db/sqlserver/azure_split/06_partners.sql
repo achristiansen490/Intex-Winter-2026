@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.partners', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partners')) EXEC('SET IDENTITY_INSERT dbo.partners ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partners')) SET IDENTITY_INSERT dbo.partners ON;
   INSERT INTO dbo.[partners] ([partner_id], [partner_name], [partner_type], [role_type], [contact_name], [email], [phone], [region], [status], [start_date], [end_date], [notes]) VALUES
 (1, N'Ana Reyes', N'Organization', N'SafehouseOps', N'Ana Reyes', N'ana-reyes@hopepartners.ph', N'+63 993 532 6574', N'Luzon', N'Active', N'2022-01-01', NULL, N'Primary contractor'),
 (2, N'Maria Santos', N'Individual', N'Evaluation', N'Maria Santos', N'maria-santos@pldt.net.ph', N'+63 927 194 7224', N'Luzon', N'Active', N'2022-01-21', NULL, N'Primary contractor'),
@@ -35,6 +35,6 @@ BEGIN
 (28, N'Paul Yap', N'Organization', N'Education', N'Paul Yap', N'paul-yap@globalfoundation.ph', N'+63 915 980 6413', N'Visayas', N'Inactive', N'2023-06-25', N'2025-12-31', N'Secondary contractor'),
 (29, N'June Cortez', N'Individual', N'Education', N'June Cortez', N'june-cortez@smart.com.ph', N'+63 955 652 3167', N'Luzon', N'Inactive', N'2023-07-15', N'2025-12-31', N'Secondary contractor'),
 (30, N'Lara Soriano', N'Individual', N'Logistics', N'Lara Soriano', N'lara-soriano@eastern.com.ph', N'+63 921 348 8749', N'Mindanao', N'Inactive', N'2023-08-04', N'2025-12-31', N'Secondary contractor');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partners')) EXEC('SET IDENTITY_INSERT dbo.partners OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partners')) SET IDENTITY_INSERT dbo.partners OFF;
 END
 COMMIT;

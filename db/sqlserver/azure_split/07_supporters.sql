@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.supporters', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.supporters')) EXEC('SET IDENTITY_INSERT dbo.supporters ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.supporters')) SET IDENTITY_INSERT dbo.supporters ON;
   INSERT INTO dbo.[supporters] ([supporter_id], [supporter_type], [display_name], [organization_name], [first_name], [last_name], [relationship_type], [region], [country], [email], [phone], [status], [created_at], [first_donation_date], [acquisition_channel]) VALUES
 (1, N'SocialMediaAdvocate', N'Mila Alvarez', NULL, N'Mila', N'Alvarez', N'Local', N'Luzon', N'Philippines', N'mila-alvarez@smart.com.ph', N'+63 997 578 1887', N'Active', N'2022-01-01 00:00:00', N'2023-07-02', N'SocialMedia'),
 (2, N'Volunteer', N'Aria Brown', NULL, N'Aria', N'Brown', N'Local', N'Mindanao', N'Philippines', N'aria-brown@pldt.net.ph', N'+63 927 354 4139', N'Active', N'2022-01-06 00:00:00', N'2023-09-25', N'SocialMedia'),
@@ -65,6 +65,6 @@ BEGIN
 (58, N'SocialMediaAdvocate', N'Rico Iglesias', NULL, N'Rico', N'Iglesias', N'Local', N'Luzon', N'Philippines', N'rico-iglesias@smart.com.ph', N'+63 978 129 9098', N'Inactive', N'2022-10-13 00:00:00', N'2023-01-09', N'WordOfMouth'),
 (59, N'SocialMediaAdvocate', N'Lea Jain', NULL, N'Lea', N'Jain', N'Local', N'Luzon', N'Philippines', N'lea-jain@pldt.net.ph', N'+63 967 710 5526', N'Inactive', N'2022-10-18 00:00:00', N'2025-03-05', N'WordOfMouth'),
 (60, N'InKindDonor', N'Tess Khan', NULL, N'Tess', N'Khan', N'Local', N'Visayas', N'Philippines', N'tess-khan@smart.com.ph', N'+63 928 668 4937', N'Inactive', N'2022-10-23 00:00:00', N'2023-08-14', N'Website');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.supporters')) EXEC('SET IDENTITY_INSERT dbo.supporters OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.supporters')) SET IDENTITY_INSERT dbo.supporters OFF;
 END
 COMMIT;

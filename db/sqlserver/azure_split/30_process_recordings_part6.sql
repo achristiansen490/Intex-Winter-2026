@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.process_recordings', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) EXEC('SET IDENTITY_INSERT dbo.process_recordings ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) SET IDENTITY_INSERT dbo.process_recordings ON;
   INSERT INTO dbo.[process_recordings] ([recording_id], [resident_id], [session_date], [social_worker], [session_type], [session_duration_minutes], [emotional_state_observed], [emotional_state_end], [session_narrative], [interventions_applied], [follow_up_actions], [progress_noted], [concerns_flagged], [referral_made], [notes_restricted]) VALUES
 (1211, 23, N'2024-09-15', N'SW-17', N'Individual', 36, N'Calm', N'Happy', N'Session with resident. Type: Individual. Duration: 36 minutes.', N'Healing, Legal Services, Caring', N'Monitor progress', 1, 0, 0, NULL),
 (1212, 23, N'2024-09-24', N'SW-04', N'Individual', 48, N'Calm', N'Calm', N'Session with resident. Type: Individual. Duration: 48 minutes.', N'Caring, Legal Services', N'Continue current approach', 1, 0, 0, NULL),
@@ -244,6 +244,6 @@ BEGIN
 (1447, 27, N'2025-11-17', N'SW-20', N'Individual', 37, N'Angry', N'Calm', N'Session with resident. Type: Individual. Duration: 37 minutes.', N'Healing, Caring, Teaching', N'Schedule follow-up session', 1, 0, 0, NULL),
 (1448, 27, N'2026-01-13', N'SW-18', N'Individual', 70, N'Withdrawn', N'Sad', N'Session with resident. Type: Individual. Duration: 70 minutes.', N'Legal Services', N'Continue current approach', 1, 0, 1, NULL),
 (1449, 27, N'2026-02-08', N'SW-17', N'Individual', 46, N'Anxious', N'Hopeful', N'Session with resident. Type: Individual. Duration: 46 minutes.', N'Caring, Legal Services', N'Schedule follow-up session', 1, 0, 1, NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) EXEC('SET IDENTITY_INSERT dbo.process_recordings OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) SET IDENTITY_INSERT dbo.process_recordings OFF;
 END
 COMMIT;

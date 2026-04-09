@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.education_records', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.education_records')) EXEC('SET IDENTITY_INSERT dbo.education_records ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.education_records')) SET IDENTITY_INSERT dbo.education_records ON;
   INSERT INTO dbo.[education_records] ([education_record_id], [resident_id], [record_date], [education_level], [school_name], [enrollment_status], [attendance_rate], [progress_percent], [completion_status], [notes]) VALUES
 (1, 1, N'2023-10-01', N'Vocational', N'School 8', N'Enrolled', 0.966, 37.7, N'NotStarted', N'Progress: NotStarted'),
 (2, 1, N'2023-11-01', N'Secondary', N'School 20', N'Enrolled', 0.693, 33.0, N'InProgress', N'Progress: InProgress'),
@@ -425,6 +425,6 @@ BEGIN
 (418, 47, N'2023-10-01', N'Primary', N'School 17', N'Enrolled', 0.609, 80.9, N'InProgress', N'Progress: InProgress'),
 (419, 47, N'2023-11-01', N'CollegePrep', N'School 19', N'Enrolled', 0.828, 98.7, N'InProgress', N'Progress: InProgress'),
 (420, 47, N'2023-12-01', N'Secondary', N'School 9', N'Enrolled', 1.0, 99.0, N'InProgress', N'Progress: InProgress');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.education_records')) EXEC('SET IDENTITY_INSERT dbo.education_records OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.education_records')) SET IDENTITY_INSERT dbo.education_records OFF;
 END
 COMMIT;

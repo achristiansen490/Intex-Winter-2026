@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.process_recordings', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) EXEC('SET IDENTITY_INSERT dbo.process_recordings ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) SET IDENTITY_INSERT dbo.process_recordings ON;
   INSERT INTO dbo.[process_recordings] ([recording_id], [resident_id], [session_date], [social_worker], [session_type], [session_duration_minutes], [emotional_state_observed], [emotional_state_end], [session_narrative], [interventions_applied], [follow_up_actions], [progress_noted], [concerns_flagged], [referral_made], [notes_restricted]) VALUES
 (2652, 58, N'2025-06-26', N'SW-03', N'Individual', 54, N'Angry', N'Calm', N'Session with resident. Type: Individual. Duration: 54 minutes.', N'Healing', N'Monitor progress', 1, 0, 0, NULL),
 (2653, 58, N'2025-06-27', N'SW-17', N'Individual', 60, N'Anxious', N'Hopeful', N'Session with resident. Type: Individual. Duration: 60 minutes.', N'Healing', N'Monitor progress', 1, 0, 1, NULL),
@@ -173,6 +173,6 @@ BEGIN
 (2817, 60, N'2025-11-11', N'SW-01', N'Individual', 34, N'Sad', N'Hopeful', N'Session with resident. Type: Individual. Duration: 34 minutes.', N'Teaching, Caring', N'Referral to specialist', 1, 0, 0, NULL),
 (2818, 60, N'2025-11-13', N'SW-10', N'Group', 115, N'Hopeful', N'Hopeful', N'Session with resident. Type: Group. Duration: 115 minutes.', N'Legal Services, Caring, Teaching', N'Coordinate with family', 1, 0, 0, NULL),
 (2819, 60, N'2025-11-15', N'SW-08', N'Individual', 75, N'Withdrawn', N'Hopeful', N'Session with resident. Type: Individual. Duration: 75 minutes.', N'Teaching', N'Continue current approach', 1, 0, 0, NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) EXEC('SET IDENTITY_INSERT dbo.process_recordings OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.process_recordings')) SET IDENTITY_INSERT dbo.process_recordings OFF;
 END
 COMMIT;

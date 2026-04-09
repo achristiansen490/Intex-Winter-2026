@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.donations', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) EXEC('SET IDENTITY_INSERT dbo.donations ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) SET IDENTITY_INSERT dbo.donations ON;
   INSERT INTO dbo.[donations] ([donation_id], [supporter_id], [donation_type], [donation_date], [is_recurring], [campaign_name], [channel_source], [currency_code], [amount], [estimated_value], [impact_unit], [notes], [referral_post_id]) VALUES
 (391, 35, N'SocialMedia', N'2025-03-19', 0, NULL, N'SocialMedia', NULL, NULL, 2.5, N'campaigns', N'Monthly contribution', 374),
 (392, 34, N'Time', N'2023-10-31', 1, NULL, N'PartnerReferral', NULL, NULL, 39.4, N'hours', N'Campaign support', NULL),
@@ -35,6 +35,6 @@ BEGIN
 (418, 54, N'Monetary', N'2025-03-08', 1, NULL, N'Campaign', N'PHP', 1924.57, 1924.57, N'pesos', N'Campaign support', NULL),
 (419, 45, N'InKind', N'2024-10-29', 1, NULL, N'Campaign', NULL, NULL, 677.83, N'items', N'Recurring gift', NULL),
 (420, 49, N'InKind', N'2025-12-09', 0, N'Year-End Hope', N'Event', NULL, NULL, 300.0, N'items', N'Monthly contribution', NULL);
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) EXEC('SET IDENTITY_INSERT dbo.donations OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.donations')) SET IDENTITY_INSERT dbo.donations OFF;
 END
 COMMIT;

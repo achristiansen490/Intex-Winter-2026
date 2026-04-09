@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.health_wellbeing_records', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.health_wellbeing_records')) EXEC('SET IDENTITY_INSERT dbo.health_wellbeing_records ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.health_wellbeing_records')) SET IDENTITY_INSERT dbo.health_wellbeing_records ON;
   INSERT INTO dbo.[health_wellbeing_records] ([health_record_id], [resident_id], [record_date], [general_health_score], [nutrition_score], [sleep_quality_score], [energy_level_score], [height_cm], [weight_kg], [bmi], [medical_checkup_done], [dental_checkup_done], [psychological_checkup_done], [notes]) VALUES
 (479, 54, N'2023-08-01', 2.73, 3.03, 3.25, 3.1, 149.0, 34.1, 15.4, 1, 1, 0, N'Health status: Stable'),
 (480, 54, N'2023-09-01', 2.74, 3.01, 3.33, 3.24, 149.4, 34.5, 15.5, 1, 0, 0, N'Health status: Stable'),
@@ -61,6 +61,6 @@ BEGIN
 (532, 60, N'2024-04-01', 2.91, 3.27, 3.05, 3.18, 147.3, 37.6, 17.3, 0, 0, 1, N'Health status: Improving'),
 (533, 60, N'2024-05-01', 3.07, 3.4, 2.97, 3.28, 147.8, 38.3, 17.5, 1, 0, 1, N'Health status: Stable'),
 (534, 60, N'2024-06-01', 3.17, 3.62, 2.92, 3.37, 148.0, 38.4, 17.5, 0, 0, 0, N'Health status: Stable');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.health_wellbeing_records')) EXEC('SET IDENTITY_INSERT dbo.health_wellbeing_records OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.health_wellbeing_records')) SET IDENTITY_INSERT dbo.health_wellbeing_records OFF;
 END
 COMMIT;

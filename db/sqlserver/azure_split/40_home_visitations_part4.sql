@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.home_visitations', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) EXEC('SET IDENTITY_INSERT dbo.home_visitations ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) SET IDENTITY_INSERT dbo.home_visitations ON;
   INSERT INTO dbo.[home_visitations] ([visitation_id], [resident_id], [visit_date], [social_worker], [visit_type], [location_visited], [family_members_present], [purpose], [observations], [family_cooperation_level], [safety_concerns_noted], [follow_up_needed], [follow_up_notes], [visit_outcome]) VALUES
 (571, 22, N'2024-11-03', N'SW-07', N'Routine Follow-Up', N'School', N'Diaz (Parent); Santos (Sibling)', N'Visitation for routine follow-up', N'Visit observations recorded during routine follow-up.', N'Cooperative', 0, 0, N'Follow-up scheduled', N'Favorable'),
 (572, 22, N'2024-11-19', N'SW-20', N'Initial Assessment', N'Barangay Office', N'Cruz (Parent); Rivera (Sibling)', N'Visitation for initial assessment', N'Visit observations recorded during initial assessment.', N'Cooperative', 0, 0, NULL, N'Inconclusive'),
@@ -194,6 +194,6 @@ BEGIN
 (757, 30, N'2024-04-23', N'SW-03', N'Reintegration Assessment', N'Church', N'Garcia (Parent); Torres (Sibling)', N'Visitation for reintegration assessment', N'Visit observations recorded during reintegration assessment.', N'Highly Cooperative', 1, 1, NULL, N'Unfavorable'),
 (758, 30, N'2024-05-09', N'SW-18', N'Routine Follow-Up', N'School', N'Rivera (Parent); Mendoza (Sibling)', N'Visitation for routine follow-up', N'Visit observations recorded during routine follow-up.', N'Highly Cooperative', 1, 1, N'Follow-up scheduled', N'Unfavorable'),
 (759, 30, N'2024-05-21', N'SW-04', N'Routine Follow-Up', N'Barangay Office', N'None', N'Visitation for routine follow-up', N'Visit observations recorded during routine follow-up.', N'Cooperative', 1, 1, N'Follow-up scheduled', N'Needs Improvement');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) EXEC('SET IDENTITY_INSERT dbo.home_visitations OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.home_visitations')) SET IDENTITY_INSERT dbo.home_visitations OFF;
 END
 COMMIT;

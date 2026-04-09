@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.staff', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.staff')) EXEC('SET IDENTITY_INSERT dbo.staff ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.staff')) SET IDENTITY_INSERT dbo.staff ON;
   INSERT INTO dbo.[staff] ([staff_id], [staff_code], [first_name], [last_name], [age], [email], [phone], [role], [employment_type], [specialization], [safehouse_id], [employment_status], [date_hired], [date_ended], [created_at], [updated_at]) VALUES
 (1, N'SW-01', N'Elena', N'Santos', 31, N'elena.santos@lighthouseph.org', N'+63 941 328 3286', N'Social Worker', N'Internal', N'Trafficking', 1, N'Active', N'2023-02-22', NULL, N'2023-02-22 00:00:00', N'2026-04-06 00:00:00'),
 (2, N'SW-02', N'Fatima', N'Cruz', 41, N'fatima.cruz@lighthouseph.org', N'+63 964 132 1488', N'Social Worker', N'Internal', N'Physical Abuse', 2, N'Active', N'2018-04-08', NULL, N'2018-04-08 00:00:00', N'2026-04-06 00:00:00'),
@@ -25,6 +25,6 @@ BEGIN
 (18, N'SW-18', N'Andrea', N'Morales', 28, N'andrea.morales@lighthouseph.org', N'+63 968 103 5315', N'Field Worker', N'Contracted', N'Child Labor', NULL, N'Active', N'2022-03-17', NULL, N'2022-03-17 00:00:00', N'2026-04-06 00:00:00'),
 (19, N'SW-19', N'Elena', N'Martinez', 43, N'elena.martinez@lighthouseph.org', N'+63 974 723 4258', N'Field Worker', N'Contracted', N'Neglect', NULL, N'Active', N'2019-06-25', NULL, N'2019-06-25 00:00:00', N'2026-04-06 00:00:00'),
 (20, N'SW-20', N'Isabel', N'Mendoza', 39, N'isabel.mendoza@lighthouseph.org', N'+63 910 713 6310', N'Field Worker', N'Contracted', N'At-Risk Youth', NULL, N'Active', N'2021-01-04', NULL, N'2021-01-04 00:00:00', N'2026-04-06 00:00:00');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.staff')) EXEC('SET IDENTITY_INSERT dbo.staff OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.staff')) SET IDENTITY_INSERT dbo.staff OFF;
 END
 COMMIT;

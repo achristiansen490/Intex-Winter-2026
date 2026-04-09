@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.partner_assignments', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partner_assignments')) EXEC('SET IDENTITY_INSERT dbo.partner_assignments ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partner_assignments')) SET IDENTITY_INSERT dbo.partner_assignments ON;
   INSERT INTO dbo.[partner_assignments] ([assignment_id], [partner_id], [safehouse_id], [program_area], [assignment_start], [assignment_end], [responsibility_notes], [is_primary], [status]) VALUES
 (1, 1, 8, N'Operations', N'2022-01-01', NULL, N'SafehouseOps support for safehouse operations', 1, N'Active'),
 (2, 1, 9, N'Operations', N'2022-01-01', NULL, N'SafehouseOps support for safehouse operations', 0, N'Active'),
@@ -53,6 +53,6 @@ BEGIN
 (46, 29, 3, N'Education', N'2023-07-15', N'2025-12-31', N'Education support for safehouse operations', 0, N'Ended'),
 (47, 30, NULL, N'Transport', N'2023-08-04', N'2025-12-31', N'Logistics support for safehouse operations', 1, N'Ended'),
 (48, 30, 8, N'Transport', N'2023-08-04', N'2025-12-31', N'Logistics support for safehouse operations', 0, N'Ended');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partner_assignments')) EXEC('SET IDENTITY_INSERT dbo.partner_assignments OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.partner_assignments')) SET IDENTITY_INSERT dbo.partner_assignments OFF;
 END
 COMMIT;

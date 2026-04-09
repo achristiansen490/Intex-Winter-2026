@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.in_kind_donation_items', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.in_kind_donation_items')) EXEC('SET IDENTITY_INSERT dbo.in_kind_donation_items ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.in_kind_donation_items')) SET IDENTITY_INSERT dbo.in_kind_donation_items ON;
   INSERT INTO dbo.[in_kind_donation_items] ([item_id], [donation_id], [item_name], [item_category], [quantity], [unit_of_measure], [estimated_unit_value], [intended_use], [received_condition]) VALUES
 (1, 5, N'School Supplies', N'SchoolMaterials', 10, N'sets', 779.49, N'Health', N'New'),
 (2, 9, N'Bags', N'Food', 16, N'packs', 793.39, N'Shelter', N'Good'),
@@ -134,6 +134,6 @@ BEGIN
 (127, 414, N'Rice', N'Supplies', 12, N'pcs', 329.96, N'Meals', N'New'),
 (128, 419, N'Medicines', N'Medical', 25, N'kg', 677.44, N'Hygiene', N'New'),
 (129, 420, N'Bags', N'Supplies', 27, N'pcs', 525.15, N'Education', N'Good');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.in_kind_donation_items')) EXEC('SET IDENTITY_INSERT dbo.in_kind_donation_items OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.in_kind_donation_items')) SET IDENTITY_INSERT dbo.in_kind_donation_items OFF;
 END
 COMMIT;

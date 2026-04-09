@@ -3,7 +3,7 @@ SET XACT_ABORT ON;
 BEGIN TRAN;
 IF OBJECT_ID(N'dbo.public_impact_snapshots', N'U') IS NOT NULL
 BEGIN
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.public_impact_snapshots')) EXEC('SET IDENTITY_INSERT dbo.public_impact_snapshots ON');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.public_impact_snapshots')) SET IDENTITY_INSERT dbo.public_impact_snapshots ON;
   INSERT INTO dbo.[public_impact_snapshots] ([snapshot_id], [snapshot_date], [headline], [summary_text], [metric_payload_json], [is_published], [published_at]) VALUES
 (1, N'2023-01-01', N'Lighthouse Sanctuary Impact Update - January 2023', N'Anonymized aggregate report: 60 residents active, average health score 3.03, average education progress 33.9%.', N'{''month'': ''2023-01'', ''avg_health_score'': 3.03, ''avg_education_progress'': 33.9, ''total_residents'': 60, ''donations_total_for_month'': 1379.92}', 1, N'2023-01-01'),
 (2, N'2023-02-01', N'Lighthouse Sanctuary Impact Update - February 2023', N'Anonymized aggregate report: 60 residents active, average health score 3.13, average education progress 51.05%.', N'{''month'': ''2023-02'', ''avg_health_score'': 3.13, ''avg_education_progress'': 51.05, ''total_residents'': 60, ''donations_total_for_month'': 2065.15}', 1, N'2023-02-01'),
@@ -55,6 +55,6 @@ BEGIN
 (48, N'2026-12-01', N'Lighthouse Sanctuary Impact Update - December 2026', N'Anonymized aggregate report: 60 residents active, average health score 0, average education progress 0%.', N'{''month'': ''2026-12'', ''avg_health_score'': 0, ''avg_education_progress'': 0, ''total_residents'': 60, ''donations_total_for_month'': 0.0}', 1, N'2026-12-01'),
 (49, N'2027-01-01', N'Lighthouse Sanctuary Impact Update - January 2027', N'Anonymized aggregate report: 60 residents active, average health score 0, average education progress 0%.', N'{''month'': ''2027-01'', ''avg_health_score'': 0, ''avg_education_progress'': 0, ''total_residents'': 60, ''donations_total_for_month'': 0.0}', 1, N'2027-01-01'),
 (50, N'2027-02-01', N'Lighthouse Sanctuary Impact Update - February 2027', N'Anonymized aggregate report: 60 residents active, average health score 0, average education progress 0%.', N'{''month'': ''2027-02'', ''avg_health_score'': 0, ''avg_education_progress'': 0, ''total_residents'': 60, ''donations_total_for_month'': 0.0}', 1, N'2027-02-01');
-  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.public_impact_snapshots')) EXEC('SET IDENTITY_INSERT dbo.public_impact_snapshots OFF');
+  IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(N'dbo.public_impact_snapshots')) SET IDENTITY_INSERT dbo.public_impact_snapshots OFF;
 END
 COMMIT;
