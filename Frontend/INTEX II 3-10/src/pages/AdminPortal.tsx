@@ -37,6 +37,45 @@ function filterTableRows(
   );
 }
 
+// ── Pagination helpers ────────────────────────────────────────────────────────
+
+function paginationBtnStyle(disabled: boolean): React.CSSProperties {
+  return {
+    background: disabled ? c.ivory : c.white,
+    color: disabled ? c.muted : c.forest,
+    border: `1px solid ${c.sageLight}`,
+    borderRadius: 5,
+    padding: '4px 10px',
+    fontSize: 12,
+    cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+  };
+}
+
+function Pagination({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, justifyContent: 'flex-end' }}>
+      <button onClick={() => onPage(1)} disabled={page === 1} style={paginationBtnStyle(page === 1)}>«</button>
+      <button onClick={() => onPage(page - 1)} disabled={page === 1} style={paginationBtnStyle(page === 1)}>‹</button>
+      <span style={{ fontSize: 12, color: c.muted, padding: '0 8px' }}>Page {page} of {totalPages}</span>
+      <button onClick={() => onPage(page + 1)} disabled={page === totalPages} style={paginationBtnStyle(page === totalPages)}>›</button>
+      <button onClick={() => onPage(totalPages)} disabled={page === totalPages} style={paginationBtnStyle(page === totalPages)}>»</button>
+    </div>
+  );
+}
+
+function PerPageSelector({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label style={{ fontSize: 11, color: c.muted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Per page</label>
+      <select value={value} onChange={e => onChange(Number(e.target.value))} style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 12, color: c.text, background: c.white }}>
+        {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function DataSearchBar({
   id,
   value,
@@ -344,6 +383,8 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [perPage, setPerPage] = useState(25);
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -361,6 +402,10 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
     [rows, columns, query],
   );
 
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filteredRows.slice((safePage - 1) * perPage, safePage * perPage);
+
   return (
     <div>
       <SectionTitle>{title}</SectionTitle>
@@ -370,13 +415,17 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
         <ApiError msg={error} retry={load} />
       ) : (
         <>
-          <DataSearchBar
-            id={searchId}
-            value={query}
-            onChange={setQuery}
-            placeholder={`Search ${title.toLowerCase()}…`}
-          />
-          <Table columns={columns} rows={filteredRows} keyField={keyField} totalCount={rows.length} />
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            <DataSearchBar
+              id={searchId}
+              value={query}
+              onChange={v => { setQuery(v); setPage(1); }}
+              placeholder={`Search ${title.toLowerCase()}…`}
+            />
+            <PerPageSelector value={perPage} onChange={v => { setPerPage(v); setPage(1); }} />
+          </div>
+          <Table columns={columns} rows={pageRows} keyField={keyField} totalCount={filteredRows.length} />
+          <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
         </>
       )}
     </div>
@@ -697,6 +746,8 @@ function AdminStaff() {
   const [editId, setEditId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
+  const [perPage, setPerPage] = useState(25);
+  const [page, setPage] = useState(1);
   const searchId = useId();
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
@@ -720,6 +771,10 @@ function AdminStaff() {
         .some(v => v?.toLowerCase().includes(needle))
     );
   }, [rows, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
   const openCreate = () => { setForm(STAFF_BLANK); setEditId(null); setModal('create'); };
   const openEdit = (row: StaffRow) => {
@@ -776,8 +831,14 @@ function AdminStaff() {
         <SectionTitle>Staff ({rows.length})</SectionTitle>
         <button onClick={openCreate} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Add Staff</button>
       </div>
-      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search by name, code, role, email…" />
-      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>{filtered.length !== rows.length ? `${filtered.length} of ${rows.length} records` : `${rows.length} records`}</p>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+        <DataSearchBar id={searchId} value={query} onChange={v => { setQuery(v); setPage(1); }} placeholder="Search by name, code, role, email…" />
+        <PerPageSelector value={perPage} onChange={v => { setPerPage(v); setPage(1); }} />
+      </div>
+      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>
+        {filtered.length !== rows.length ? `${filtered.length} of ${rows.length} records` : `${rows.length} records`}
+        {totalPages > 1 && ` · showing ${paginated.length} on page ${safePage}`}
+      </p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -788,7 +849,7 @@ function AdminStaff() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row, i) => (
+            {paginated.map((row, i) => (
               <tr key={row.staffId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.staffId}</td>
                 <td style={{ padding: '8px 12px' }}>{row.staffCode ?? '—'}</td>
@@ -812,6 +873,7 @@ function AdminStaff() {
           </tbody>
         </table>
       </div>
+      <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
 
       {modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -1060,13 +1122,24 @@ function AdminAllUsers() {
   );
 }
 
-// ── Residents with inline edit ────────────────────────────────────────────────
+// ── Residents with inline edit + create ──────────────────────────────────────
 
 type ResidentRow = {
-  residentId: number; caseControlNo: string; safehouseId: number;
+  residentId: number; caseControlNo: string; safehouseId: number | null;
   caseStatus: string; dateOfAdmission: string; currentRiskLevel: string;
   reintegrationStatus: string; assignedSocialWorker: string;
   reintegrationType: string; dateEnrolled: string;
+};
+
+const CASE_STATUSES = ['Active', 'Closed', 'Transferred'];
+const RISK_LEVELS = ['Low', 'Medium', 'High', 'Critical'];
+const REINTEGRATION_STATUSES = ['Not Started', 'In Progress', 'Completed', 'On Hold'];
+const REINTEGRATION_TYPES = ['Family Reunification', 'Foster Care', 'Adoption (Domestic)', 'Adoption (Inter-Country)', 'Independent Living', 'None'];
+
+const RESIDENT_BLANK: Omit<ResidentRow, 'residentId'> = {
+  caseControlNo: '', safehouseId: null, caseStatus: 'Active',
+  dateOfAdmission: '', currentRiskLevel: 'Low', reintegrationStatus: 'Not Started',
+  reintegrationType: 'None', assignedSocialWorker: '', dateEnrolled: '',
 };
 
 function AdminResidents() {
@@ -1074,10 +1147,14 @@ function AdminResidents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [modal, setModal] = useState<'create' | 'edit' | null>(null);
+  const [createForm, setCreateForm] = useState<Omit<ResidentRow, 'residentId'>>(RESIDENT_BLANK);
   const [editRow, setEditRow] = useState<ResidentRow | null>(null);
   const [editForm, setEditForm] = useState<Partial<ResidentRow>>({});
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
+  const [perPage, setPerPage] = useState(25);
+  const [page, setPage] = useState(1);
   const searchId = useId();
 
   const notify = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
@@ -1102,6 +1179,12 @@ function AdminResidents() {
     );
   }, [rows, query]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
+
+  const openCreate = () => { setCreateForm(RESIDENT_BLANK); setModal('create'); };
+
   const openEdit = (row: ResidentRow) => {
     setEditRow(row);
     setEditForm({
@@ -1111,6 +1194,16 @@ function AdminResidents() {
       reintegrationType: row.reintegrationType,
       assignedSocialWorker: row.assignedSocialWorker,
     });
+    setModal('edit');
+  };
+
+  const saveCreate = async () => {
+    setBusy(true);
+    try {
+      const r = await api('/api/residents', { method: 'POST', body: JSON.stringify(createForm) });
+      if (r.ok) { notify('✓ Resident created.'); setModal(null); await load(); }
+      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Create failed.'); }
+    } finally { setBusy(false); }
   };
 
   const saveEdit = async () => {
@@ -1119,10 +1212,32 @@ function AdminResidents() {
     try {
       const body = { ...editRow, ...editForm };
       const r = await api(`/api/residents/${editRow.residentId}`, { method: 'PUT', body: JSON.stringify(body) });
-      if (r.ok) { notify('✓ Resident record updated.'); setEditRow(null); await load(); }
+      if (r.ok) { notify('✓ Resident record updated.'); setModal(null); setEditRow(null); await load(); }
       else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Save failed.'); }
     } finally { setBusy(false); }
   };
+
+  const residentField = (
+    label: string,
+    value: string,
+    onChange: (v: string) => void,
+    type: 'text' | 'number' | 'select' | 'date',
+    options?: string[],
+  ) => (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</label>
+      {type === 'select' ? (
+        <select value={value} onChange={e => onChange(e.target.value)}
+          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+          {options!.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input type={type === 'date' ? 'date' : type} value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+      )}
+    </div>
+  );
 
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
@@ -1130,9 +1245,18 @@ function AdminResidents() {
   return (
     <div>
       {toast && <div style={{ background: c.sageLight, color: c.forest, borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
-      <SectionTitle>Residents ({rows.length})</SectionTitle>
-      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search by case no., status, risk, social worker…" />
-      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>{filtered.length !== rows.length ? `${filtered.length} of ${rows.length}` : `${rows.length}`} records</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <SectionTitle>Residents ({rows.length})</SectionTitle>
+        <button onClick={openCreate} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Add Resident</button>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+        <DataSearchBar id={searchId} value={query} onChange={v => { setQuery(v); setPage(1); }} placeholder="Search by case no., status, risk, social worker…" />
+        <PerPageSelector value={perPage} onChange={v => { setPerPage(v); setPage(1); }} />
+      </div>
+      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>
+        {filtered.length !== rows.length ? `${filtered.length} of ${rows.length}` : `${rows.length}`} records
+        {totalPages > 1 && ` · showing ${paginated.length} on page ${safePage}`}
+      </p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -1143,7 +1267,7 @@ function AdminResidents() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row, i) => (
+            {paginated.map((row, i) => (
               <tr key={row.residentId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentId}</td>
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.caseControlNo ?? '—'}</td>
@@ -1165,17 +1289,43 @@ function AdminResidents() {
           </tbody>
         </table>
       </div>
+      <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
 
-      {editRow && (
+      {/* Create modal */}
+      {modal === 'create' && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 1rem' }}>Add Resident</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              {residentField('Case Control No.', createForm.caseControlNo, v => setCreateForm(f => ({ ...f, caseControlNo: v })), 'text')}
+              {residentField('Safehouse ID', String(createForm.safehouseId ?? ''), v => setCreateForm(f => ({ ...f, safehouseId: v === '' ? null : Number(v) })), 'number')}
+              {residentField('Case Status', createForm.caseStatus, v => setCreateForm(f => ({ ...f, caseStatus: v })), 'select', CASE_STATUSES)}
+              {residentField('Current Risk Level', createForm.currentRiskLevel, v => setCreateForm(f => ({ ...f, currentRiskLevel: v })), 'select', RISK_LEVELS)}
+              {residentField('Date of Admission', createForm.dateOfAdmission, v => setCreateForm(f => ({ ...f, dateOfAdmission: v })), 'date')}
+              {residentField('Date Enrolled', createForm.dateEnrolled, v => setCreateForm(f => ({ ...f, dateEnrolled: v })), 'date')}
+              {residentField('Reintegration Status', createForm.reintegrationStatus, v => setCreateForm(f => ({ ...f, reintegrationStatus: v })), 'select', REINTEGRATION_STATUSES)}
+              {residentField('Reintegration Type', createForm.reintegrationType, v => setCreateForm(f => ({ ...f, reintegrationType: v })), 'select', REINTEGRATION_TYPES)}
+            </div>
+            {residentField('Assigned Social Worker', createForm.assignedSocialWorker, v => setCreateForm(f => ({ ...f, assignedSocialWorker: v })), 'text')}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => setModal(null)} style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button disabled={busy} onClick={saveCreate} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {modal === 'edit' && editRow && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
             <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 0.25rem' }}>Edit Resident Record</h3>
             <p style={{ fontSize: 12, color: c.muted, marginBottom: 1.25 * 16 }}>Case #{editRow.caseControlNo} · ID {editRow.residentId}</p>
             {([
-              ['caseStatus', 'Case Status', ['Active', 'Closed', 'Transferred']],
-              ['currentRiskLevel', 'Current Risk Level', ['Low', 'Medium', 'High', 'Critical']],
-              ['reintegrationStatus', 'Reintegration Status', ['Not Started', 'In Progress', 'Completed', 'On Hold']],
-              ['reintegrationType', 'Reintegration Type', ['Family Reunification', 'Foster Care', 'Adoption (Domestic)', 'Adoption (Inter-Country)', 'Independent Living', 'None']],
+              ['caseStatus', 'Case Status', CASE_STATUSES],
+              ['currentRiskLevel', 'Current Risk Level', RISK_LEVELS],
+              ['reintegrationStatus', 'Reintegration Status', REINTEGRATION_STATUSES],
+              ['reintegrationType', 'Reintegration Type', REINTEGRATION_TYPES],
             ] as [keyof ResidentRow, string, string[]][]).map(([key, label, opts]) => (
               <div key={key} style={{ marginBottom: 12 }}>
                 <label style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</label>
@@ -1192,12 +1342,134 @@ function AdminResidents() {
                 style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setEditRow(null)} style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => { setModal(null); setEditRow(null); }} style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
               <button disabled={busy} onClick={saveEdit} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Saving…' : 'Save'}</button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Donations with recurring filter + pagination ──────────────────────────────
+
+type DonationRow = {
+  donationId: number; donationDate: string; donationType: string;
+  campaignName: string; amount: number | null; currencyCode: string;
+  channelSource: string; isRecurring: boolean | null;
+};
+
+type RecurringFilter = 'all' | 'recurring' | 'one-time';
+
+function AdminDonations() {
+  const [rows, setRows] = useState<DonationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [recurringFilter, setRecurringFilter] = useState<RecurringFilter>('all');
+  const [perPage, setPerPage] = useState(25);
+  const [page, setPage] = useState(1);
+  const searchId = useId();
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const data = await api('/api/donations').then(r => r.json());
+      setRows(Array.isArray(data) ? data : []);
+    } catch { setError('Failed to load donations.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    let result = rows;
+    if (recurringFilter === 'recurring') result = result.filter(r => r.isRecurring === true);
+    else if (recurringFilter === 'one-time') result = result.filter(r => r.isRecurring !== true);
+    const needle = query.trim().toLowerCase();
+    if (!needle) return result;
+    return result.filter(r =>
+      [r.donationType, r.campaignName, r.channelSource, r.currencyCode, String(r.donationDate ?? ''), String(r.amount ?? '')]
+        .some(v => v.toLowerCase().includes(needle))
+    );
+  }, [rows, query, recurringFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
+
+  const filterBtnStyle = (active: boolean): React.CSSProperties => ({
+    padding: '5px 14px', fontSize: 12, borderRadius: 6, fontWeight: active ? 600 : 400, cursor: 'pointer',
+    background: active ? c.forest : c.white, color: active ? c.ivory : c.text,
+    border: `1px solid ${active ? c.forest : c.sageLight}`,
+  });
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  const recurringCounts = {
+    all: rows.length,
+    recurring: rows.filter(r => r.isRecurring === true).length,
+    'one-time': rows.filter(r => r.isRecurring !== true).length,
+  };
+
+  return (
+    <div>
+      <SectionTitle>Donations ({rows.length})</SectionTitle>
+
+      {/* Recurring filter tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        <button style={filterBtnStyle(recurringFilter === 'all')} onClick={() => { setRecurringFilter('all'); setPage(1); }}>
+          All ({recurringCounts.all})
+        </button>
+        <button style={filterBtnStyle(recurringFilter === 'recurring')} onClick={() => { setRecurringFilter('recurring'); setPage(1); }}>
+          Recurring ({recurringCounts.recurring})
+        </button>
+        <button style={filterBtnStyle(recurringFilter === 'one-time')} onClick={() => { setRecurringFilter('one-time'); setPage(1); }}>
+          One-time ({recurringCounts['one-time']})
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+        <DataSearchBar id={searchId} value={query} onChange={v => { setQuery(v); setPage(1); }} placeholder="Search by type, campaign, channel…" />
+        <PerPageSelector value={perPage} onChange={v => { setPerPage(v); setPage(1); }} />
+      </div>
+      <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>
+        {filtered.length !== rows.length ? `${filtered.length} of ${rows.length} records` : `${rows.length} records`}
+        {totalPages > 1 && ` · showing ${paginated.length} on page ${safePage}`}
+      </p>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {['ID', 'Date', 'Type', 'Campaign', 'Amount', 'Currency', 'Channel', 'Recurring'].map(h => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.map((row, i) => (
+              <tr key={row.donationId} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationId}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationDate ? new Date(row.donationDate).toLocaleDateString() : '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.donationType ?? '—'}</td>
+                <td style={{ padding: '8px 12px', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.campaignName ?? '—'}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.amount != null ? Number(row.amount).toLocaleString() : '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.currencyCode ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.channelSource ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  {row.isRecurring === true
+                    ? <span style={{ background: c.sageLight, color: c.forest, borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>Yes</span>
+                    : <span style={{ background: c.ivory, color: c.muted, borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>No</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
     </div>
   );
 }
@@ -1236,13 +1508,7 @@ export default function AdminPortal() {
           { key: 'region', label: 'Region' }, { key: 'status', label: 'Status' },
           { key: 'capacityGirls', label: 'Capacity' }, { key: 'currentOccupancy', label: 'Occupancy' },
         ]} />;
-      case 'Donations':
-        return <DataPanel title="Donations" url="/api/donations" keyField="donationId" columns={[
-          { key: 'donationId', label: 'ID' }, { key: 'donationDate', label: 'Date' },
-          { key: 'donationType', label: 'Type' }, { key: 'campaignName', label: 'Campaign' },
-          { key: 'amount', label: 'Amount' }, { key: 'currencyCode', label: 'Currency' },
-          { key: 'channelSource', label: 'Channel' }, { key: 'isRecurring', label: 'Recurring' },
-        ]} />;
+      case 'Donations': return <AdminDonations />;
       case 'Audit Log':
         return <DataPanel title="Audit Log" url="/api/auditlogs" keyField="auditId" columns={[
           { key: 'auditId', label: 'ID' }, { key: 'timestamp', label: 'Time' },
