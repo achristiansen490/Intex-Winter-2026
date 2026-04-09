@@ -15,17 +15,17 @@ IF NOT EXISTS (
 )
     ALTER TABLE dbo.residents ADD resident_last_name NVARCHAR(MAX) NULL;
 
--- Add name columns to users
+-- Add name columns to AspNetUsers (ASP.NET Identity table for AppUser)
 IF NOT EXISTS (
     SELECT 1 FROM sys.columns
-    WHERE object_id = OBJECT_ID(N'dbo.users') AND name = 'first_name'
+    WHERE object_id = OBJECT_ID(N'dbo.AspNetUsers') AND name = 'first_name'
 )
-    ALTER TABLE dbo.users ADD first_name NVARCHAR(MAX) NULL;
+    ALTER TABLE dbo.AspNetUsers ADD first_name NVARCHAR(MAX) NULL;
 
 IF NOT EXISTS (
     SELECT 1 FROM sys.columns
-    WHERE object_id = OBJECT_ID(N'dbo.users') AND name = 'last_name'
+    WHERE object_id = OBJECT_ID(N'dbo.AspNetUsers') AND name = 'last_name'
 )
-    ALTER TABLE dbo.users ADD last_name NVARCHAR(MAX) NULL;
+    ALTER TABLE dbo.AspNetUsers ADD last_name NVARCHAR(MAX) NULL;
 
 PRINT 'Schema patch applied successfully.';
