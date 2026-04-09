@@ -13,6 +13,7 @@ type Props = {
   height?: number;
   gridColor?: string;
   lineColor?: string;
+  showDots?: boolean;
 };
 
 function formatCompact(n: number): string {
@@ -30,6 +31,7 @@ export default function MonthlyLineChart({
   height = 260,
   gridColor = 'rgba(44,43,40,0.08)',
   lineColor = '#2A4A35',
+  showDots = false,
 }: Props) {
   return (
     <div style={{ width: '100%', height }}>
@@ -39,7 +41,13 @@ export default function MonthlyLineChart({
           <XAxis dataKey="month" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} width={60} tickFormatter={(v) => formatCompact(Number(v))} />
           <Tooltip formatter={(v: any) => [formatPhp(Number(v)), 'Total']} />
-          <Line type="monotone" dataKey="total" stroke={lineColor} strokeWidth={2.5} dot={false} />
+          <Line
+            type="monotone"
+            dataKey="total"
+            stroke={lineColor}
+            strokeWidth={2.5}
+            dot={showDots ? { r: 4, fill: lineColor, stroke: lineColor } : false}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

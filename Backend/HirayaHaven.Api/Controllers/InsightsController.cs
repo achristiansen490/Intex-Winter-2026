@@ -50,6 +50,8 @@ public class InsightsController(HirayaContext db) : ControllerBase
         return std < 1e-9 ? 0 : (x - mean) / std;
     }
 
+    /// <summary>Aggregate donation totals by month — allowed for the public Impact page.</summary>
+    [AllowAnonymous]
     [HttpGet("donations/monthly")]
     public async Task<IActionResult> GetDonationsMonthly([FromQuery] int take = 120, CancellationToken ct = default)
     {

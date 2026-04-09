@@ -2,6 +2,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -13,6 +14,8 @@ type Props = {
   height?: number;
   gridColor?: string;
   barColor?: string;
+  /** If set, each bar uses the matching color (cycles if shorter than data). */
+  barColors?: string[];
   /** Use compact for counts/scores; default PHP formatting for monetary bars. */
   numberFormat?: 'php' | 'compact';
 };
@@ -32,6 +35,7 @@ export default function CampaignBarChart({
   height = 260,
   gridColor = 'rgba(44,43,40,0.08)',
   barColor = '#D4A44C',
+  barColors,
   numberFormat = 'php',
 }: Props) {
   return (
@@ -48,7 +52,13 @@ export default function CampaignBarChart({
               return [formatPhp(n), 'Total'];
             }}
           />
-          <Bar dataKey="total" fill={barColor} radius={[6, 6, 0, 0]} />
+          <Bar dataKey="total" fill={barColor} radius={[6, 6, 0, 0]}>
+            {barColors?.length
+              ? data.map((_, i) => (
+                  <Cell key={`bar-${i}`} fill={barColors[i % barColors.length]} />
+                ))
+              : null}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
