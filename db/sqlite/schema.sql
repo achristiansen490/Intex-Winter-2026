@@ -251,6 +251,8 @@ CREATE TABLE donation_allocations (
 
 CREATE TABLE residents (
   resident_id INTEGER PRIMARY KEY,
+  resident_first_name TEXT,
+  resident_last_name TEXT,
   case_control_no TEXT,
   internal_code TEXT,
   safehouse_id INTEGER,
@@ -308,6 +310,8 @@ CREATE TABLE users (
   staff_id INTEGER,
   resident_id INTEGER,
   supporter_id INTEGER,
+  first_name TEXT,
+  last_name TEXT,
   username TEXT,
   email TEXT,
   password_hash TEXT,

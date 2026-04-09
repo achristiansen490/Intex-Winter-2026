@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useId, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
+import { RESIDENT_NAV_ITEMS, residentNavItemToSlug, residentSlugToNavItem } from '../lib/portalTabs';
 
 const c = {
   ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
@@ -10,7 +11,7 @@ const c = {
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
 const RESIDENT_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.72) 0%,rgba(107,158,126,0.42) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
-const navItems = ['My Profile', 'My Progress', 'Health & Wellbeing', 'Education', 'Visit Schedule', 'My Goals'];
+const navItems = [...RESIDENT_NAV_ITEMS];
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string) =>
@@ -564,7 +565,21 @@ function MyGoals({ residentId }: { residentId: number | null }) {
 export default function ResidentPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState('My Profile');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabSlug = searchParams.get('tab');
+  const activeNav = useMemo(() => {
+    const n = residentSlugToNavItem(tabSlug);
+    return (navItems as readonly string[]).includes(n) ? n : 'My Profile';
+  }, [tabSlug]);
+
+  useEffect(() => {
+    const desired = residentNavItemToSlug(activeNav);
+    if (searchParams.get('tab') !== desired) {
+      setSearchParams({ tab: desired }, { replace: true });
+    }
+  }, [activeNav, searchParams, setSearchParams]);
+
+  const setTab = (item: string) => setSearchParams({ tab: residentNavItemToSlug(item) }, { replace: true });
   const residentId = user?.residentId ?? null;
   const handleLogout = () => {
     logout();
@@ -585,7 +600,7 @@ export default function ResidentPortal() {
 
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="resident-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
+      <Sidebar id="resident-sidebar" items={navItems} active={activeNav} setActive={setTab}
         user={user?.userName ?? 'Resident'} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Welcome"

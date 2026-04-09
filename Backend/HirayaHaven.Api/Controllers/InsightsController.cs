@@ -1,3 +1,4 @@
+using System.Globalization;
 using HirayaHaven.Api.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -108,8 +109,11 @@ public class InsightsController(HirayaContext db) : ControllerBase
         if (from.HasValue) filtered = filtered.Where(x => x.Dt.HasValue && x.Dt.Value >= from.Value);
         if (to.HasValue) filtered = filtered.Where(x => x.Dt.HasValue && x.Dt.Value <= to.Value);
 
-        var byCampaign = filtered
-            .GroupBy(x => string.IsNullOrWhiteSpace(x.CampaignName) ? "(none)" : x.CampaignName!)
+        // Uncategorized gifts (null/blank campaign) still count in monthly/bridge totals; exclude from campaign breakdown only.
+        var forCampaignBreakdown = filtered.Where(x => !string.IsNullOrWhiteSpace(x.CampaignName));
+
+        var byCampaign = forCampaignBreakdown
+            .GroupBy(x => x.CampaignName!.Trim())
             .Select(g => new
             {
                 campaignName = g.Key,
@@ -452,6 +456,205 @@ public class InsightsController(HirayaContext db) : ControllerBase
             totalPosts = posts.Count,
             thresholds = new { engagementScoreP75 = engP75, donationReferralsP75 = donP75 },
             segments = counts.Select(kv => new { segment = kv.Key, postCount = kv.Value }).ToList()
+        });
+    }
+
+    /// <summary>
+    /// Rollups by posting hour and day-of-week to prioritize scheduling experiments (associational; confounded by boosts/campaigns).
+    /// </summary>
+    [HttpGet("social/posting-windows")]
+    public async Task<IActionResult> GetSocialPostingWindows(CancellationToken ct = default)
+    {
+        var posts = await db.SocialMediaPosts.AsNoTracking()
+            .Select(p => new
+            {
+                p.CreatedAt,
+                p.PostHour,
+                p.DayOfWeek,
+                p.Likes,
+                p.Comments,
+                p.Shares,
+                p.Impressions,
+                p.ClickThroughs,
+                p.DonationReferrals,
+                p.EstimatedDonationValuePhp
+            })
+            .ToListAsync(ct);
+
+        static int? ResolveHour(DateTime? created, int? postHour)
+        {
+            if (postHour is >= 0 and <= 23) return postHour;
+            if (created.HasValue) return created.Value.Hour;
+            return null;
+        }
+
+        static string? ResolveDay(string? dayOfWeek, DateTime? created)
+        {
+            if (!string.IsNullOrWhiteSpace(dayOfWeek)) return dayOfWeek.Trim();
+            if (created.HasValue)
+                return created.Value.ToString("dddd", CultureInfo.InvariantCulture);
+            return null;
+        }
+
+        var enriched = posts
+            .Select(p =>
+            {
+                var created = ParseDate(p.CreatedAt);
+                return new
+                {
+                    Hour = ResolveHour(created, p.PostHour),
+                    Day = ResolveDay(p.DayOfWeek, created),
+                    Engagement = (long)((p.Likes ?? 0) + (p.Comments ?? 0) + (p.Shares ?? 0)),
+                    Impressions = (long)(p.Impressions ?? 0),
+                    Clicks = (long)(p.ClickThroughs ?? 0),
+                    Referrals = (long)(p.DonationReferrals ?? 0),
+                    EstPhp = (double)(p.EstimatedDonationValuePhp ?? 0)
+                };
+            })
+            .ToList();
+
+        var byHour = enriched
+            .Where(x => x.Hour.HasValue)
+            .GroupBy(x => x.Hour!.Value)
+            .Select(g => new
+            {
+                hourUtc = g.Key,
+                postCount = g.Count(),
+                avgEngagement = g.Average(x => (double)x.Engagement),
+                avgDonationReferrals = g.Average(x => (double)x.Referrals),
+                totalEstimatedValuePhp = g.Sum(x => x.EstPhp),
+                avgEstimatedValuePhp = g.Average(x => x.EstPhp),
+                sumImpressions = g.Sum(x => x.Impressions),
+                sumClickThroughs = g.Sum(x => x.Clicks),
+                clickThroughRate = g.Sum(x => x.Impressions) > 0
+                    ? (double)g.Sum(x => x.Clicks) / g.Sum(x => x.Impressions)
+                    : (double?)null
+            })
+            .OrderBy(x => x.hourUtc)
+            .ToList();
+
+        var byDay = enriched
+            .Where(x => !string.IsNullOrWhiteSpace(x.Day))
+            .GroupBy(x => x.Day!)
+            .Select(g => new
+            {
+                dayOfWeek = g.Key,
+                postCount = g.Count(),
+                avgEngagement = g.Average(x => (double)x.Engagement),
+                avgDonationReferrals = g.Average(x => (double)x.Referrals),
+                totalEstimatedValuePhp = g.Sum(x => x.EstPhp),
+                sumImpressions = g.Sum(x => x.Impressions),
+                sumClickThroughs = g.Sum(x => x.Clicks),
+                clickThroughRate = g.Sum(x => x.Impressions) > 0
+                    ? (double)g.Sum(x => x.Clicks) / g.Sum(x => x.Impressions)
+                    : (double?)null
+            })
+            .OrderByDescending(x => x.totalEstimatedValuePhp)
+            .ToList();
+
+        return Ok(new
+        {
+            generatedAtUtc = DateTime.UtcNow,
+            totalPosts = posts.Count,
+            notes =
+                "Associational planning signals only: hour may reflect campaign schedules and platform defaults, not causality. " +
+                "Prefer A/B tests before locking a posting policy.",
+            byHour,
+            byDayOfWeek = byDay
+        });
+    }
+
+    /// <summary>
+    /// Content dimensions correlated with donation referrals and estimated attributed value (exploratory).
+    /// </summary>
+    [HttpGet("social/content-drivers")]
+    public async Task<IActionResult> GetSocialContentDrivers([FromQuery] int take = 12, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 40);
+        var posts = await db.SocialMediaPosts.AsNoTracking()
+            .Select(p => new
+            {
+                p.ContentTopic,
+                p.MediaType,
+                p.PostType,
+                p.CallToActionType,
+                p.DonationReferrals,
+                p.EstimatedDonationValuePhp,
+                p.IsBoosted,
+                p.Likes,
+                p.Comments,
+                p.Shares
+            })
+            .ToListAsync(ct);
+
+        static List<object> Roll(
+            IEnumerable<(string Key, long Ref, double Est, long Eng, bool Boosted)> rows,
+            int n)
+        {
+            return rows
+                .GroupBy(x => x.Key)
+                .Select(g => new
+                {
+                    key = g.Key,
+                    postCount = g.Count(),
+                    postsWithReferrals = g.Count(x => x.Ref > 0),
+                    referralRate = g.Count() == 0 ? 0.0 : (double)g.Count(x => x.Ref > 0) / g.Count(),
+                    totalReferrals = g.Sum(x => x.Ref),
+                    avgReferrals = g.Average(x => (double)x.Ref),
+                    totalEstimatedValuePhp = g.Sum(x => x.Est),
+                    avgEstimatedValuePhp = g.Average(x => x.Est),
+                    avgEngagement = g.Average(x => (double)x.Eng),
+                    boostedRate = g.Count() == 0 ? 0.0 : (double)g.Count(x => x.Boosted) / g.Count()
+                })
+                .OrderByDescending(x => x.totalEstimatedValuePhp)
+                .ThenByDescending(x => x.referralRate)
+                .Take(n)
+                .Cast<object>()
+                .ToList();
+        }
+
+        var byTopic = Roll(posts.Select(p => (
+            Key: string.IsNullOrWhiteSpace(p.ContentTopic) ? "(unknown)" : p.ContentTopic!.Trim(),
+            Ref: (long)(p.DonationReferrals ?? 0),
+            Est: (double)(p.EstimatedDonationValuePhp ?? 0),
+            Eng: (long)((p.Likes ?? 0) + (p.Comments ?? 0) + (p.Shares ?? 0)),
+            Boosted: p.IsBoosted == true
+        )), take);
+
+        var byMedia = Roll(posts.Select(p => (
+            Key: string.IsNullOrWhiteSpace(p.MediaType) ? "(unknown)" : p.MediaType!.Trim(),
+            Ref: (long)(p.DonationReferrals ?? 0),
+            Est: (double)(p.EstimatedDonationValuePhp ?? 0),
+            Eng: (long)((p.Likes ?? 0) + (p.Comments ?? 0) + (p.Shares ?? 0)),
+            Boosted: p.IsBoosted == true
+        )), take);
+
+        var byPostType = Roll(posts.Select(p => (
+            Key: string.IsNullOrWhiteSpace(p.PostType) ? "(unknown)" : p.PostType!.Trim(),
+            Ref: (long)(p.DonationReferrals ?? 0),
+            Est: (double)(p.EstimatedDonationValuePhp ?? 0),
+            Eng: (long)((p.Likes ?? 0) + (p.Comments ?? 0) + (p.Shares ?? 0)),
+            Boosted: p.IsBoosted == true
+        )), take);
+
+        var byCta = Roll(posts.Select(p => (
+            Key: string.IsNullOrWhiteSpace(p.CallToActionType) ? "(none)" : p.CallToActionType!.Trim(),
+            Ref: (long)(p.DonationReferrals ?? 0),
+            Est: (double)(p.EstimatedDonationValuePhp ?? 0),
+            Eng: (long)((p.Likes ?? 0) + (p.Comments ?? 0) + (p.Shares ?? 0)),
+            Boosted: p.IsBoosted == true
+        )), take);
+
+        return Ok(new
+        {
+            generatedAtUtc = DateTime.UtcNow,
+            take,
+            notes =
+                "Exploratory groupings: high estimated value may reflect a few viral posts. Pair with qualitative review and controlled experiments.",
+            byTopic,
+            byMediaType = byMedia,
+            byPostType,
+            byCallToAction = byCta
         });
     }
 

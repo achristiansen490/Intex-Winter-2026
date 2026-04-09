@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
 const COOKIE_KEY = 'hh_cookie_consent';
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180; // 180 days
 
 type ConsentValue = 'accepted' | 'declined';
+
+function secureSuffix(): string {
+  return typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; secure' : '';
+}
 
 function readCookie(name: string): string | null {
   const cookies = document.cookie ? document.cookie.split(';') : [];
@@ -17,11 +21,11 @@ function readCookie(name: string): string | null {
 
 function writeCookie(name: string, value: string, maxAgeSeconds?: number): void {
   const maxAge = typeof maxAgeSeconds === 'number' ? `; max-age=${maxAgeSeconds}` : '';
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/${maxAge}; samesite=lax`;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/${maxAge}; samesite=lax${secureSuffix()}`;
 }
 
 function deleteCookie(name: string): void {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax`;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax${secureSuffix()}`;
 }
 
 export function getConsentStatus(): ConsentValue | null {
@@ -29,48 +33,81 @@ export function getConsentStatus(): ConsentValue | null {
   return value === 'accepted' || value === 'declined' ? value : null;
 }
 
+/** Footer (or elsewhere) dispatches this to open the cookie dialog */
+export const COOKIE_SETTINGS_OPEN_EVENT = 'hh-open-cookie-settings';
+
+function notifyConsentChanged(): void {
+  window.dispatchEvent(new CustomEvent('hh-cookie-consent-changed'));
+}
+
+const btnBase: React.CSSProperties = {
+  fontSize: 13,
+  padding: '8px 20px',
+  borderRadius: 20,
+  cursor: 'pointer',
+};
+
 export function CookieConsent() {
-  const [visible, setVisible] = useState(false);
-  const [hasChoice, setHasChoice] = useState(false);
+  const [consent, setConsent] = useState<ConsentValue | null>(() => getConsentStatus());
+  const [settingsOpen, setSettingsOpen] = useState(() => getConsentStatus() === null);
+
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const closePanel = useCallback(() => setSettingsOpen(false), []);
 
   useEffect(() => {
-    // Only show if no decision has been made yet
-    const status = getConsentStatus();
-    if (!status) {
-      setVisible(true);
-      setHasChoice(false);
-    } else {
-      setHasChoice(true);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closePanel();
+    };
+    if (settingsOpen) {
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
     }
+  }, [settingsOpen, closePanel]);
+
+  useEffect(() => {
+    const onOpen = () => setSettingsOpen(true);
+    window.addEventListener(COOKIE_SETTINGS_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(COOKIE_SETTINGS_OPEN_EVENT, onOpen);
   }, []);
 
   function accept() {
     writeCookie(COOKIE_KEY, 'accepted', COOKIE_MAX_AGE_SECONDS);
-    setHasChoice(true);
-    setVisible(false);
+    setConsent('accepted');
+    setSettingsOpen(false);
+    notifyConsentChanged();
   }
 
   function decline() {
     writeCookie(COOKIE_KEY, 'declined', COOKIE_MAX_AGE_SECONDS);
-    // Clear any non-essential cookies
     document.cookie.split(';').forEach((cookie) => {
       const name = cookie.split('=')[0].trim();
-      // Keep essential auth token (stored in localStorage, not cookies)
-      // Clear any preference cookies if set
       if (name === 'hh_theme') {
         deleteCookie(name);
       }
     });
-    setHasChoice(true);
-    setVisible(false);
+    setConsent('declined');
+    setSettingsOpen(false);
+    notifyConsentChanged();
   }
 
-  if (!visible) {
-    if (!hasChoice) return null;
+  const chipLabel = 'Cookie Policy';
+
+  const selectedBtn = (active: boolean): React.CSSProperties => ({
+    ...btnBase,
+    fontWeight: 600,
+    border: active ? '2px solid #D4A44C' : '1px solid rgba(251,248,242,0.25)',
+    background: active ? 'rgba(212,164,76,0.2)' : 'transparent',
+    color: active ? '#FBF8F2' : 'rgba(251,248,242,0.75)',
+  });
+
+  // After a choice is saved, reopen only from the footer (no floating chip)
+  if (!settingsOpen) {
+    if (consent !== null) return null;
     return (
       <button
-        onClick={() => setVisible(true)}
-        aria-label="Open cookie settings"
+        type="button"
+        onClick={openSettings}
+        aria-label="Open cookie policy"
         style={{
           position: 'fixed',
           right: '1rem',
@@ -84,9 +121,11 @@ export function CookieConsent() {
           fontSize: 12,
           fontWeight: 600,
           cursor: 'pointer',
+          maxWidth: 'min(320px, calc(100vw - 2rem))',
+          textAlign: 'left',
         }}
       >
-        Cookie settings
+        {chipLabel}
       </button>
     );
   }
@@ -94,6 +133,7 @@ export function CookieConsent() {
   return (
     <div
       role="dialog"
+      aria-modal="true"
       aria-label="Cookie consent"
       aria-describedby="cookie-desc"
       style={{
@@ -114,6 +154,11 @@ export function CookieConsent() {
         gap: '0.75rem',
       }}
     >
+      <p id="cookie-status" style={{ fontSize: 12, margin: 0, color: 'rgba(251,248,242,0.85)' }}>
+        {consent === null && 'No choice saved yet — choose below or decide later.'}
+        {consent === 'accepted' && 'Your current choice: accept all cookies (including preferences).'}
+        {consent === 'declined' && 'Your current choice: essential cookies only.'}
+      </p>
       <p id="cookie-desc" style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
         We use essential cookies to keep you logged in, and optional preference cookies to remember your display settings.{' '}
         <Link to="/privacy" style={{ color: '#D4A44C', textDecoration: 'underline' }}>
@@ -122,38 +167,24 @@ export function CookieConsent() {
         .
       </p>
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <button
-          onClick={accept}
-          style={{
-            background: '#D4A44C', color: '#2A4A35',
-            fontSize: 13, fontWeight: 600,
-            padding: '8px 20px', borderRadius: 20,
-            border: 'none', cursor: 'pointer',
-          }}
-        >
+        <button type="button" onClick={accept} style={selectedBtn(consent === 'accepted')}>
           Accept all
         </button>
-        <button
-          onClick={decline}
-          style={{
-            background: 'transparent', color: 'rgba(251,248,242,0.75)',
-            fontSize: 13,
-            padding: '8px 20px', borderRadius: 20,
-            border: '1px solid rgba(251,248,242,0.25)', cursor: 'pointer',
-          }}
-        >
+        <button type="button" onClick={decline} style={selectedBtn(consent === 'declined')}>
           Essential only
         </button>
         <button
-          onClick={() => setVisible(false)}
+          type="button"
+          onClick={closePanel}
           style={{
-            background: 'transparent', color: 'rgba(251,248,242,0.75)',
-            fontSize: 13,
-            padding: '8px 20px', borderRadius: 20,
-            border: '1px solid rgba(251,248,242,0.25)', cursor: 'pointer',
+            ...btnBase,
+            fontWeight: 600,
+            background: 'transparent',
+            color: 'rgba(251,248,242,0.9)',
+            border: '1px solid rgba(251,248,242,0.35)',
           }}
         >
-          Close
+          {consent === null ? 'Decide later' : 'Done'}
         </button>
       </div>
     </div>

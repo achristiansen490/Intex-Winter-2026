@@ -1,7 +1,20 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/*.css", "/*.js", "/favicon.ico"]
+    "exclude": [
+      "/assets/*",
+      "/*.css",
+      "/*.js",
+      "/*.ico",
+      "/*.png",
+      "/*.jpg",
+      "/*.jpeg",
+      "/*.webp",
+      "/*.svg",
+      "/*.woff",
+      "/*.woff2",
+      "/favicon.ico"
+    ]
   },
   "responseOverrides": {
     "404": {

@@ -15,6 +15,7 @@ type Props = {
   donationsColor?: string;
   referralsColor?: string;
   incidentsColor?: string;
+  showIncidents?: boolean;
 };
 
 function formatCompact(n: number): string {
@@ -34,6 +35,7 @@ export default function BridgeLineChart({
   donationsColor = '#2A4A35',
   referralsColor = '#C4867A',
   incidentsColor = '#D4A44C',
+  showIncidents = true,
 }: Props) {
   return (
     <div style={{ width: '100%', height }}>
@@ -60,16 +62,17 @@ export default function BridgeLineChart({
             formatter={(v: any, name: any) => {
               if (name === 'donations') return [formatPhp(Number(v)), 'Donations (PHP)'];
               if (name === 'referrals') return [formatCompact(Number(v)), 'Referrals'];
-              if (name === 'incidents') return [formatCompact(Number(v)), 'Incidents'];
+              if (name === 'incidents' && showIncidents) return [formatCompact(Number(v)), 'Incidents'];
               return [String(v), String(name)];
             }}
           />
           <Line yAxisId="php" type="monotone" dataKey="donations" stroke={donationsColor} strokeWidth={2.5} dot={false} />
           <Line yAxisId="count" type="monotone" dataKey="referrals" stroke={referralsColor} strokeWidth={2} dot={false} />
-          <Line yAxisId="count" type="monotone" dataKey="incidents" stroke={incidentsColor} strokeWidth={2} dot={false} />
+          {showIncidents && (
+            <Line yAxisId="count" type="monotone" dataKey="incidents" stroke={incidentsColor} strokeWidth={2} dot={false} />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
 }
-

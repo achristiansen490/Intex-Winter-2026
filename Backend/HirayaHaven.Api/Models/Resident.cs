@@ -3,6 +3,8 @@ namespace HirayaHaven.Api.Models;
 public class Resident
 {
     public int ResidentId { get; set; }
+    public string? ResidentFirstName { get; set; }
+    public string? ResidentLastName { get; set; }
     public string? CaseControlNo { get; set; }
     public string? InternalCode { get; set; }
     public int? SafehouseId { get; set; }

@@ -1,0 +1,213 @@
+.impact-page {
+  background:
+    radial-gradient(circle at 8% 10%, rgba(42, 74, 53, 0.08), transparent 34%),
+    radial-gradient(circle at 80% 12%, rgba(212, 164, 76, 0.12), transparent 30%),
+    #fbf8f2;
+  padding-bottom: 2.5rem;
+}
+
+.impact-hero {
+  padding: 2.2rem clamp(1rem, 4vw, 2.5rem) 1.2rem;
+}
+
+.impact-hero-text h1 {
+  margin: 0 0 1rem;
+  color: #2a4a35;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.9rem, 4.9vw, 3.2rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.impact-error,
+.impact-empty {
+  color: #8c5d56;
+  margin: 0 0 1rem;
+}
+
+.impact-hero-image {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid rgba(44, 43, 40, 0.12);
+  box-shadow: 0 16px 30px rgba(21, 31, 24, 0.14);
+}
+
+.impact-stats-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.95fr 1fr 1.05fr;
+  gap: 0.85rem;
+  padding: 1.2rem clamp(1rem, 4vw, 2.5rem) 1.7rem;
+}
+
+.impact-stat-card {
+  border-radius: 16px;
+  border: 1px solid rgba(44, 43, 40, 0.12);
+  box-shadow: 0 10px 24px rgba(28, 35, 31, 0.09);
+  padding: 1rem 1rem 0.95rem;
+  opacity: 0;
+  transform: translateY(8px) scale(0.985);
+  animation: impactCardPop 500ms ease forwards;
+}
+
+.impact-stat-card:nth-child(2) {
+  transform: translateY(8px) scale(0.985) rotate(-0.4deg);
+}
+
+.impact-stat-card:nth-child(3) {
+  transform: translateY(8px) scale(0.985) rotate(0.35deg);
+}
+
+.impact-stat-value {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #20382a;
+  font-size: clamp(1.4rem, 3.2vw, 2rem);
+}
+
+.impact-stat-label {
+  margin: 0.4rem 0 0;
+  color: #2c2b28;
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  font-weight: 700;
+}
+
+.impact-charts-wrap {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 1rem;
+  padding: 0 clamp(1rem, 4vw, 2.5rem) 1.6rem;
+}
+
+.impact-chart-card {
+  background: #fff;
+  border: 1px solid rgba(44, 43, 40, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 12px 20px rgba(23, 30, 26, 0.06);
+  padding: 1rem 1rem 0.35rem;
+}
+
+.impact-chart-card--wide {
+  background: linear-gradient(180deg, #ffffff 0%, #f9f5ec 100%);
+}
+
+.impact-chart-card h2 {
+  margin: 0 0 0.75rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #2a4a35;
+  font-weight: 500;
+}
+
+.impact-muted {
+  color: #7a786f;
+  font-size: 0.82rem;
+}
+
+.impact-update-wrap {
+  padding: 0 clamp(1rem, 4vw, 2.5rem) 1.6rem;
+}
+
+.impact-update-card {
+  background: #fff;
+  border: 1px solid rgba(44, 43, 40, 0.12);
+  border-radius: 16px;
+  padding: 1.2rem;
+}
+
+.impact-update-card h2 {
+  margin: 0;
+  color: #2a4a35;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 500;
+}
+
+.impact-update-card p {
+  color: #2c2b28;
+  line-height: 1.7;
+}
+
+.impact-update-date {
+  color: #7a786f;
+  font-size: 0.8rem;
+  margin-top: 0.6rem;
+}
+
+.impact-join-banner {
+  position: relative;
+  margin: 0 clamp(1rem, 4vw, 2.5rem);
+  min-height: clamp(240px, 37vw, 340px);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 18px 32px rgba(20, 29, 24, 0.2);
+}
+
+.impact-join-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.impact-join-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, rgba(20, 32, 25, 0.8) 10%, rgba(42, 74, 53, 0.52) 70%, rgba(42, 74, 53, 0.3) 100%);
+}
+
+.impact-join-content {
+  position: relative;
+  z-index: 1;
+  color: #fbf8f2;
+  max-width: 760px;
+  padding: clamp(1.6rem, 5vw, 2.6rem);
+}
+
+.impact-join-content h2 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.5rem, 4vw, 2.3rem);
+  font-weight: 500;
+}
+
+.impact-join-content p {
+  margin: 0.7rem 0 1.15rem;
+  line-height: 1.75;
+  color: rgba(251, 248, 242, 0.9);
+}
+
+.impact-join-content a {
+  display: inline-block;
+  text-decoration: none;
+  border-radius: 28px;
+  background: #d4a44c;
+  color: #2a4a35;
+  padding: 0.75rem 1.35rem;
+  font-weight: 700;
+}
+
+@keyframes impactCardPop {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 1024px) {
+  .impact-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .impact-charts-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .impact-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -49,6 +49,10 @@ namespace HirayaHaven.Api.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("FirstName")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("first_name");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
@@ -57,6 +61,10 @@ namespace HirayaHaven.Api.Migrations
 
                     b.Property<DateTime?>("LastLogin")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_name");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("INTEGER");
@@ -250,6 +258,15 @@ namespace HirayaHaven.Api.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("TEXT")
                         .HasColumnName("notes");
+
+                    b.Property<DateTime?>("RecurringCancelledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recurring_cancelled_at");
+
+                    b.Property<string>("RecurringSeriesKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recurring_series_key");
 
                     b.Property<int?>("ReferralPostId")
                         .HasColumnType("INTEGER")
@@ -648,6 +665,39 @@ namespace HirayaHaven.Api.Migrations
                     b.HasIndex("ResidentId");
 
                     b.ToTable("intervention_plans", (string)null);
+                });
+
+            modelBuilder.Entity("HirayaHaven.Api.Models.OkrTarget", b =>
+                {
+                    b.Property<int>("TargetId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("MetricKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("metric_key");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("notes");
+
+                    b.Property<int>("Quarter")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("quarter");
+
+                    b.Property<double>("TargetValue")
+                        .HasColumnType("REAL")
+                        .HasColumnName("target_value");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("year");
+
+                    b.HasKey("TargetId");
+
+                    b.ToTable("okr_targets", (string)null);
                 });
 
             modelBuilder.Entity("HirayaHaven.Api.Models.Organization", b =>
@@ -1217,6 +1267,14 @@ namespace HirayaHaven.Api.Migrations
                     b.Property<string>("Religion")
                         .HasColumnType("TEXT")
                         .HasColumnName("religion");
+
+                    b.Property<string>("ResidentFirstName")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("resident_first_name");
+
+                    b.Property<string>("ResidentLastName")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("resident_last_name");
 
                     b.Property<int?>("SafehouseId")
                         .HasColumnType("INTEGER")
