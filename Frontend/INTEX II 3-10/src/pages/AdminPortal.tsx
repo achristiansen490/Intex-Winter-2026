@@ -191,20 +191,39 @@ function Table({
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 
+type EducationAttendanceOkrItem = {
+  period: string;
+  year: number;
+  quarter: number;
+  residentCount: number;
+  attendanceRateAvg: number | null;
+  progressPercentAvg: number | null;
+  targetAttendanceRate: number | null;
+};
+
+type EducationAttendanceOkrResponse = {
+  metricKey: string;
+  generatedAtUtc: string;
+  items: EducationAttendanceOkrItem[];
+};
+
 function AdminDashboard() {
   const [kpis, setKpis] = useState<Record<string, unknown> | null>(null);
   const [proof, setProof] = useState<Record<string, unknown> | null>(null);
+  const [okr, setOkr] = useState<EducationAttendanceOkrResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [k, p] = await Promise.all([
+      const [k, p, o] = await Promise.all([
         api('/api/dashboard/kpis').then(r => r.json()),
         api('/api/dashboard/admin-proof').then(r => r.json()),
+        api('/api/okrs/education/attendance/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
       ]);
       setKpis(k); setProof(p);
+      setOkr(o);
     } catch { setError('Failed to load dashboard.'); }
     finally { setLoading(false); }
   }, []);
@@ -216,6 +235,12 @@ function AdminDashboard() {
   const check = (proof as any)?.check ?? {};
   const ops = (kpis as any)?.operations ?? {};
   const donor = (kpis as any)?.donor ?? {};
+  const latest = (okr as any)?.items?.[0] as EducationAttendanceOkrItem | undefined;
+  const att = latest?.attendanceRateAvg;
+  const tgt = latest?.targetAttendanceRate;
+  const attPct = att != null ? Math.round(att * 100) : null;
+  const tgtPct = tgt != null ? Math.round(tgt * 100) : null;
+  const progressToTarget = (att != null && tgt != null && tgt > 0) ? Math.min(1, Math.max(0, att / tgt)) : null;
 
   return (
     <div>
@@ -237,6 +262,58 @@ function AdminDashboard() {
           sub={ops.processSessions ? `${((ops.sessionsWithProgress / ops.processSessions) * 100).toFixed(0)}% with progress` : undefined} />
         <StatCard label="Home Visits" value={ops.homeVisits ?? '—'}
           sub={ops.homeVisits ? `${((ops.visitsWithSafetyConcern / ops.homeVisits) * 100).toFixed(0)}% safety concerns` : undefined} accent={c.roseLight} />
+      </div>
+
+      <SectionTitle>OKR — Education Attendance (Quarterly)</SectionTitle>
+      <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 24 }}>
+        {latest ? (
+          <>
+            <p style={{ fontSize: 12, color: c.muted, marginTop: 0, marginBottom: 10 }}>
+              Latest period: <strong style={{ color: c.forest }}>{latest.period}</strong> · {latest.residentCount} residents with records
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+              <StatCard label="Attendance avg" value={attPct != null ? `${attPct}%` : '—'} accent={c.sageLight} />
+              <StatCard label="Target" value={tgtPct != null ? `${tgtPct}%` : '—'} accent={c.goldLight} />
+              <StatCard label="Edu progress avg" value={latest.progressPercentAvg != null ? `${Number(latest.progressPercentAvg).toFixed(1)}%` : '—'} />
+            </div>
+            {progressToTarget != null && (
+              <div>
+                <p style={{ fontSize: 11, color: c.muted, margin: 0, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Progress to target</p>
+                <div style={{ background: c.ivory, border: `1px solid ${c.sageLight}`, borderRadius: 999, overflow: 'hidden', height: 10 }}>
+                  <div style={{ width: `${Math.round(progressToTarget * 100)}%`, height: '100%', background: c.sage }} />
+                </div>
+              </div>
+            )}
+            {Array.isArray((okr as any)?.items) && (okr as any).items.length > 0 && (
+              <div style={{ overflowX: 'auto', marginTop: 14 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: c.sageLight }}>
+                      {['Quarter', 'Attendance avg', 'Target', 'Edu progress avg', 'Residents'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(okr as any).items.map((row: EducationAttendanceOkrItem, i: number) => (
+                      <tr key={`${row.period}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                        <td style={{ padding: '8px 12px' }}>{row.period}</td>
+                        <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.attendanceRateAvg != null ? `${Math.round(row.attendanceRateAvg * 100)}%` : '—'}</td>
+                        <td style={{ padding: '8px 12px', color: c.muted }}>{row.targetAttendanceRate != null ? `${Math.round(row.targetAttendanceRate * 100)}%` : '—'}</td>
+                        <td style={{ padding: '8px 12px', color: c.muted }}>{row.progressPercentAvg != null ? `${Number(row.progressPercentAvg).toFixed(1)}%` : '—'}</td>
+                        <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : (
+          <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>
+            No OKR data available yet. Add `education_records` and/or set quarterly targets.
+          </p>
+        )}
       </div>
 
       <SectionTitle>Donor KPIs</SectionTitle>

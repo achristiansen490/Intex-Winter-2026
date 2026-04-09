@@ -598,6 +598,18 @@ public partial class HirayaContext
             MapText(entity, e => e.PublishedAt, "published_at");
         });
 
+        modelBuilder.Entity<OkrTarget>(entity =>
+        {
+            entity.ToTable("okr_targets");
+            entity.HasKey(e => e.TargetId);
+            entity.Property(e => e.TargetId).HasColumnName("target_id").ValueGeneratedOnAdd();
+            MapText(entity, e => e.MetricKey, "metric_key");
+            entity.Property(e => e.Year).HasColumnName("year");
+            entity.Property(e => e.Quarter).HasColumnName("quarter");
+            entity.Property(e => e.TargetValue).HasColumnName("target_value");
+            MapText(entity, e => e.Notes, "notes");
+        });
+
         modelBuilder.Entity<PipelineTrainingRun>(entity =>
         {
             entity.ToTable("pipeline_training_runs");

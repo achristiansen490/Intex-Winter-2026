@@ -40,6 +40,7 @@ public partial class HirayaContext : IdentityDbContext<AppUser, IdentityRole<int
     public DbSet<IncidentReport> IncidentReports => Set<IncidentReport>();
     public DbSet<SafehouseMonthlyMetric> SafehouseMonthlyMetrics => Set<SafehouseMonthlyMetric>();
     public DbSet<PublicImpactSnapshot> PublicImpactSnapshots => Set<PublicImpactSnapshot>();
+    public DbSet<OkrTarget> OkrTargets => Set<OkrTarget>();
     public DbSet<PipelineTrainingRun> PipelineTrainingRuns => Set<PipelineTrainingRun>();
     public DbSet<PipelineScheduleSettings> PipelineScheduleSettings => Set<PipelineScheduleSettings>();
 

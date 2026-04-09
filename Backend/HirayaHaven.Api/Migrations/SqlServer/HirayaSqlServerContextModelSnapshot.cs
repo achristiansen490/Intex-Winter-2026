@@ -676,6 +676,41 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                     b.ToTable("intervention_plans", (string)null);
                 });
 
+            modelBuilder.Entity("HirayaHaven.Api.Models.OkrTarget", b =>
+                {
+                    b.Property<int>("TargetId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("target_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TargetId"));
+
+                    b.Property<string>("MetricKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("metric_key");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("notes");
+
+                    b.Property<int>("Quarter")
+                        .HasColumnType("int")
+                        .HasColumnName("quarter");
+
+                    b.Property<double>("TargetValue")
+                        .HasColumnType("float")
+                        .HasColumnName("target_value");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int")
+                        .HasColumnName("year");
+
+                    b.HasKey("TargetId");
+
+                    b.ToTable("okr_targets", (string)null);
+                });
+
             modelBuilder.Entity("HirayaHaven.Api.Models.Organization", b =>
                 {
                     b.Property<int>("OrgId")
