@@ -1,5 +1,6 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, type Role } from '../context/AuthContext';
+import { getHomePathForRole } from '../lib/postLoginRouting';
 
 interface ProtectedRouteProps {
   allowedRoles: Role[];
@@ -7,6 +8,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, role, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -27,7 +29,10 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    const returnTarget = `${location.pathname}${location.search}${location.hash}`;
+    const params = new URLSearchParams();
+    params.set('returnUrl', returnTarget);
+    return <Navigate to={{ pathname: '/login', search: `?${params.toString()}` }} replace />;
   }
 
   if (!role) {
@@ -35,7 +40,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (!allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getHomePathForRole(role)} replace />;
   }
 
   return <Outlet />;

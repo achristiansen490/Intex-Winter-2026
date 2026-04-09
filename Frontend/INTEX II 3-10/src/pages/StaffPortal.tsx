@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
+import { getStaffNavItems, staffNavItemToSlug, staffSlugToNavItem } from '../lib/portalTabs';
 import { ResidentProcessRecordingsModal } from '../components/residents/ResidentProcessRecordingsModal';
 import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
 import { SocialMediaImpactSection } from '../components/reports/SocialMediaImpactSection';
@@ -16,16 +17,6 @@ const c = {
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
 const STAFF_BANNER_BG = 'linear-gradient(135deg, #2F5A40 0%, #4E7F61 55%, #7CA98A 100%)';
-
-function getNavItems(role: string | null): string[] {
-  switch (role) {
-    case 'Supervisor':   return ['Dashboard', 'Caseload', 'Donors', 'Session Notes', 'Visits & Conferences', 'Reports', 'Pending Approvals'];
-    case 'CaseManager':  return ['Dashboard', 'Caseload', 'Session Notes', 'Visits & Conferences', 'Intervention Plans', 'Reports'];
-    case 'SocialWorker': return ['Dashboard', 'My Residents', 'Session Notes', 'Home Visits', 'Incident Reports'];
-    case 'FieldWorker':  return ['Dashboard', 'Residents', 'Health Records', 'Education Records', 'Home Visits', 'Incident Reports'];
-    default:             return ['Dashboard'];
-  }
-}
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
@@ -1341,8 +1332,22 @@ function StaffPendingApprovals() {
 export default function StaffPortal() {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
-  const navItems = getNavItems(role);
-  const [activeNav, setActiveNav] = useState('Dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navItems = useMemo(() => getStaffNavItems(role), [role]);
+  const tabSlug = searchParams.get('tab');
+  const activeNav = useMemo(() => {
+    const n = staffSlugToNavItem(tabSlug, role);
+    return navItems.includes(n) ? n : navItems[0] ?? 'Dashboard';
+  }, [tabSlug, role, navItems]);
+
+  useEffect(() => {
+    const desired = staffNavItemToSlug(activeNav);
+    if (searchParams.get('tab') !== desired) {
+      setSearchParams({ tab: desired }, { replace: true });
+    }
+  }, [activeNav, searchParams, setSearchParams]);
+
+  const setTab = (item: string) => setSearchParams({ tab: staffNavItemToSlug(item) }, { replace: true });
   const displayRole = role ?? 'Staff';
   const handleLogout = () => {
     logout();
@@ -1441,7 +1446,7 @@ export default function StaffPortal() {
 
   return (
     <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="staff-sidebar" items={navItems} active={activeNav} setActive={setActiveNav}
+      <Sidebar id="staff-sidebar" items={navItems} active={activeNav} setActive={setTab}
         user={`${user?.userName ?? 'Staff'} · ${displayRole}`} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Command center"
