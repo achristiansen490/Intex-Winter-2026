@@ -7,7 +7,7 @@ public static class PipelineDefinitions
     public static IReadOnlyList<Entry> All { get; } =
     [
         new("donations-monthly", "Donations — monthly totals", "Monthly donation value and counts from operational data.", "campaign-effectiveness.ipynb", "api/insights/donations/monthly"),
-        new("donations-by-campaign", "Donations — by campaign", "Campaign rollups for bar charts and effectiveness views.", "campaign-effectiveness.ipynb", "api/insights/donations/by-campaign"),
+        new("donations-by-campaign", "Donations — by campaign", "Campaign rollups (labeled campaigns only; uncategorized gifts excluded here but included in monthly totals).", "campaign-effectiveness.ipynb", "api/insights/donations/by-campaign"),
         new("bridge-monthly", "Outreach → money (bridge)", "Monthly bridge metrics between outreach and monetary outcomes.", "outreach-money-outcomes-bridge.ipynb", "api/insights/bridge/monthly"),
         new("donors-upgrade-candidates", "Donor upgrade candidates", "Heuristic ranking of supporters for upgrade outreach.", "donor-upgrade-potential.ipynb", "api/insights/donors/upgrade-candidates"),
         new("posts-donation-linkage", "Post → donation linkage", "Social post groups correlated with donation activity.", "post-to-donation-linkage.ipynb", "api/insights/posts/donation-linkage/by-group"),
