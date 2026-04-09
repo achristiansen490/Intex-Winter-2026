@@ -187,6 +187,11 @@ export default function RegisterPage() {
             Sign in
           </Link>
         </p>
+        <p style={{ textAlign: 'center', fontSize: 13, color: c.muted, marginTop: '0.5rem' }}>
+          <Link to="/" style={{ color: c.forest, fontWeight: 500 }}>
+            Return to homepage
+          </Link>
+        </p>
       </div>
     </main>
   );
