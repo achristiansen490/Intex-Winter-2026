@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
+import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
 import { getStaffNavItems, staffNavItemToSlug, staffSlugToNavItem } from '../lib/portalTabs';
 import { ResidentProcessRecordingsModal } from '../components/residents/ResidentProcessRecordingsModal';
 import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
@@ -729,7 +730,9 @@ function StaffDashboard({ role }: { role: string | null }) {
 
   const ops = (kpis as any)?.operations ?? {};
   const donor = (kpis as any)?.donor ?? {};
-  const latest = (okr as any)?.items?.[0] as EducationAttendanceOkrItem | undefined;
+  const educationItems = ((okr as any)?.items as EducationAttendanceOkrItem[] | undefined ?? [])
+    .filter((item) => item.year < 2025 || (item.year === 2025 && item.quarter <= 1));
+  const latest = educationItems[0];
   const att = latest?.attendanceRateAvg;
   const tgt = latest?.targetAttendanceRate;
   const attPct = att != null ? Math.round(att * 100) : null;
@@ -767,7 +770,7 @@ function StaffDashboard({ role }: { role: string | null }) {
                 </div>
               </div>
             )}
-            {Array.isArray((okr as any)?.items) && (okr as any).items.length > 0 && (
+            {educationItems.length > 0 && (
               <div style={{ overflowX: 'auto', marginTop: 14 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
@@ -778,7 +781,7 @@ function StaffDashboard({ role }: { role: string | null }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(okr as any).items.map((row: EducationAttendanceOkrItem, i: number) => (
+                    {educationItems.map((row: EducationAttendanceOkrItem, i: number) => (
                       <tr key={`${row.period}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                         <td style={{ padding: '8px 12px' }}>{row.period}</td>
                         <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.attendanceRateAvg != null ? `${Math.round(row.attendanceRateAvg * 100)}%` : '—'}</td>
@@ -943,9 +946,33 @@ function StaffReports() {
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
-  const last = bridge.length ? bridge[bridge.length - 1] : null;
+  const bridgeCapped = sortRowsByMonthAsc(capRowsAtChartMaxMonth(bridge, (r) => r.month), (r) => r.month);
+  const bridgeByKey = new Map(
+    bridgeCapped
+      .map((r) => {
+        const d = parseMonthStart(r.month);
+        if (!d) return null;
+        return [monthKey(d), r] as const;
+      })
+      .filter((x): x is readonly [string, InsightBridgeRow] => x != null),
+  );
+  const bridgeWindow = buildMonthWindowEndingAtCap(18);
+  const bridgeWindowRows = bridgeWindow.map((d) => {
+    const row = bridgeByKey.get(monthKey(d));
+    return row ?? {
+      month: d.toISOString(),
+      posts_n: 0,
+      click_throughs: 0,
+      donation_referrals: 0,
+      donation_total_php: 0,
+      incidents: 0,
+      avg_edu_progress: 0,
+      avg_health: 0,
+    };
+  });
+  const last = bridgeWindowRows.length ? bridgeWindowRows[bridgeWindowRows.length - 1] : null;
   const campaignChartData = campaigns.map((r) => ({ name: r.campaignName, total: Number(r.totalValuePhp ?? 0) }));
-  const bridgeChartData = bridge.map((r) => ({
+  const bridgeChartData = bridgeWindowRows.map((r) => ({
     month: new Date(r.month).toLocaleDateString('en-US', { year: '2-digit', month: 'short' }),
     donations: Number(r.donation_total_php ?? 0),
     referrals: Number(r.donation_referrals ?? 0),
@@ -1126,7 +1153,7 @@ function StaffReports() {
             </tr>
           </thead>
           <tbody>
-            {bridge.slice(-18).map((row, i) => (
+            {bridgeWindowRows.map((row, i) => (
               <tr key={`${row.month}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                 <td style={{ padding: '8px 12px' }}>{new Date(row.month).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.posts_n}</td>

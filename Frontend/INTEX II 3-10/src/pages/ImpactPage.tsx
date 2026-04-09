@@ -4,6 +4,7 @@ import { NavBar } from '../components/NavBar';
 import MonthlyLineChart from '../components/charts/MonthlyLineChart';
 import CampaignBarChart from '../components/charts/CampaignBarChart';
 import { apiUrl } from '../lib/api';
+import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
 import './ImpactPage.css';
 
 const c = {
@@ -139,29 +140,51 @@ export default function ImpactPage() {
   }, [overview?.activeResidentCount, overview?.safehouseCount, overview?.partnerCount, payload, series?.latestAvgEducationProgress]);
 
   const snapshotMonthlyFallback = useMemo(() => {
-    return snapshots
+    return sortRowsByMonthAsc(
+      capRowsAtChartMaxMonth(
+        snapshots
       .map((s) => {
         const p = safeJsonParse(s.metricPayloadJson) as any;
         const month = String(p?.month ?? s.snapshotDate ?? '').slice(0, 7);
         const total = asNumber(p?.donations_total_for_month);
         return { month, total: total ?? 0 };
       })
-      .filter((r) => /^\d{4}-\d{2}$/.test(r.month))
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-12);
+      .filter((r) => /^\d{4}-\d{2}$/.test(r.month)),
+        (r) => r.month,
+      ),
+      (r) => r.month,
+    ).slice(-12);
   }, [snapshots]);
 
   const monthlyImpact = useMemo(() => {
-    const apiSeries = (series?.monthlySupportTrend ?? [])
+    const apiSeries = sortRowsByMonthAsc(
+      capRowsAtChartMaxMonth(
+        (series?.monthlySupportTrend ?? [])
       .filter((r) => r && /^\d{4}-\d{2}$/.test(String(r.month)))
       .map((r) => ({ month: String(r.month), total: Number(r.total ?? 0) }))
-      .filter((r) => Number.isFinite(r.total));
+      .filter((r) => Number.isFinite(r.total)),
+        (r) => r.month,
+      ),
+      (r) => r.month,
+    );
 
-    const nonZero = apiSeries.filter((r) => r.total > 0);
-    if (nonZero.length > 0) return nonZero;
-
-    const snapNonZero = snapshotMonthlyFallback.filter((r) => r.total > 0);
-    return snapNonZero;
+    const sourceSeries = apiSeries.length > 0 ? apiSeries : snapshotMonthlyFallback;
+    const byKey = new Map(
+      sourceSeries
+        .map((r) => {
+          const d = parseMonthStart(r.month);
+          if (!d) return null;
+          return [monthKey(d), r] as const;
+        })
+        .filter((x): x is readonly [string, { month: string; total: number }] => x != null),
+    );
+    return buildMonthWindowEndingAtCap(12).map((d) => {
+      const row = byKey.get(monthKey(d));
+      return {
+        month: monthKey(d),
+        total: Number(row?.total ?? 0),
+      };
+    });
   }, [series?.monthlySupportTrend, snapshotMonthlyFallback]);
 
   const supportPrograms = useMemo(() => {

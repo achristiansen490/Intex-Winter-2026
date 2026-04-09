@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
+import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
 import { DONOR_NAV_ITEMS, donorNavItemToSlug, donorSlugToNavItem } from '../lib/portalTabs';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
@@ -723,11 +724,36 @@ function ActiveCampaigns() {
     name: String(r.campaignName ?? '—'),
     total: Number(r.totalValuePhp ?? 0),
   }));
-  const monthlyChartData = (monthly as any[]).map((r) => ({
-    month: r.month ? new Date(String(r.month)).toLocaleDateString('en-US', { year: '2-digit', month: 'short' }) : '—',
-    total: Number(r.totalValuePhp ?? 0),
-    donations: Number(r.donationCount ?? 0),
-  }));
+  const monthlyCapped = sortRowsByMonthAsc(
+    capRowsAtChartMaxMonth(monthly as any[], (r) => r.month),
+    (r) => r.month,
+  );
+  const monthlyByKey = new Map(
+    monthlyCapped
+      .map((r) => {
+        const d = parseMonthStart(r.month);
+        if (!d) return null;
+        return [monthKey(d), r] as const;
+      })
+      .filter((x): x is readonly [string, any] => x != null),
+  );
+  const monthlyWindow = buildMonthWindowEndingAtCap(12);
+  const monthlyChartData = monthlyWindow.map((d) => {
+    const r = monthlyByKey.get(monthKey(d));
+    return {
+      month: d.toLocaleDateString('en-US', { year: '2-digit', month: 'short' }),
+      total: Number(r?.totalValuePhp ?? 0),
+      donations: Number(r?.donationCount ?? 0),
+    };
+  });
+  const monthlyRowsForTable = monthlyWindow.map((d) => {
+    const r = monthlyByKey.get(monthKey(d));
+    return {
+      month: d.toISOString(),
+      donationCount: Number(r?.donationCount ?? 0),
+      totalValuePhp: Number(r?.totalValuePhp ?? 0),
+    };
+  });
 
   return (
     <div>
@@ -814,7 +840,7 @@ function ActiveCampaigns() {
             </tr>
           </thead>
           <tbody>
-            {(monthly as any[]).slice(-12).map((row, i) => (
+            {monthlyRowsForTable.map((row, i) => (
               <tr key={`${row.month}-${i}`} style={{ borderBottom: `1px solid ${c.goldLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                 <td style={{ padding: '8px 12px' }}>{row.month ? new Date(row.month).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : '—'}</td>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.donationCount ?? '—'}</td>

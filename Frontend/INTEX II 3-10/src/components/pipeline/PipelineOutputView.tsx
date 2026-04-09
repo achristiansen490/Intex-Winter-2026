@@ -14,6 +14,7 @@ import {
   ComposedChart,
   Line,
 } from 'recharts';
+import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../../lib/chartDateCap';
 
 const MonthlyLineChart = lazy(() => import('../charts/MonthlyLineChart'));
 const CampaignBarChart = lazy(() => import('../charts/CampaignBarChart'));
@@ -679,10 +680,23 @@ export function PipelineOutputView({ pipelineId, data }: { pipelineId: string; d
 
   // —— donations-monthly ——
   if (pipelineId === 'donations-monthly') {
-    const lineData = rows.map((r) => ({
-      month: formatIsoMonth(r.month),
-      total: Number(r.totalValuePhp ?? 0),
-    }));
+    const cappedRows = sortRowsByMonthAsc(capRowsAtChartMaxMonth(rows, (r) => r.month), (r) => r.month);
+    const byKey = new Map(
+      cappedRows
+        .map((r) => {
+          const d = parseMonthStart(r.month);
+          if (!d) return null;
+          return [monthKey(d), r] as const;
+        })
+        .filter((x): x is readonly [string, Record<string, unknown>] => x != null),
+    );
+    const lineData = buildMonthWindowEndingAtCap(12).map((d) => {
+      const row = byKey.get(monthKey(d));
+      return {
+        month: formatIsoMonth(monthKey(d)),
+        total: Number(row?.totalValuePhp ?? 0),
+      };
+    });
     return (
       <>
         <Section title="Monthly donation total (PHP)">
@@ -719,12 +733,25 @@ export function PipelineOutputView({ pipelineId, data }: { pipelineId: string; d
 
   // —— bridge-monthly ——
   if (pipelineId === 'bridge-monthly') {
-    const bridgeData = rows.map((r) => ({
-      month: formatIsoMonth(r.month),
-      donations: Number(r.donation_total_php ?? 0),
-      referrals: Number(r.donation_referrals ?? 0),
-      incidents: Number(r.incidents ?? 0),
-    }));
+    const cappedRows = sortRowsByMonthAsc(capRowsAtChartMaxMonth(rows, (r) => r.month), (r) => r.month);
+    const byKey = new Map(
+      cappedRows
+        .map((r) => {
+          const d = parseMonthStart(r.month);
+          if (!d) return null;
+          return [monthKey(d), r] as const;
+        })
+        .filter((x): x is readonly [string, Record<string, unknown>] => x != null),
+    );
+    const bridgeData = buildMonthWindowEndingAtCap(18).map((d) => {
+      const row = byKey.get(monthKey(d));
+      return {
+        month: formatIsoMonth(monthKey(d)),
+        donations: Number(row?.donation_total_php ?? 0),
+        referrals: Number(row?.donation_referrals ?? 0),
+        incidents: Number(row?.incidents ?? 0),
+      };
+    });
     return (
       <>
         <Section title="Bridge: donations vs referrals vs incidents">
