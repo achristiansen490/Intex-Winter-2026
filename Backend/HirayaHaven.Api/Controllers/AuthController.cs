@@ -383,8 +383,8 @@ public class AuthController(
             claims.Add(new Claim("supporterId", user.SupporterId.Value.ToString()));
 
         var token = new JwtSecurityToken(
-            issuer: jwtSection["Issuer"],
-            audience: jwtSection["Audience"],
+            issuer: jwtSection["Issuer"]?.Trim(),
+            audience: jwtSection["Audience"]?.Trim(),
             claims: claims,
             expires: DateTime.UtcNow.AddHours(double.Parse(jwtSection["ExpiryHours"] ?? "8")),
             signingCredentials: creds);

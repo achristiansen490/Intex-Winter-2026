@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AdminPageShell } from '../components/AdminPageShell';
 import { PipelineOutputView } from '../components/pipeline/PipelineOutputView';
-import { apiUrl } from '../lib/api';
+import { apiFetch as api, jsonIfOk } from '../lib/api';
 
 const c = {
   forest: '#2A4A35',
@@ -11,10 +11,6 @@ const c = {
   white: '#FFFFFF',
   sageLight: '#D4EAD9',
 };
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string, opts?: RequestInit) =>
-  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 type RegistryItem = {
   id: string;
@@ -45,7 +41,7 @@ export default function AdminPipelineDetail() {
     setJsonText('');
     setPayload(null);
     try {
-      const reg = await api('/api/admin/pipelines/registry').then((r) => r.json());
+      const reg = await jsonIfOk(await api('/api/admin/pipelines/registry'), []);
       const list = Array.isArray(reg) ? (reg as RegistryItem[]) : [];
       const m = list.find((x) => x.id === pipelineId);
       if (!m) {

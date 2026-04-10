@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { NavBar } from '../components/NavBar';
 import MonthlyLineChart from '../components/charts/MonthlyLineChart';
 import CampaignBarChart from '../components/charts/CampaignBarChart';
-import { apiUrl } from '../lib/api';
+import { apiUrl, jsonIfOk } from '../lib/api';
 import {
   buildMonthWindowEndingAtCap,
   capRowsAtChartMaxMonth,
@@ -133,9 +133,9 @@ export default function ImpactPage() {
 
     try {
       const [snaps, ov, sr] = await Promise.allSettled([
-        fetch(apiUrl('/api/publicimpactsnapshots')).then((r) => (r.ok ? r.json() : [])),
-        fetch(apiUrl('/api/dashboard/overview')).then((r) => (r.ok ? r.json() : null)),
-        fetch(apiUrl('/api/dashboard/public-impact-series')).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiUrl('/api/publicimpactsnapshots')).then((r) => jsonIfOk(r, [])),
+        fetch(apiUrl('/api/dashboard/overview')).then((r) => jsonIfOk(r, null)),
+        fetch(apiUrl('/api/dashboard/public-impact-series')).then((r) => jsonIfOk(r, null)),
       ]);
 
       const nextSnaps =

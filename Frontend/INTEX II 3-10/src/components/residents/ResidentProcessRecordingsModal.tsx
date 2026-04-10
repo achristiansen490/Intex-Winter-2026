@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiUrl } from '../../lib/api';
+import { apiFetch as api, jsonIfOk } from '../../lib/api';
 
 const c = {
   ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
@@ -24,10 +24,6 @@ type ProcessRecording = {
   referralMade: boolean | null;
   notesRestricted: string | null;
 };
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string, opts?: RequestInit) =>
-  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 function fmtDate(d: string | null | undefined) {
   if (!d) return '—';
@@ -195,7 +191,7 @@ export function ResidentProcessRecordingsModal({
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const d = await api(`/api/processrecordings?residentId=${residentId}`).then((r) => r.json());
+      const d = await jsonIfOk(await api(`/api/processrecordings?residentId=${residentId}`), []);
       setRows(Array.isArray(d) ? d : []);
     } catch {
       setError('Failed to load process recordings.');

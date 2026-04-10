@@ -40,10 +40,20 @@ public class PermissionService(HirayaContext db) : IPermissionService
                 .Where(p => p.IsAllowed == true)
                 .ToListAsync();
 
-            _cache = perms.ToDictionary(
-                p => $"{p.Role}:{p.Resource}:{NormalizeAction(p.Action ?? string.Empty)}".ToLowerInvariant(),
-                p => (p.IsAllowed ?? false, p.ScopeNote));
+            // Avoid duplicate-key throws if imports differ only by whitespace/casing; trim for stable keys.
+            var dict = new Dictionary<string, (bool allowed, string? scope)>(StringComparer.Ordinal);
+            foreach (var p in perms)
+            {
+                if (string.IsNullOrWhiteSpace(p.Role) || string.IsNullOrWhiteSpace(p.Resource))
+                    continue;
+                var key =
+                    $"{p.Role.Trim()}:{p.Resource.Trim()}:{NormalizeAction(p.Action ?? string.Empty)}"
+                        .ToLowerInvariant();
+                if (!dict.ContainsKey(key))
+                    dict[key] = (true, p.ScopeNote);
+            }
 
+            _cache = dict;
             return _cache;
         }
         finally
@@ -72,19 +82,37 @@ public class PermissionService(HirayaContext db) : IPermissionService
     public async Task<bool> CanAsync(string role, string resource, string action)
     {
         var cache = await GetCacheAsync();
-        var key = $"{role}:{resource}:{NormalizeAction(action)}".ToLowerInvariant();
-        return cache.ContainsKey(key);
+        foreach (var act in ActionAliases(action))
+        {
+            var key =
+                $"{role.Trim()}:{resource.Trim()}:{NormalizeAction(act)}"
+                    .ToLowerInvariant();
+            if (cache.ContainsKey(key))
+                return true;
+        }
+
+        return false;
     }
 
     public async Task<string?> GetScopeNoteAsync(string role, string resource, string action)
     {
         var cache = await GetCacheAsync();
-        var key = $"{role}:{resource}:{NormalizeAction(action)}".ToLowerInvariant();
-        return cache.TryGetValue(key, out var entry) ? entry.scope : null;
+        foreach (var act in ActionAliases(action))
+        {
+            var key =
+                $"{role.Trim()}:{resource.Trim()}:{NormalizeAction(act)}"
+                    .ToLowerInvariant();
+            if (cache.TryGetValue(key, out var entry))
+                return entry.scope;
+        }
+
+        return null;
     }
 
     /// <summary>
     /// Call this if permissions are updated at runtime (e.g., admin edits the table).
     /// </summary>
     public static void InvalidateCache() => _cache = null;
+
+    public void InvalidatePermissionCache() => InvalidateCache();
 }

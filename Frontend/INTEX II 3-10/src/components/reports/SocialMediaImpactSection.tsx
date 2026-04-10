@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { jsonIfOk } from '../../lib/api';
 
 const c = {
   ivory: '#FBF8F2',
@@ -74,8 +75,8 @@ export function SocialMediaImpactSection({ api }: { api: ApiFn }) {
           api('/api/insights/social/posting-windows'),
           api('/api/insights/social/content-drivers?take=10'),
         ]);
-        const pj = pr.ok ? await pr.json() : null;
-        const cj = cr.ok ? await cr.json() : null;
+        const pj = await jsonIfOk(pr, null);
+        const cj = await jsonIfOk(cr, null);
         if (!cancelled) {
           setPosting(pj);
           setContent(cj);

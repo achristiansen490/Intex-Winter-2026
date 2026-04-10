@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
-import { apiUrl } from '../lib/api';
+import { apiFetch as api, jsonIfOk } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
 import { getStaffNavItems, staffNavItemToSlug, staffSlugToNavItem } from '../lib/portalTabs';
 import { ResidentProcessRecordingsModal } from '../components/residents/ResidentProcessRecordingsModal';
@@ -19,10 +19,6 @@ const c = {
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
 const STAFF_BANNER_BG = 'linear-gradient(135deg, #6B9E8E 0%, #8BB5A8 55%, #A7C8BC 100%)';
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string, opts?: RequestInit) =>
-  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 function filterTableRows(
   rows: Record<string, unknown>[],
@@ -159,7 +155,7 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const d = await api(url).then(r => r.json()); setRows(Array.isArray(d) ? d : []); }
+    try { const d = await jsonIfOk(await api(url), []); setRows(Array.isArray(d) ? d : []); }
     catch { setError('Failed to load data.'); }
     finally { setLoading(false); }
   }, [url]);
@@ -223,7 +219,7 @@ function ResidentsPanel({
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const d = await api('/api/residents').then((r) => r.json());
+      const d = await jsonIfOk(await api('/api/residents'), []);
       setRows(Array.isArray(d) ? d : []);
     } catch {
       setError('Failed to load residents.');
@@ -347,7 +343,7 @@ function CrudDataPanel({
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const d = await api(url).then((r) => r.json());
+      const d = await jsonIfOk(await api(url), []);
       setRows(Array.isArray(d) ? d : []);
     } catch {
       setError('Failed to load data.');
@@ -362,7 +358,7 @@ function CrudDataPanel({
     let mounted = true;
     (async () => {
       try {
-        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        const data = await jsonIfOk(await api('/api/residents'), []);
         if (!mounted || !Array.isArray(data)) return;
         const next = new Map<number, string>();
         data.forEach((item) => {
@@ -705,13 +701,13 @@ function StaffDashboard({ role }: { role: string | null }) {
     setLoading(true); setError('');
     try {
       const [k, o, op, ov, oi, osr, osc] = await Promise.all([
-        api('/api/dashboard/kpis').then(r => r.json()),
-        api('/api/okrs/education/attendance/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/healing/process-sessions/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/dashboard/kpis').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/education/attendance/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/healing/process-sessions/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then((r) => jsonIfOk(r, null)),
       ]);
       setKpis(k);
       setOkr(o);
@@ -912,11 +908,11 @@ function StaffReports() {
     setLoading(true); setError('');
     try {
       const [annualRes, bridgeRes, campaignRes, monthlyRes, evRes] = await Promise.allSettled([
-        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then(async (r) => (r.ok ? r.json() : null)),
-        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(async (r) => (r.ok ? r.json() : [])),
-        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(async (r) => (r.ok ? r.json() : [])),
-        api('/api/insights/donations/monthly?take=120').then(async (r) => (r.ok ? r.json() : [])),
-        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
+        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then((r) => jsonIfOk(r, null)),
+        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then((r) => jsonIfOk(r, [])),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then((r) => jsonIfOk(r, [])),
+        api('/api/insights/donations/monthly?take=120').then((r) => jsonIfOk(r, [])),
+        api('/api/insights/social/engagement-vs-vanity').then((r) => jsonIfOk(r, null)),
       ]);
 
       const nextAnnual =
@@ -1332,7 +1328,7 @@ function StaffPendingApprovals({ onQueueChanged }: { onQueueChanged?: () => void
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const d = await api('/api/auditlogs/pending').then(r => r.json()); setItems(Array.isArray(d) ? d : []); }
+    try { const d = await jsonIfOk(await api('/api/auditlogs/pending'), []); setItems(Array.isArray(d) ? d : []); }
     catch { setError('Failed to load.'); }
     finally { setLoading(false); }
   }, []);

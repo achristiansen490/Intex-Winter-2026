@@ -134,9 +134,12 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSection["Issuer"],
-        ValidAudience = jwtSection["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        ValidIssuer = jwtSection["Issuer"]?.Trim(),
+        ValidAudience = jwtSection["Audience"]?.Trim(),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        // Match ClaimTypes.Role on the token so [Authorize(Roles = "...")] and User.IsInRole stay consistent.
+        NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier,
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
     };
 });
 
@@ -379,6 +382,7 @@ static async Task SeedAsync(IServiceProvider services)
 
         db.RolePermissions.AddRange(perms);
         await db.SaveChangesAsync();
+        PermissionService.InvalidateCache();
     }
 
     await UpsertSupportersPermissionsIfMissingAsync(db);
@@ -448,40 +452,60 @@ static async Task SeedAsync(IServiceProvider services)
 
 /// <summary>
 /// Older databases may lack donor rows for <c>supporters</c> Read, <c>donations</c> Read/Create; API checks use resource names <c>supporters</c> and <c>donations</c>.
+/// Uses in-memory matching so casing / whitespace in imported rows does not block detection, and repairs <c>IsAllowed = false</c> for these grants.
 /// </summary>
 static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
 {
-    async Task EnsureAsync(string role, string resource, string action, string? scope = null)
-    {
-        // SQLite (and many providers) cannot translate string.Equals(..., StringComparison).
-        var actionNorm = action.ToLowerInvariant();
-        var exists = await db.RolePermissions.AnyAsync(p =>
-            p.Role == role &&
-            p.Resource == resource &&
-            p.Action != null &&
-            p.Action.ToLower() == actionNorm);
-        if (exists) return;
+    var all = await db.RolePermissions.ToListAsync();
+    var changed = false;
 
-        db.RolePermissions.Add(new RolePermission
+    static bool ActionMatches(string? stored, string expected) =>
+        stored != null && string.Equals(stored.Trim(), expected.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    void EnsureRow(string role, string resource, string action, string? scope)
+    {
+        var match = all.FirstOrDefault(p =>
+            p.Role != null &&
+            p.Resource != null &&
+            string.Equals(p.Role.Trim(), role, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(p.Resource.Trim(), resource, StringComparison.OrdinalIgnoreCase) &&
+            ActionMatches(p.Action, action));
+
+        if (match is null)
         {
-            Role = role,
-            Resource = resource,
-            Action = action,
-            IsAllowed = true,
-            ScopeNote = scope
-        });
+            var row = new RolePermission
+            {
+                Role = role,
+                Resource = resource,
+                Action = action.Trim(),
+                IsAllowed = true,
+                ScopeNote = scope
+            };
+            db.RolePermissions.Add(row);
+            all.Add(row);
+            changed = true;
+            return;
+        }
+
+        if (match.IsAllowed != true)
+        {
+            match.IsAllowed = true;
+            changed = true;
+        }
     }
 
-    await EnsureAsync("Donor", "supporters", "Read", "Own records only");
-    await EnsureAsync("Donor", "donations", "Read", "Own records only");
-    await EnsureAsync("Donor", "donations", "Create", "Own records only");
+    EnsureRow("Donor", "donations", "Read", "Own records only");
+    EnsureRow("Donor", "donations", "Create", "Own records only");
+    EnsureRow("Donor", "supporters", "Read", "Own records only");
 
     foreach (var a in new[] { "Create", "Read", "Update", "Delete" })
-        await EnsureAsync("Admin", "supporters", a, null);
+        EnsureRow("Admin", "supporters", a, null);
 
-    await EnsureAsync("Supervisor", "supporters", "Read", "Own safehouse");
+    EnsureRow("Supervisor", "supporters", "Read", "Own safehouse");
 
-    await db.SaveChangesAsync();
+    if (changed)
+        await db.SaveChangesAsync();
+
     PermissionService.InvalidateCache();
 }
 

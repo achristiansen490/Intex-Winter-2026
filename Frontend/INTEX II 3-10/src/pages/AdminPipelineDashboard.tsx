@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AdminPageShell } from '../components/AdminPageShell';
-import { apiUrl } from '../lib/api';
+import { apiFetch as api, jsonIfOk } from '../lib/api';
 
 const c = {
   forest: '#2A4A35',
@@ -12,10 +12,6 @@ const c = {
   white: '#FFFFFF',
   sageLight: '#D4EAD9',
 };
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string, opts?: RequestInit) =>
-  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 type RegistryItem = {
   id: string;
@@ -55,9 +51,9 @@ export default function AdminPipelineDashboard() {
     setErr('');
     try {
       const [r, runList, sch] = await Promise.all([
-        api('/api/admin/pipelines/registry').then((x) => x.json()),
-        api('/api/admin/pipelines/runs?take=100').then((x) => x.json()),
-        api('/api/admin/pipelines/schedule').then((x) => x.json()),
+        api('/api/admin/pipelines/registry').then((x) => jsonIfOk(x, [])),
+        api('/api/admin/pipelines/runs?take=100').then((x) => jsonIfOk(x, [])),
+        api('/api/admin/pipelines/schedule').then((x) => jsonIfOk<ScheduleDto | null>(x, null)),
       ]);
       setRegistry(Array.isArray(r) ? r : []);
       setRuns(Array.isArray(runList) ? runList : []);
@@ -90,8 +86,8 @@ export default function AdminPipelineDashboard() {
         method: 'PUT',
         body: JSON.stringify({ enabled: schedule.enabled, hourUtc, minuteUtc }),
       });
-      if (!r.ok) throw new Error();
-      const body = await r.json();
+      const body = await jsonIfOk<ScheduleDto | null>(r, null);
+      if (!body) throw new Error();
       setSchedule(body);
       setHourStr(String(body.hourUtc));
       setMinuteStr(String(body.minuteUtc));

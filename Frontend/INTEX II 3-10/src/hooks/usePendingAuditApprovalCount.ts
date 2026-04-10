@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiUrl } from '../lib/api';
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
+import { apiFetch, jsonIfOk } from '../lib/api';
 
 /**
  * Polls `/api/auditlogs/pending` length for sidebar badges (Admin + Supervisor).
@@ -12,11 +10,9 @@ export function usePendingAuditApprovalCount(enabled: boolean) {
   const refresh = useCallback(async () => {
     if (!enabled) return;
     try {
-      const r = await fetch(apiUrl('/api/auditlogs/pending'), {
-        headers: { Authorization: `Bearer ${tok()}`, 'Content-Type': 'application/json' },
-      });
+      const r = await apiFetch('/api/auditlogs/pending');
       if (!r.ok) return;
-      const d = await r.json();
+      const d = await jsonIfOk(r, [] as unknown[]);
       setCount(Array.isArray(d) ? d.length : 0);
     } catch {
       /* ignore */
