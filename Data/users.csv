@@ -1,141 +1,141 @@
-user_id,user_type,staff_id,resident_id,supporter_id,username,email,password_hash,role,is_active,is_approved,approved_by,approved_at,last_login,failed_login_attempts,locked_until,mfa_enabled,mfa_secret,password_reset_token,password_reset_expires,reset_initiated_by,created_by,created_at,updated_at
-1,staff,1,,,elena.santos,elena.santos@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2023-02-18 00:00:00,2026-01-25 00:00:00,0,,False,,,,,1,2023-02-18 00:00:00,2026-04-06 00:00:00
-2,staff,2,,,fatima.cruz,fatima.cruz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2022-07-24 00:00:00,2026-09-06 00:00:00,0,,False,,,,,1,2022-07-24 00:00:00,2026-04-06 00:00:00
-3,staff,3,,,angela.ramos,angela.ramos@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2022-07-03 00:00:00,2025-08-24 00:00:00,0,,False,,,,,1,2022-07-03 00:00:00,2026-04-06 00:00:00
-4,staff,4,,,josephine.gonzalez,josephine.gonzalez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2022-09-12 00:00:00,2025-05-17 00:00:00,0,,False,,,,,1,2022-09-12 00:00:00,2026-04-06 00:00:00
-5,staff,5,,,sofia.ramirez,sofia.ramirez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2022-03-30 00:00:00,2025-09-15 00:00:00,0,,False,,,,,1,2022-03-30 00:00:00,2026-04-06 00:00:00
-6,staff,6,,,teresa.reyes,teresa.reyes@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2023-01-28 00:00:00,2026-06-28 00:00:00,0,,False,,,,,1,2023-01-28 00:00:00,2026-04-06 00:00:00
-7,staff,7,,,beatrice.hernandez,beatrice.hernandez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2023-12-02 00:00:00,2026-12-19 00:00:00,0,,False,,,,,1,2023-12-02 00:00:00,2026-04-06 00:00:00
-8,staff,8,,,andrea.cruz,andrea.cruz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,True,True,1,2023-07-06 00:00:00,2025-04-02 00:00:00,0,,False,,,,,1,2023-07-06 00:00:00,2026-04-06 00:00:00
-9,staff,9,,,monica.flores,monica.flores@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,True,True,1,2023-10-01 00:00:00,2026-05-17 00:00:00,0,,False,,,,,1,2023-10-01 00:00:00,2026-04-06 00:00:00
-10,staff,10,,,rosa.ramos,rosa.ramos@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,True,True,1,2022-07-24 00:00:00,2026-03-08 00:00:00,0,,False,,,,,1,2022-07-24 00:00:00,2026-04-06 00:00:00
-11,staff,11,,,teresa.mendoza,teresa.mendoza@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,True,True,1,2023-09-20 00:00:00,2026-08-26 00:00:00,0,,False,,,,,1,2023-09-20 00:00:00,2026-04-06 00:00:00
-12,staff,12,,,patricia.diaz,patricia.diaz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,True,True,1,2022-08-10 00:00:00,2026-01-18 00:00:00,0,,False,,,,,1,2022-08-10 00:00:00,2026-04-06 00:00:00
-13,staff,13,,,diana.aquino,diana.aquino@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,True,True,1,2023-02-02 00:00:00,2026-11-30 00:00:00,0,,False,,,,,1,2023-02-02 00:00:00,2026-04-06 00:00:00
-14,staff,14,,,teresa.castillo,teresa.castillo@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,True,True,1,2022-08-06 00:00:00,2025-06-05 00:00:00,0,,False,,,,,1,2022-08-06 00:00:00,2026-04-06 00:00:00
-15,staff,15,,,cristina.cruz,cristina.cruz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Supervisor,True,True,1,2023-04-18 00:00:00,2026-11-08 00:00:00,0,,False,,,,,1,2023-04-18 00:00:00,2026-04-06 00:00:00
-16,staff,16,,,rosa.diaz,rosa.diaz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Supervisor,True,True,1,2022-07-03 00:00:00,2026-08-04 00:00:00,0,,False,,,,,1,2022-07-03 00:00:00,2026-04-06 00:00:00
-17,staff,17,,,maria.garcia,maria.garcia@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,True,False,,,,0,,False,,,,,1,2022-12-13 00:00:00,2026-04-06 00:00:00
-18,staff,18,,,andrea.morales,andrea.morales@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,True,False,,,,0,,False,,,,,1,2022-03-26 00:00:00,2026-04-06 00:00:00
-19,staff,19,,,elena.martinez,elena.martinez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,True,False,,,,0,,False,,,,,1,2023-06-26 00:00:00,2026-04-06 00:00:00
-20,staff,20,,,isabel.mendoza,isabel.mendoza@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,True,False,,,,0,,False,,,,,1,2023-11-25 00:00:00,2026-04-06 00:00:00
-21,resident,,1,,ls-0001.c0043,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-10-17 00:00:00,2025-03-31 00:00:00,0,,False,,,,,2,2023-10-17 00:00:00,2026-04-06 00:00:00
-22,resident,,2,,ls-0002.c2530,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-03-18 00:00:00,,0,,False,,,,,2,2023-03-18 00:00:00,2026-04-06 00:00:00
-23,resident,,3,,ls-0003.c3946,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-05-24 00:00:00,2026-04-26 00:00:00,0,,False,,,,,2,2024-05-24 00:00:00,2026-04-06 00:00:00
-24,resident,,4,,ls-0004.c3116,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-09-27 00:00:00,2025-11-20 00:00:00,0,,False,,,,,2,2024-09-27 00:00:00,2026-04-06 00:00:00
-25,resident,,5,,ls-0005.c9132,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-01-10 00:00:00,,0,,False,,,,,2,2024-01-10 00:00:00,2026-04-06 00:00:00
-26,resident,,6,,ls-0006.c7286,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-08-30 00:00:00,2026-02-17 00:00:00,0,,False,,,,,2,2023-08-30 00:00:00,2026-04-06 00:00:00
-27,resident,,7,,ls-0007.c6898,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-06-22 00:00:00,2025-02-13 00:00:00,0,,False,,,,,2,2024-06-22 00:00:00,2026-04-06 00:00:00
-28,resident,,8,,ls-0008.c3744,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-02-28 00:00:00,2025-10-03 00:00:00,0,,False,,,,,2,2024-02-28 00:00:00,2026-04-06 00:00:00
-29,resident,,9,,ls-0009.c3706,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2025-04-06 00:00:00,2026-07-26 00:00:00,0,,False,,,,,2,2025-04-06 00:00:00,2026-04-06 00:00:00
-30,resident,,10,,ls-0010.c1817,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-10-18 00:00:00,2025-01-08 00:00:00,0,,False,,,,,2,2023-10-18 00:00:00,2026-04-06 00:00:00
-31,resident,,11,,ls-0011.c5929,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-04-01 00:00:00,,0,,False,,,,,2,2023-04-01 00:00:00,2026-04-06 00:00:00
-32,resident,,12,,ls-0012.c5767,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-06-03 00:00:00,2026-03-12 00:00:00,0,,False,,,,,2,2024-06-03 00:00:00,2026-04-06 00:00:00
-33,resident,,13,,ls-0013.c9796,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-02-23 00:00:00,,0,,False,,,,,2,2023-02-23 00:00:00,2026-04-06 00:00:00
-34,resident,,14,,ls-0014.c8844,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2025-01-26 00:00:00,2025-07-28 00:00:00,0,,False,,,,,2,2025-01-26 00:00:00,2026-04-06 00:00:00
-35,resident,,15,,ls-0015.c0855,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-10-18 00:00:00,,0,,False,,,,,2,2024-10-18 00:00:00,2026-04-06 00:00:00
-36,resident,,16,,ls-0016.c3534,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-06-03 00:00:00,2026-01-07 00:00:00,0,,False,,,,,2,2023-06-03 00:00:00,2026-04-06 00:00:00
-37,resident,,17,,ls-0017.c3951,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2025-01-20 00:00:00,2026-07-02 00:00:00,0,,False,,,,,2,2025-01-20 00:00:00,2026-04-06 00:00:00
-38,resident,,18,,ls-0018.c6335,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-12-14 00:00:00,,0,,False,,,,,2,2023-12-14 00:00:00,2026-04-06 00:00:00
-39,resident,,19,,ls-0019.c6002,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-01-06 00:00:00,2025-03-24 00:00:00,0,,False,,,,,2,2024-01-06 00:00:00,2026-04-06 00:00:00
-40,resident,,20,,ls-0020.c2853,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2025-03-23 00:00:00,,0,,False,,,,,2,2025-03-23 00:00:00,2026-04-06 00:00:00
-41,resident,,21,,ls-0021.c9025,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-10-09 00:00:00,2026-04-19 00:00:00,0,,False,,,,,2,2023-10-09 00:00:00,2026-04-06 00:00:00
-42,resident,,22,,ls-0022.c6533,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-05-14 00:00:00,,0,,False,,,,,2,2023-05-14 00:00:00,2026-04-06 00:00:00
-43,resident,,23,,ls-0023.c5996,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-02-16 00:00:00,,0,,False,,,,,2,2023-02-16 00:00:00,2026-04-06 00:00:00
-44,resident,,24,,ls-0024.c5428,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-11-20 00:00:00,2026-06-16 00:00:00,0,,False,,,,,2,2024-11-20 00:00:00,2026-04-06 00:00:00
-45,resident,,25,,ls-0025.c5141,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-06-27 00:00:00,2025-07-22 00:00:00,0,,False,,,,,2,2023-06-27 00:00:00,2026-04-06 00:00:00
-46,resident,,26,,ls-0026.c3506,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-07-26 00:00:00,,0,,False,,,,,2,2023-07-26 00:00:00,2026-04-06 00:00:00
-47,resident,,27,,ls-0027.c6505,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2025-03-17 00:00:00,,0,,False,,,,,2,2025-03-17 00:00:00,2026-04-06 00:00:00
-48,resident,,28,,ls-0028.c5401,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-11-06 00:00:00,,0,,False,,,,,2,2023-11-06 00:00:00,2026-04-06 00:00:00
-49,resident,,29,,ls-0029.c1839,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-03-05 00:00:00,,0,,False,,,,,2,2023-03-05 00:00:00,2026-04-06 00:00:00
-50,resident,,30,,ls-0030.c6888,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-01-19 00:00:00,,0,,False,,,,,2,2024-01-19 00:00:00,2026-04-06 00:00:00
-51,resident,,31,,ls-0031.c0798,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-09-08 00:00:00,,0,,False,,,,,2,2023-09-08 00:00:00,2026-04-06 00:00:00
-52,resident,,32,,ls-0032.c3013,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2025-02-11 00:00:00,2026-09-13 00:00:00,0,,False,,,,,2,2025-02-11 00:00:00,2026-04-06 00:00:00
-53,resident,,33,,ls-0033.c9903,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-12-21 00:00:00,,0,,False,,,,,2,2024-12-21 00:00:00,2026-04-06 00:00:00
-54,resident,,34,,ls-0034.c8001,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-07-08 00:00:00,,0,,False,,,,,2,2023-07-08 00:00:00,2026-04-06 00:00:00
-55,resident,,35,,ls-0035.c7521,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-08-01 00:00:00,,0,,False,,,,,2,2024-08-01 00:00:00,2026-04-06 00:00:00
-56,resident,,36,,ls-0036.c6526,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-03-20 00:00:00,2026-04-19 00:00:00,0,,False,,,,,2,2023-03-20 00:00:00,2026-04-06 00:00:00
-57,resident,,37,,ls-0037.c5189,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-01-05 00:00:00,,0,,False,,,,,2,2024-01-05 00:00:00,2026-04-06 00:00:00
-58,resident,,38,,ls-0038.c3204,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-04-13 00:00:00,2025-02-22 00:00:00,0,,False,,,,,2,2024-04-13 00:00:00,2026-04-06 00:00:00
-59,resident,,39,,ls-0039.c2281,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-10-10 00:00:00,,0,,False,,,,,2,2024-10-10 00:00:00,2026-04-06 00:00:00
-60,resident,,40,,ls-0040.c7587,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2025-03-01 00:00:00,2026-01-02 00:00:00,0,,False,,,,,2,2025-03-01 00:00:00,2026-04-06 00:00:00
-61,resident,,41,,ls-0041.c3233,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-04-05 00:00:00,2025-05-13 00:00:00,0,,False,,,,,2,2024-04-05 00:00:00,2026-04-06 00:00:00
-62,resident,,42,,ls-0042.c8805,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-12-11 00:00:00,2025-08-10 00:00:00,0,,False,,,,,2,2024-12-11 00:00:00,2026-04-06 00:00:00
-63,resident,,43,,ls-0043.c7232,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-07-13 00:00:00,,0,,False,,,,,2,2024-07-13 00:00:00,2026-04-06 00:00:00
-64,resident,,44,,ls-0044.c2175,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-09-13 00:00:00,,0,,False,,,,,2,2023-09-13 00:00:00,2026-04-06 00:00:00
-65,resident,,45,,ls-0045.c0794,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-02-17 00:00:00,,0,,False,,,,,2,2023-02-17 00:00:00,2026-04-06 00:00:00
-66,resident,,46,,ls-0046.c3752,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-01-28 00:00:00,2025-06-14 00:00:00,0,,False,,,,,2,2024-01-28 00:00:00,2026-04-06 00:00:00
-67,resident,,47,,ls-0047.c4943,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-07-30 00:00:00,,0,,False,,,,,2,2023-07-30 00:00:00,2026-04-06 00:00:00
-68,resident,,48,,ls-0048.c6402,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-08-23 00:00:00,2026-03-29 00:00:00,0,,False,,,,,2,2024-08-23 00:00:00,2026-04-06 00:00:00
-69,resident,,49,,ls-0049.c0909,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2024-05-26 00:00:00,2026-09-02 00:00:00,0,,False,,,,,2,2024-05-26 00:00:00,2026-04-06 00:00:00
-70,resident,,50,,ls-0050.c7484,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-01-09 00:00:00,2025-07-01 00:00:00,0,,False,,,,,2,2023-01-09 00:00:00,2026-04-06 00:00:00
-71,resident,,51,,ls-0051.c6103,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-04-14 00:00:00,,0,,False,,,,,2,2024-04-14 00:00:00,2026-04-06 00:00:00
-72,resident,,52,,ls-0052.c5829,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-02-10 00:00:00,,0,,False,,,,,2,2024-02-10 00:00:00,2026-04-06 00:00:00
-73,resident,,53,,ls-0053.c3067,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-10-09 00:00:00,2026-05-31 00:00:00,0,,False,,,,,2,2023-10-09 00:00:00,2026-04-06 00:00:00
-74,resident,,54,,ls-0054.c2616,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2023-04-13 00:00:00,,0,,False,,,,,2,2023-04-13 00:00:00,2026-04-06 00:00:00
-75,resident,,55,,ls-0055.c2908,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2025-04-01 00:00:00,2026-11-08 00:00:00,0,,False,,,,,2,2025-04-01 00:00:00,2026-04-06 00:00:00
-76,resident,,56,,ls-0056.c3620,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-10-16 00:00:00,,0,,False,,,,,2,2024-10-16 00:00:00,2026-04-06 00:00:00
-77,resident,,57,,ls-0057.c4279,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-04-18 00:00:00,2025-06-30 00:00:00,0,,False,,,,,2,2023-04-18 00:00:00,2026-04-06 00:00:00
-78,resident,,58,,ls-0058.c5053,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2025-03-14 00:00:00,,0,,False,,,,,2,2025-03-14 00:00:00,2026-04-06 00:00:00
-79,resident,,59,,ls-0059.c7358,,$2b$12$examplehashedpasswordplaceholder,Resident,True,True,1,2023-06-27 00:00:00,2025-02-07 00:00:00,0,,False,,,,,2,2023-06-27 00:00:00,2026-04-06 00:00:00
-80,resident,,60,,ls-0060.c4328,,$2b$12$examplehashedpasswordplaceholder,Resident,False,True,1,2024-01-28 00:00:00,,0,,False,,,,,2,2024-01-28 00:00:00,2026-04-06 00:00:00
-81,donor,,,1,mila.alvarez,mila-alvarez@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-01-01 00:00:00,2025-04-23 00:00:00,0,,False,,,,,1,2022-01-01 00:00:00,2026-04-06 00:00:00
-82,donor,,,2,aria.brown,aria-brown@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-01-06 00:00:00,2025-01-24 00:00:00,0,,False,,,,,1,2022-01-06 00:00:00,2026-04-06 00:00:00
-83,donor,,,3,noah.chen,noah-chen@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-01-11 00:00:00,2025-06-25 00:00:00,0,,False,,,,,1,2022-01-11 00:00:00,2026-04-06 00:00:00
-84,donor,,,4,liam.diaz,liam-diaz@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-01-16 00:00:00,2026-05-01 00:00:00,0,,False,,,,,1,2022-01-16 00:00:00,2026-04-06 00:00:00
-85,donor,,,5,emma.evans,emma-evans@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-01-21 00:00:00,2026-12-02 00:00:00,0,,False,,,,,1,2022-01-21 00:00:00,2026-04-06 00:00:00
-86,donor,,,6,olivia.ford,olivia-ford@yahoo.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-01-26 00:00:00,2026-03-06 00:00:00,0,,False,,,,,1,2022-01-26 00:00:00,2026-04-06 00:00:00
-87,donor,,,7,ethan.garcia,ethan-garcia@aol.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-01-31 00:00:00,2025-03-25 00:00:00,0,,False,,,,,1,2022-01-31 00:00:00,2026-04-06 00:00:00
-88,donor,,,8,isla.hernandez,isla-hernandez@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-02-05 00:00:00,2026-03-12 00:00:00,0,,False,,,,,1,2022-02-05 00:00:00,2026-04-06 00:00:00
-89,donor,,,9,sophia.ibrahim,sophia-ibrahim@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-02-10 00:00:00,2026-10-10 00:00:00,0,,False,,,,,1,2022-02-10 00:00:00,2026-04-06 00:00:00
-90,donor,,,10,lucas.jones,lucas-jones@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-02-15 00:00:00,2025-03-30 00:00:00,0,,False,,,,,1,2022-02-15 00:00:00,2026-04-06 00:00:00
-91,donor,,,11,maya.kim,maya-kim@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-02-20 00:00:00,2025-05-27 00:00:00,0,,False,,,,,1,2022-02-20 00:00:00,2026-04-06 00:00:00
-92,donor,,,12,ella.lopez,ella-lopez@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-02-25 00:00:00,2025-11-14 00:00:00,0,,False,,,,,1,2022-02-25 00:00:00,2026-04-06 00:00:00
-93,donor,,,13,.,hope-group@hopegroup.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-03-02 00:00:00,2026-09-25 00:00:00,0,,False,,,,,1,2022-03-02 00:00:00,2026-04-06 00:00:00
-94,donor,,,14,owen.nguyen,owen-nguyen@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-03-07 00:00:00,2025-01-06 00:00:00,0,,False,,,,,1,2022-03-07 00:00:00,2026-04-06 00:00:00
-95,donor,,,15,zoe.ortiz,zoe-ortiz@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-03-12 00:00:00,2026-01-26 00:00:00,0,,False,,,,,1,2022-03-12 00:00:00,2026-04-06 00:00:00
-96,donor,,,16,iris.patel,iris-patel@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-03-17 00:00:00,2025-12-04 00:00:00,0,,False,,,,,1,2022-03-17 00:00:00,2026-04-06 00:00:00
-97,donor,,,17,hana.quinn,hana-quinn@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-03-22 00:00:00,2025-05-20 00:00:00,0,,False,,,,,1,2022-03-22 00:00:00,2026-04-06 00:00:00
-98,donor,,,18,theo.reed,theo-reed@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-03-27 00:00:00,2026-06-20 00:00:00,0,,False,,,,,1,2022-03-27 00:00:00,2026-04-06 00:00:00
-99,donor,,,19,nora.singh,nora-singh@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-04-01 00:00:00,2026-02-20 00:00:00,0,,False,,,,,1,2022-04-01 00:00:00,2026-04-06 00:00:00
-100,donor,,,20,ezra.taylor,ezra-taylor@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-04-06 00:00:00,2025-07-25 00:00:00,0,,False,,,,,1,2022-04-06 00:00:00,2026-04-06 00:00:00
-101,donor,,,21,june.usman,june-usman@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-04-11 00:00:00,2025-02-26 00:00:00,0,,False,,,,,1,2022-04-11 00:00:00,2026-04-06 00:00:00
-102,donor,,,22,nico.vasquez,nico-vasquez@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-04-16 00:00:00,2026-10-18 00:00:00,0,,False,,,,,1,2022-04-16 00:00:00,2026-04-06 00:00:00
-103,donor,,,23,ria.white,ria-white@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-04-21 00:00:00,2025-08-05 00:00:00,0,,False,,,,,1,2022-04-21 00:00:00,2026-04-06 00:00:00
-104,donor,,,24,sean.xu,sean-xu@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-04-26 00:00:00,2026-03-30 00:00:00,0,,False,,,,,1,2022-04-26 00:00:00,2026-04-06 00:00:00
-105,donor,,,25,tina.young,tina-young@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-05-01 00:00:00,2025-09-21 00:00:00,0,,False,,,,,1,2022-05-01 00:00:00,2026-04-06 00:00:00
-106,donor,,,26,margo.zhang,margo-zhang@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-05-06 00:00:00,2026-07-13 00:00:00,0,,False,,,,,1,2022-05-06 00:00:00,2026-04-06 00:00:00
-107,donor,,,27,jules.abe,jules-abe@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-05-11 00:00:00,2026-02-18 00:00:00,0,,False,,,,,1,2022-05-11 00:00:00,2026-04-06 00:00:00
-108,donor,,,28,pia.baker,pia-baker@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-05-16 00:00:00,2025-05-10 00:00:00,0,,False,,,,,1,2022-05-16 00:00:00,2026-04-06 00:00:00
-109,donor,,,29,seth.clark,seth-clark@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-05-21 00:00:00,2025-12-29 00:00:00,0,,False,,,,,1,2022-05-21 00:00:00,2026-04-06 00:00:00
-110,donor,,,30,rina.davis,rina-davis@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-05-26 00:00:00,2026-12-13 00:00:00,0,,False,,,,,1,2022-05-26 00:00:00,2026-04-06 00:00:00
-111,donor,,,31,jon.edwards,jon-edwards@eastern.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-05-31 00:00:00,2026-05-03 00:00:00,0,,False,,,,,1,2022-05-31 00:00:00,2026-04-06 00:00:00
-112,donor,,,32,luz.fisher,luz-fisher@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-06-05 00:00:00,2025-02-27 00:00:00,0,,False,,,,,1,2022-06-05 00:00:00,2026-04-06 00:00:00
-113,donor,,,33,tara.green,tara-green@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-06-10 00:00:00,2025-05-15 00:00:00,0,,False,,,,,1,2022-06-10 00:00:00,2026-04-06 00:00:00
-114,donor,,,34,mia.hill,mia-hill@eastern.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-06-15 00:00:00,2026-09-07 00:00:00,0,,False,,,,,1,2022-06-15 00:00:00,2026-04-06 00:00:00
-115,donor,,,35,jose.inoue,jose-inoue@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-06-20 00:00:00,2025-06-04 00:00:00,0,,False,,,,,1,2022-06-20 00:00:00,2026-04-06 00:00:00
-116,donor,,,36,lara.johnson,lara-johnson@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-06-25 00:00:00,2026-09-15 00:00:00,0,,False,,,,,1,2022-06-25 00:00:00,2026-04-06 00:00:00
-117,donor,,,37,rae.klein,rae-klein@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-06-30 00:00:00,2026-02-23 00:00:00,0,,False,,,,,1,2022-06-30 00:00:00,2026-04-06 00:00:00
-118,donor,,,38,.1,faith-partners@faithpartners.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-07-05 00:00:00,2025-05-08 00:00:00,0,,False,,,,,1,2022-07-05 00:00:00,2026-04-06 00:00:00
-119,donor,,,39,ben.morris,ben-morris@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-07-10 00:00:00,2025-04-09 00:00:00,0,,False,,,,,1,2022-07-10 00:00:00,2026-04-06 00:00:00
-120,donor,,,40,lena.nash,lena-nash@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-07-15 00:00:00,2025-05-02 00:00:00,0,,False,,,,,1,2022-07-15 00:00:00,2026-04-06 00:00:00
-121,donor,,,41,cleo.owens,cleo-owens@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-07-20 00:00:00,2025-05-28 00:00:00,0,,False,,,,,1,2022-07-20 00:00:00,2026-04-06 00:00:00
-122,donor,,,42,finn.price,finn-price@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-07-25 00:00:00,2025-10-31 00:00:00,0,,False,,,,,1,2022-07-25 00:00:00,2026-04-06 00:00:00
-123,donor,,,43,hugo.ross,hugo-ross@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-07-30 00:00:00,2025-06-28 00:00:00,0,,False,,,,,1,2022-07-30 00:00:00,2026-04-06 00:00:00
-124,donor,,,44,vera.stone,vera-stone@eastern.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-08-04 00:00:00,2025-07-01 00:00:00,0,,False,,,,,1,2022-08-04 00:00:00,2026-04-06 00:00:00
-125,donor,,,45,noel.turner,noel-turner@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,True,True,1,2022-08-09 00:00:00,2026-02-24 00:00:00,0,,False,,,,,1,2022-08-09 00:00:00,2026-04-06 00:00:00
-126,donor,,,46,.2,faith-alliance@faithalliance.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-08-14 00:00:00,2025-05-30 00:00:00,0,,False,,,,,1,2022-08-14 00:00:00,2026-04-06 00:00:00
-127,donor,,,47,kaya.ward,kaya-ward@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-08-19 00:00:00,2025-08-01 00:00:00,0,,False,,,,,1,2022-08-19 00:00:00,2026-04-06 00:00:00
-128,donor,,,48,ian.xu,ian-xu@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-08-24 00:00:00,2026-07-29 00:00:00,0,,False,,,,,1,2022-08-24 00:00:00,2026-04-06 00:00:00
-129,donor,,,49,faye.yu,faye-yu@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-08-29 00:00:00,2025-11-23 00:00:00,0,,False,,,,,1,2022-08-29 00:00:00,2026-04-06 00:00:00
-130,donor,,,50,.3,bright-foundation@brightfoundation.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-09-03 00:00:00,2026-05-27 00:00:00,0,,False,,,,,1,2022-09-03 00:00:00,2026-04-06 00:00:00
-131,donor,,,51,mira.bello,mira-bello@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-09-08 00:00:00,2025-08-28 00:00:00,0,,False,,,,,1,2022-09-08 00:00:00,2026-04-06 00:00:00
-132,donor,,,52,cole.cruz,cole-cruz@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-09-13 00:00:00,2025-09-21 00:00:00,0,,False,,,,,1,2022-09-13 00:00:00,2026-04-06 00:00:00
-133,donor,,,53,dina.delosreyes,dina-delosreyes@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-09-18 00:00:00,2025-05-01 00:00:00,0,,False,,,,,1,2022-09-18 00:00:00,2026-04-06 00:00:00
-134,donor,,,54,sara.escobar,sara-escobar@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-09-23 00:00:00,2026-01-06 00:00:00,0,,False,,,,,1,2022-09-23 00:00:00,2026-04-06 00:00:00
-135,donor,,,55,kian.farah,kian-farah@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-09-28 00:00:00,2025-07-10 00:00:00,0,,False,,,,,1,2022-09-28 00:00:00,2026-04-06 00:00:00
-136,donor,,,56,lyle.gomez,lyle-gomez@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-10-03 00:00:00,2026-11-26 00:00:00,0,,False,,,,,1,2022-10-03 00:00:00,2026-04-06 00:00:00
-137,donor,,,57,paz.hale,paz-hale@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-10-08 00:00:00,2025-03-16 00:00:00,0,,False,,,,,1,2022-10-08 00:00:00,2026-04-06 00:00:00
-138,donor,,,58,rico.iglesias,rico-iglesias@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-10-13 00:00:00,2026-05-29 00:00:00,0,,False,,,,,1,2022-10-13 00:00:00,2026-04-06 00:00:00
-139,donor,,,59,lea.jain,lea-jain@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-10-18 00:00:00,2025-10-22 00:00:00,0,,False,,,,,1,2022-10-18 00:00:00,2026-04-06 00:00:00
-140,donor,,,60,tess.khan,tess-khan@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,False,True,1,2022-10-23 00:00:00,2025-01-12 00:00:00,0,,False,,,,,1,2022-10-23 00:00:00,2026-04-06 00:00:00
+user_id,user_type,staff_id,resident_id,supporter_id,first_name,last_name,username,email,password_hash,role,is_active,is_approved,approved_by,approved_at,last_login,failed_login_attempts,locked_until,mfa_enabled,mfa_secret,password_reset_token,password_reset_expires,reset_initiated_by,created_by,created_at,updated_at
+1,staff,1,,,Elena,Santos,elena.santos,elena.santos@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,2/18/2023 0:00,1/25/2026 0:00,0,,FALSE,,,,,1,2/18/2023 0:00,4/6/2026 0:00
+2,staff,2,,,Fatima,Cruz,fatima.cruz,fatima.cruz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,7/24/2022 0:00,9/6/2026 0:00,0,,FALSE,,,,,1,7/24/2022 0:00,4/6/2026 0:00
+3,staff,3,,,Angela,Ramos,angela.ramos,angela.ramos@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,7/3/2022 0:00,8/24/2025 0:00,0,,FALSE,,,,,1,7/3/2022 0:00,4/6/2026 0:00
+4,staff,4,,,Josephine,Gonzalez,josephine.gonzalez,josephine.gonzalez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,9/12/2022 0:00,5/17/2025 0:00,0,,FALSE,,,,,1,9/12/2022 0:00,4/6/2026 0:00
+5,staff,5,,,Sofia,Ramirez,sofia.ramirez,sofia.ramirez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,3/30/2022 0:00,9/15/2025 0:00,0,,FALSE,,,,,1,3/30/2022 0:00,4/6/2026 0:00
+6,staff,6,,,Teresa,Reyes,teresa.reyes,teresa.reyes@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,1/28/2023 0:00,6/28/2026 0:00,0,,FALSE,,,,,1,1/28/2023 0:00,4/6/2026 0:00
+7,staff,7,,,Beatrice,Hernandez,beatrice.hernandez,beatrice.hernandez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,12/2/2023 0:00,12/19/2026 0:00,0,,FALSE,,,,,1,12/2/2023 0:00,4/6/2026 0:00
+8,staff,8,,,Andrea,Cruz,andrea.cruz,andrea.cruz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Social Worker,TRUE,TRUE,1,7/6/2023 0:00,4/2/2025 0:00,0,,FALSE,,,,,1,7/6/2023 0:00,4/6/2026 0:00
+9,staff,9,,,Monica,Flores,monica.flores,monica.flores@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,TRUE,TRUE,1,10/1/2023 0:00,5/17/2026 0:00,0,,FALSE,,,,,1,10/1/2023 0:00,4/6/2026 0:00
+10,staff,10,,,Rosa,Ramos,rosa.ramos,rosa.ramos@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,TRUE,TRUE,1,7/24/2022 0:00,3/8/2026 0:00,0,,FALSE,,,,,1,7/24/2022 0:00,4/6/2026 0:00
+11,staff,11,,,Teresa,Mendoza,teresa.mendoza,teresa.mendoza@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,TRUE,TRUE,1,9/20/2023 0:00,8/26/2026 0:00,0,,FALSE,,,,,1,9/20/2023 0:00,4/6/2026 0:00
+12,staff,12,,,Patricia,Diaz,patricia.diaz,patricia.diaz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,TRUE,TRUE,1,8/10/2022 0:00,1/18/2026 0:00,0,,FALSE,,,,,1,8/10/2022 0:00,4/6/2026 0:00
+13,staff,13,,,Diana,Aquino,diana.aquino,diana.aquino@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,TRUE,TRUE,1,2/2/2023 0:00,11/30/2026 0:00,0,,FALSE,,,,,1,2/2/2023 0:00,4/6/2026 0:00
+14,staff,14,,,Teresa,Castillo,teresa.castillo,teresa.castillo@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Case Manager,TRUE,TRUE,1,8/6/2022 0:00,6/5/2025 0:00,0,,FALSE,,,,,1,8/6/2022 0:00,4/6/2026 0:00
+15,staff,15,,,Cristina,Cruz,cristina.cruz,cristina.cruz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Supervisor,TRUE,TRUE,1,4/18/2023 0:00,11/8/2026 0:00,0,,FALSE,,,,,1,4/18/2023 0:00,4/6/2026 0:00
+16,staff,16,,,Rosa,Diaz,rosa.diaz,rosa.diaz@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Supervisor,TRUE,TRUE,1,7/3/2022 0:00,8/4/2026 0:00,0,,FALSE,,,,,1,7/3/2022 0:00,4/6/2026 0:00
+17,staff,17,,,Maria,Garcia,maria.garcia,maria.garcia@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,TRUE,FALSE,,,,0,,FALSE,,,,,1,12/13/2022 0:00,4/6/2026 0:00
+18,staff,18,,,Andrea,Morales,andrea.morales,andrea.morales@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,TRUE,FALSE,,,,0,,FALSE,,,,,1,3/26/2022 0:00,4/6/2026 0:00
+19,staff,19,,,Elena,Martinez,elena.martinez,elena.martinez@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,TRUE,FALSE,,,,0,,FALSE,,,,,1,6/26/2023 0:00,4/6/2026 0:00
+20,staff,20,,,Isabel,Mendoza,isabel.mendoza,isabel.mendoza@lighthouseph.org,$2b$12$examplehashedpasswordplaceholder,Field Worker,TRUE,FALSE,,,,0,,FALSE,,,,,1,11/25/2023 0:00,4/6/2026 0:00
+21,resident,,1,,Lillian,Brown,ls-0001.c0043,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,10/17/2023 0:00,3/31/2025 0:00,0,,FALSE,,,,,2,10/17/2023 0:00,4/6/2026 0:00
+22,resident,,2,,Amira,Young,ls-0002.c2530,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,3/18/2023 0:00,,0,,FALSE,,,,,2,3/18/2023 0:00,4/6/2026 0:00
+23,resident,,3,,Gabriella,Moore,ls-0003.c3946,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,5/24/2024 0:00,4/26/2026 0:00,0,,FALSE,,,,,2,5/24/2024 0:00,4/6/2026 0:00
+24,resident,,4,,Eleanor,Mendoza,ls-0004.c3116,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,9/27/2024 0:00,11/20/2025 0:00,0,,FALSE,,,,,2,9/27/2024 0:00,4/6/2026 0:00
+25,resident,,5,,Riley,Ramos,ls-0005.c9132,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,1/10/2024 0:00,,0,,FALSE,,,,,2,1/10/2024 0:00,4/6/2026 0:00
+26,resident,,6,,Gloria,Jones,ls-0006.c7286,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,8/30/2023 0:00,2/17/2026 0:00,0,,FALSE,,,,,2,8/30/2023 0:00,4/6/2026 0:00
+27,resident,,7,,Amelia,Lopez,ls-0007.c6898,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,6/22/2024 0:00,2/13/2025 0:00,0,,FALSE,,,,,2,6/22/2024 0:00,4/6/2026 0:00
+28,resident,,8,,Allison,Robinson,ls-0008.c3744,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,2/28/2024 0:00,10/3/2025 0:00,0,,FALSE,,,,,2,2/28/2024 0:00,4/6/2026 0:00
+29,resident,,9,,Elisa,Cox,ls-0009.c3706,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,4/6/2025 0:00,7/26/2026 0:00,0,,FALSE,,,,,2,4/6/2025 0:00,4/6/2026 0:00
+30,resident,,10,,Charlotte,Bailey,ls-0010.c1817,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,10/18/2023 0:00,1/8/2025 0:00,0,,FALSE,,,,,2,10/18/2023 0:00,4/6/2026 0:00
+31,resident,,11,,Faith,Castillo,ls-0011.c5929,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,4/1/2023 0:00,,0,,FALSE,,,,,2,4/1/2023 0:00,4/6/2026 0:00
+32,resident,,12,,Diana,Lewis,ls-0012.c5767,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,6/3/2024 0:00,3/12/2026 0:00,0,,FALSE,,,,,2,6/3/2024 0:00,4/6/2026 0:00
+33,resident,,13,,Patricia,Ramos,ls-0013.c9796,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,2/23/2023 0:00,,0,,FALSE,,,,,2,2/23/2023 0:00,4/6/2026 0:00
+34,resident,,14,,Nadia,Figueroa,ls-0014.c8844,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,1/26/2025 0:00,7/28/2025 0:00,0,,FALSE,,,,,2,1/26/2025 0:00,4/6/2026 0:00
+35,resident,,15,,Olivia,Freeman,ls-0015.c0855,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,10/18/2024 0:00,,0,,FALSE,,,,,2,10/18/2024 0:00,4/6/2026 0:00
+36,resident,,16,,Brooklyn,Price,ls-0016.c3534,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,6/3/2023 0:00,1/7/2026 0:00,0,,FALSE,,,,,2,6/3/2023 0:00,4/6/2026 0:00
+37,resident,,17,,Gloria,Baker,ls-0017.c3951,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,1/20/2025 0:00,7/2/2026 0:00,0,,FALSE,,,,,2,1/20/2025 0:00,4/6/2026 0:00
+38,resident,,18,,Nadia,Martin,ls-0018.c6335,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,12/14/2023 0:00,,0,,FALSE,,,,,2,12/14/2023 0:00,4/6/2026 0:00
+39,resident,,19,,Allison,Freeman,ls-0019.c6002,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,1/6/2024 0:00,3/24/2025 0:00,0,,FALSE,,,,,2,1/6/2024 0:00,4/6/2026 0:00
+40,resident,,20,,Tamika,Wilson,ls-0020.c2853,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,3/23/2025 0:00,,0,,FALSE,,,,,2,3/23/2025 0:00,4/6/2026 0:00
+41,resident,,21,,Zoey,Carter,ls-0021.c9025,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,10/9/2023 0:00,4/19/2026 0:00,0,,FALSE,,,,,2,10/9/2023 0:00,4/6/2026 0:00
+42,resident,,22,,Nora,Rivera,ls-0022.c6533,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,5/14/2023 0:00,,0,,FALSE,,,,,2,5/14/2023 0:00,4/6/2026 0:00
+43,resident,,23,,Shaniqua,Cox,ls-0023.c5996,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,2/16/2023 0:00,,0,,FALSE,,,,,2,2/16/2023 0:00,4/6/2026 0:00
+44,resident,,24,,Jasmine,Figueroa,ls-0024.c5428,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,11/20/2024 0:00,6/16/2026 0:00,0,,FALSE,,,,,2,11/20/2024 0:00,4/6/2026 0:00
+45,resident,,25,,Emily,Patel,ls-0025.c5141,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,6/27/2023 0:00,7/22/2025 0:00,0,,FALSE,,,,,2,6/27/2023 0:00,4/6/2026 0:00
+46,resident,,26,,Teresa,Morgan,ls-0026.c3506,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,7/26/2023 0:00,,0,,FALSE,,,,,2,7/26/2023 0:00,4/6/2026 0:00
+47,resident,,27,,Stella,Carter,ls-0027.c6505,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,3/17/2025 0:00,,0,,FALSE,,,,,2,3/17/2025 0:00,4/6/2026 0:00
+48,resident,,28,,Penelope,Peterson,ls-0028.c5401,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,11/6/2023 0:00,,0,,FALSE,,,,,2,11/6/2023 0:00,4/6/2026 0:00
+49,resident,,29,,Monique,Watson,ls-0029.c1839,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,3/5/2023 0:00,,0,,FALSE,,,,,2,3/5/2023 0:00,4/6/2026 0:00
+50,resident,,30,,Tiffany,Kelly,ls-0030.c6888,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,1/19/2024 0:00,,0,,FALSE,,,,,2,1/19/2024 0:00,4/6/2026 0:00
+51,resident,,31,,Paige,Alvarez,ls-0031.c0798,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,9/8/2023 0:00,,0,,FALSE,,,,,2,9/8/2023 0:00,4/6/2026 0:00
+52,resident,,32,,Luna,Garcia,ls-0032.c3013,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,2/11/2025 0:00,9/13/2026 0:00,0,,FALSE,,,,,2,2/11/2025 0:00,4/6/2026 0:00
+53,resident,,33,,Autumn,Reid,ls-0033.c9903,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,12/21/2024 0:00,,0,,FALSE,,,,,2,12/21/2024 0:00,4/6/2026 0:00
+54,resident,,34,,Tanya,Hernandez,ls-0034.c8001,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,7/8/2023 0:00,,0,,FALSE,,,,,2,7/8/2023 0:00,4/6/2026 0:00
+55,resident,,35,,Nevaeh,Gonzalez,ls-0035.c7521,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,8/1/2024 0:00,,0,,FALSE,,,,,2,8/1/2024 0:00,4/6/2026 0:00
+56,resident,,36,,Gabriela,Scott,ls-0036.c6526,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,3/20/2023 0:00,4/19/2026 0:00,0,,FALSE,,,,,2,3/20/2023 0:00,4/6/2026 0:00
+57,resident,,37,,Sandra,Brooks,ls-0037.c5189,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,1/5/2024 0:00,,0,,FALSE,,,,,2,1/5/2024 0:00,4/6/2026 0:00
+58,resident,,38,,Valentina,Lee,ls-0038.c3204,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,4/13/2024 0:00,2/22/2025 0:00,0,,FALSE,,,,,2,4/13/2024 0:00,4/6/2026 0:00
+59,resident,,39,,Camila,Rivera,ls-0039.c2281,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,10/10/2024 0:00,,0,,FALSE,,,,,2,10/10/2024 0:00,4/6/2026 0:00
+60,resident,,40,,Julia,Gray,ls-0040.c7587,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,3/1/2025 0:00,1/2/2026 0:00,0,,FALSE,,,,,2,3/1/2025 0:00,4/6/2026 0:00
+61,resident,,41,,Naomi,Price,ls-0041.c3233,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,4/5/2024 0:00,5/13/2025 0:00,0,,FALSE,,,,,2,4/5/2024 0:00,4/6/2026 0:00
+62,resident,,42,,Grace,Cox,ls-0042.c8805,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,12/11/2024 0:00,8/10/2025 0:00,0,,FALSE,,,,,2,12/11/2024 0:00,4/6/2026 0:00
+63,resident,,43,,Skylar,Morgan,ls-0043.c7232,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,7/13/2024 0:00,,0,,FALSE,,,,,2,7/13/2024 0:00,4/6/2026 0:00
+64,resident,,44,,Aaliyah,Lee,ls-0044.c2175,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,9/13/2023 0:00,,0,,FALSE,,,,,2,9/13/2023 0:00,4/6/2026 0:00
+65,resident,,45,,Vera,Carter,ls-0045.c0794,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,2/17/2023 0:00,,0,,FALSE,,,,,2,2/17/2023 0:00,4/6/2026 0:00
+66,resident,,46,,Kezia,Brooks,ls-0046.c3752,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,1/28/2024 0:00,6/14/2025 0:00,0,,FALSE,,,,,2,1/28/2024 0:00,4/6/2026 0:00
+67,resident,,47,,Sadie,Ruiz,ls-0047.c4943,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,7/30/2023 0:00,,0,,FALSE,,,,,2,7/30/2023 0:00,4/6/2026 0:00
+68,resident,,48,,Kiara,Reid,ls-0048.c6402,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,8/23/2024 0:00,3/29/2026 0:00,0,,FALSE,,,,,2,8/23/2024 0:00,4/6/2026 0:00
+69,resident,,49,,Scarlett,Robinson,ls-0049.c0909,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,5/26/2024 0:00,9/2/2026 0:00,0,,FALSE,,,,,2,5/26/2024 0:00,4/6/2026 0:00
+70,resident,,50,,Harper,Figueroa,ls-0050.c7484,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,1/9/2023 0:00,7/1/2025 0:00,0,,FALSE,,,,,2,1/9/2023 0:00,4/6/2026 0:00
+71,resident,,51,,Alexis,Phillips,ls-0051.c6103,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,4/14/2024 0:00,,0,,FALSE,,,,,2,4/14/2024 0:00,4/6/2026 0:00
+72,resident,,52,,Naomi,Rodriguez,ls-0052.c5829,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,2/10/2024 0:00,,0,,FALSE,,,,,2,2/10/2024 0:00,4/6/2026 0:00
+73,resident,,53,,Katherine,Reed,ls-0053.c3067,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,10/9/2023 0:00,5/31/2026 0:00,0,,FALSE,,,,,2,10/9/2023 0:00,4/6/2026 0:00
+74,resident,,54,,Alexis,Ramirez,ls-0054.c2616,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,4/13/2023 0:00,,0,,FALSE,,,,,2,4/13/2023 0:00,4/6/2026 0:00
+75,resident,,55,,Luz,Gomez,ls-0055.c2908,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,4/1/2025 0:00,11/8/2026 0:00,0,,FALSE,,,,,2,4/1/2025 0:00,4/6/2026 0:00
+76,resident,,56,,Teresa,Jackson,ls-0056.c3620,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,10/16/2024 0:00,,0,,FALSE,,,,,2,10/16/2024 0:00,4/6/2026 0:00
+77,resident,,57,,Jasmine,Moore,ls-0057.c4279,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,4/18/2023 0:00,6/30/2025 0:00,0,,FALSE,,,,,2,4/18/2023 0:00,4/6/2026 0:00
+78,resident,,58,,Zaria,Long,ls-0058.c5053,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,3/14/2025 0:00,,0,,FALSE,,,,,2,3/14/2025 0:00,4/6/2026 0:00
+79,resident,,59,,Jasmine,Long,ls-0059.c7358,,$2b$12$examplehashedpasswordplaceholder,Resident,TRUE,TRUE,1,6/27/2023 0:00,2/7/2025 0:00,0,,FALSE,,,,,2,6/27/2023 0:00,4/6/2026 0:00
+80,resident,,60,,Isabel,Howard,ls-0060.c4328,,$2b$12$examplehashedpasswordplaceholder,Resident,FALSE,TRUE,1,1/28/2024 0:00,,0,,FALSE,,,,,2,1/28/2024 0:00,4/6/2026 0:00
+81,donor,,,1,Mila,Alvarez,mila.alvarez,mila-alvarez@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,1/1/2022 0:00,4/23/2025 0:00,0,,FALSE,,,,,1,1/1/2022 0:00,4/6/2026 0:00
+82,donor,,,2,Aria,Brown,aria.brown,aria-brown@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,1/6/2022 0:00,1/24/2025 0:00,0,,FALSE,,,,,1,1/6/2022 0:00,4/6/2026 0:00
+83,donor,,,3,Valeria,Chen,valeria.chen,valeria-chen@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,1/11/2022 0:00,6/25/2025 0:00,0,,FALSE,,,,,1,1/11/2022 0:00,4/6/2026 0:00
+84,donor,,,4,Sadie,Diaz,sadie.diaz,sadie-diaz@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,1/16/2022 0:00,5/1/2026 0:00,0,,FALSE,,,,,1,1/16/2022 0:00,4/6/2026 0:00
+85,donor,,,5,Emma,Evans,emma.evans,emma-evans@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,1/21/2022 0:00,12/2/2026 0:00,0,,FALSE,,,,,1,1/21/2022 0:00,4/6/2026 0:00
+86,donor,,,6,Olivia,Ford,olivia.ford,olivia-ford@yahoo.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,1/26/2022 0:00,3/6/2026 0:00,0,,FALSE,,,,,1,1/26/2022 0:00,4/6/2026 0:00
+87,donor,,,7,Miriam,Garcia,miriam.garcia,miriam-garcia@aol.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,1/31/2022 0:00,3/25/2025 0:00,0,,FALSE,,,,,1,1/31/2022 0:00,4/6/2026 0:00
+88,donor,,,8,Isla,Hernandez,isla.hernandez,isla-hernandez@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,2/5/2022 0:00,3/12/2026 0:00,0,,FALSE,,,,,1,2/5/2022 0:00,4/6/2026 0:00
+89,donor,,,9,Sophia,Ibrahim,sophia.ibrahim,sophia-ibrahim@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,2/10/2022 0:00,10/10/2026 0:00,0,,FALSE,,,,,1,2/10/2022 0:00,4/6/2026 0:00
+90,donor,,,10,Zoey,Jones,zoey.jones,zoey-jones@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,2/15/2022 0:00,3/30/2025 0:00,0,,FALSE,,,,,1,2/15/2022 0:00,4/6/2026 0:00
+91,donor,,,11,Maya,Kim,maya.kim,maya-kim@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,2/20/2022 0:00,5/27/2025 0:00,0,,FALSE,,,,,1,2/20/2022 0:00,4/6/2026 0:00
+92,donor,,,12,Ella,Lopez,ella.lopez,ella-lopez@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,2/25/2022 0:00,11/14/2025 0:00,0,,FALSE,,,,,1,2/25/2022 0:00,4/6/2026 0:00
+93,donor,,,13,,,.,hope-group@hopegroup.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,3/2/2022 0:00,9/25/2026 0:00,0,,FALSE,,,,,1,3/2/2022 0:00,4/6/2026 0:00
+94,donor,,,14,Elizabeth,Nguyen,elizabeth.nguyen,elizabeth-nguyen@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,3/7/2022 0:00,1/6/2025 0:00,0,,FALSE,,,,,1,3/7/2022 0:00,4/6/2026 0:00
+95,donor,,,15,Zoe,Ortiz,zoe.ortiz,zoe-ortiz@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,3/12/2022 0:00,1/26/2026 0:00,0,,FALSE,,,,,1,3/12/2022 0:00,4/6/2026 0:00
+96,donor,,,16,Iris,Patel,iris.patel,iris-patel@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,3/17/2022 0:00,12/4/2025 0:00,0,,FALSE,,,,,1,3/17/2022 0:00,4/6/2026 0:00
+97,donor,,,17,Hana,Quinn,hana.quinn,hana-quinn@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,3/22/2022 0:00,5/20/2025 0:00,0,,FALSE,,,,,1,3/22/2022 0:00,4/6/2026 0:00
+98,donor,,,18,Audrey,Reed,audrey.reed,audrey-reed@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,3/27/2022 0:00,6/20/2026 0:00,0,,FALSE,,,,,1,3/27/2022 0:00,4/6/2026 0:00
+99,donor,,,19,Nora,Singh,nora.singh,nora-singh@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,4/1/2022 0:00,2/20/2026 0:00,0,,FALSE,,,,,1,4/1/2022 0:00,4/6/2026 0:00
+100,donor,,,20,Brooklyn,Taylor,brooklyn.taylor,brooklyn-taylor@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,4/6/2022 0:00,7/25/2025 0:00,0,,FALSE,,,,,1,4/6/2022 0:00,4/6/2026 0:00
+101,donor,,,21,June,Usman,june.usman,june-usman@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,4/11/2022 0:00,2/26/2025 0:00,0,,FALSE,,,,,1,4/11/2022 0:00,4/6/2026 0:00
+102,donor,,,22,Gloria,Vasquez,gloria.vasquez,gloria-vasquez@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,4/16/2022 0:00,10/18/2026 0:00,0,,FALSE,,,,,1,4/16/2022 0:00,4/6/2026 0:00
+103,donor,,,23,Ria,White,ria.white,ria-white@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,4/21/2022 0:00,8/5/2025 0:00,0,,FALSE,,,,,1,4/21/2022 0:00,4/6/2026 0:00
+104,donor,,,24,Madison,Xu,madison.xu,madison-xu@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,4/26/2022 0:00,3/30/2026 0:00,0,,FALSE,,,,,1,4/26/2022 0:00,4/6/2026 0:00
+105,donor,,,25,Tina,Young,tina.young,tina-young@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,5/1/2022 0:00,9/21/2025 0:00,0,,FALSE,,,,,1,5/1/2022 0:00,4/6/2026 0:00
+106,donor,,,26,Margo,Zhang,margo.zhang,margo-zhang@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,5/6/2022 0:00,7/13/2026 0:00,0,,FALSE,,,,,1,5/6/2022 0:00,4/6/2026 0:00
+107,donor,,,27,Gabriela,Abe,gabriela.abe,gabriela-abe@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,5/11/2022 0:00,2/18/2026 0:00,0,,FALSE,,,,,1,5/11/2022 0:00,4/6/2026 0:00
+108,donor,,,28,Pia,Baker,pia.baker,pia-baker@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,5/16/2022 0:00,5/10/2025 0:00,0,,FALSE,,,,,1,5/16/2022 0:00,4/6/2026 0:00
+109,donor,,,29,Rocio,Clark,rocio.clark,rocio-clark@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,5/21/2022 0:00,12/29/2025 0:00,0,,FALSE,,,,,1,5/21/2022 0:00,4/6/2026 0:00
+110,donor,,,30,Rina,Davis,rina.davis,rina-davis@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,5/26/2022 0:00,12/13/2026 0:00,0,,FALSE,,,,,1,5/26/2022 0:00,4/6/2026 0:00
+111,donor,,,31,Imani,Edwards,imani.edwards,imani-edwards@eastern.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,5/31/2022 0:00,5/3/2026 0:00,0,,FALSE,,,,,1,5/31/2022 0:00,4/6/2026 0:00
+112,donor,,,32,Luz,Fisher,luz.fisher,luz-fisher@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,6/5/2022 0:00,2/27/2025 0:00,0,,FALSE,,,,,1,6/5/2022 0:00,4/6/2026 0:00
+113,donor,,,33,Tara,Green,tara.green,tara-green@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,6/10/2022 0:00,5/15/2025 0:00,0,,FALSE,,,,,1,6/10/2022 0:00,4/6/2026 0:00
+114,donor,,,34,Mia,Hill,mia.hill,mia-hill@eastern.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,6/15/2022 0:00,9/7/2026 0:00,0,,FALSE,,,,,1,6/15/2022 0:00,4/6/2026 0:00
+115,donor,,,35,Ava,Inoue,ava.inoue,ava-inoue@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,6/20/2022 0:00,6/4/2025 0:00,0,,FALSE,,,,,1,6/20/2022 0:00,4/6/2026 0:00
+116,donor,,,36,Lara,Johnson,lara.johnson,lara-johnson@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,6/25/2022 0:00,9/15/2026 0:00,0,,FALSE,,,,,1,6/25/2022 0:00,4/6/2026 0:00
+117,donor,,,37,Rae,Klein,rae.klein,rae-klein@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,6/30/2022 0:00,2/23/2026 0:00,0,,FALSE,,,,,1,6/30/2022 0:00,4/6/2026 0:00
+118,donor,,,38,,,0.1,faith-partners@faithpartners.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,7/5/2022 0:00,5/8/2025 0:00,0,,FALSE,,,,,1,7/5/2022 0:00,4/6/2026 0:00
+119,donor,,,39,Aubrey,Morris,aubrey.morris,aubrey-morris@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,7/10/2022 0:00,4/9/2025 0:00,0,,FALSE,,,,,1,7/10/2022 0:00,4/6/2026 0:00
+120,donor,,,40,Lena,Nash,lena.nash,lena-nash@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,7/15/2022 0:00,5/2/2025 0:00,0,,FALSE,,,,,1,7/15/2022 0:00,4/6/2026 0:00
+121,donor,,,41,Cleo,Owens,cleo.owens,cleo-owens@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,7/20/2022 0:00,5/28/2025 0:00,0,,FALSE,,,,,1,7/20/2022 0:00,4/6/2026 0:00
+122,donor,,,42,Naomi,Price,naomi.price,naomi-price@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,7/25/2022 0:00,10/31/2025 0:00,0,,FALSE,,,,,1,7/25/2022 0:00,4/6/2026 0:00
+123,donor,,,43,Aisha,Ross,aisha.ross,aisha-ross@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,7/30/2022 0:00,6/28/2025 0:00,0,,FALSE,,,,,1,7/30/2022 0:00,4/6/2026 0:00
+124,donor,,,44,Vera,Stone,vera.stone,vera-stone@eastern.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,8/4/2022 0:00,7/1/2025 0:00,0,,FALSE,,,,,1,8/4/2022 0:00,4/6/2026 0:00
+125,donor,,,45,Monique,Turner,monique.turner,monique-turner@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,TRUE,TRUE,1,8/9/2022 0:00,2/24/2026 0:00,0,,FALSE,,,,,1,8/9/2022 0:00,4/6/2026 0:00
+126,donor,,,46,,,0.2,faith-alliance@faithalliance.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,8/14/2022 0:00,5/30/2025 0:00,0,,FALSE,,,,,1,8/14/2022 0:00,4/6/2026 0:00
+127,donor,,,47,Kaya,Ward,kaya.ward,kaya-ward@globe.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,8/19/2022 0:00,8/1/2025 0:00,0,,FALSE,,,,,1,8/19/2022 0:00,4/6/2026 0:00
+128,donor,,,48,Brooklyn,Xu,brooklyn.xu,brooklyn-xu@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,8/24/2022 0:00,7/29/2026 0:00,0,,FALSE,,,,,1,8/24/2022 0:00,4/6/2026 0:00
+129,donor,,,49,Faye,Yu,faye.yu,faye-yu@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,8/29/2022 0:00,11/23/2025 0:00,0,,FALSE,,,,,1,8/29/2022 0:00,4/6/2026 0:00
+130,donor,,,50,,,0.3,bright-foundation@brightfoundation.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,9/3/2022 0:00,5/27/2026 0:00,0,,FALSE,,,,,1,9/3/2022 0:00,4/6/2026 0:00
+131,donor,,,51,Mira,Bello,mira.bello,mira-bello@yahoo.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,9/8/2022 0:00,8/28/2025 0:00,0,,FALSE,,,,,1,9/8/2022 0:00,4/6/2026 0:00
+132,donor,,,52,Emma,Cruz,emma.cruz,emma-cruz@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,9/13/2022 0:00,9/21/2025 0:00,0,,FALSE,,,,,1,9/13/2022 0:00,4/6/2026 0:00
+133,donor,,,53,Dina,Delosreyes,dina.delosreyes,dina-delosreyes@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,9/18/2022 0:00,5/1/2025 0:00,0,,FALSE,,,,,1,9/18/2022 0:00,4/6/2026 0:00
+134,donor,,,54,Sara,Escobar,sara.escobar,sara-escobar@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,9/23/2022 0:00,1/6/2026 0:00,0,,FALSE,,,,,1,9/23/2022 0:00,4/6/2026 0:00
+135,donor,,,55,Jasmine,Farah,jasmine.farah,jasmine-farah@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,9/28/2022 0:00,7/10/2025 0:00,0,,FALSE,,,,,1,9/28/2022 0:00,4/6/2026 0:00
+136,donor,,,56,Paisley,Gomez,paisley.gomez,paisley-gomez@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,10/3/2022 0:00,11/26/2026 0:00,0,,FALSE,,,,,1,10/3/2022 0:00,4/6/2026 0:00
+137,donor,,,57,Paz,Hale,paz.hale,paz-hale@gmail.com,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,10/8/2022 0:00,3/16/2025 0:00,0,,FALSE,,,,,1,10/8/2022 0:00,4/6/2026 0:00
+138,donor,,,58,Hannah,Iglesias,hannah.iglesias,hannah-iglesias@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,10/13/2022 0:00,5/29/2026 0:00,0,,FALSE,,,,,1,10/13/2022 0:00,4/6/2026 0:00
+139,donor,,,59,Lea,Jain,lea.jain,lea-jain@pldt.net.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,10/18/2022 0:00,10/22/2025 0:00,0,,FALSE,,,,,1,10/18/2022 0:00,4/6/2026 0:00
+140,donor,,,60,Tess,Khan,tess.khan,tess-khan@smart.com.ph,$2b$12$examplehashedpasswordplaceholder,Donor,FALSE,TRUE,1,10/23/2022 0:00,1/12/2025 0:00,0,,FALSE,,,,,1,10/23/2022 0:00,4/6/2026 0:00

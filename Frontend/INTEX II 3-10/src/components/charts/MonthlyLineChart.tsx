@@ -13,6 +13,8 @@ type Props = {
   height?: number;
   gridColor?: string;
   lineColor?: string;
+  numberFormat?: 'php' | 'compact';
+  seriesLabel?: string;
 };
 
 function formatCompact(n: number): string {
@@ -30,6 +32,8 @@ export default function MonthlyLineChart({
   height = 260,
   gridColor = 'rgba(44,43,40,0.08)',
   lineColor = '#2A4A35',
+  numberFormat = 'php',
+  seriesLabel = 'Total',
 }: Props) {
   return (
     <div style={{ width: '100%', height }}>
@@ -38,11 +42,15 @@ export default function MonthlyLineChart({
           <CartesianGrid stroke={gridColor} vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} width={60} tickFormatter={(v) => formatCompact(Number(v))} />
-          <Tooltip formatter={(v: any) => [formatPhp(Number(v)), 'Total']} />
+          <Tooltip
+            formatter={(v: any) => {
+              const n = Number(v);
+              return [numberFormat === 'php' ? formatPhp(n) : formatCompact(n), seriesLabel];
+            }}
+          />
           <Line type="monotone" dataKey="total" stroke={lineColor} strokeWidth={2.5} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
 }
-

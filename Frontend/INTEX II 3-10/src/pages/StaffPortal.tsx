@@ -1,29 +1,24 @@
 import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { apiUrl } from '../lib/api';
+import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
+import { getStaffNavItems, staffNavItemToSlug, staffSlugToNavItem } from '../lib/portalTabs';
+import { ResidentProcessRecordingsModal } from '../components/residents/ResidentProcessRecordingsModal';
+import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
+import { SocialMediaImpactSection } from '../components/reports/SocialMediaImpactSection';
 
 const CampaignBarChart = lazy(() => import('../components/charts/CampaignBarChart'));
 const BridgeLineChart = lazy(() => import('../components/charts/BridgeLineChart'));
 
 const c = {
-  ivory: '#FBF8F2', forest: '#2A4A35', gold: '#D4A44C', rose: '#C4867A',
-  roseLight: '#F0D8D4', sage: '#6B9E7E', sageLight: '#D4EAD9', goldLight: '#F5E6C8',
+  ivory: '#F9FCFB', forest: '#4A7C68', gold: '#D4A44C', rose: '#C4867A',
+  roseLight: '#F0D8D4', sage: '#7FA89C', sageLight: '#E0EBE8', goldLight: '#F5E6C8',
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
-const STAFF_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.76) 0%,rgba(107,158,126,0.5) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
-
-function getNavItems(role: string | null): string[] {
-  switch (role) {
-    case 'Supervisor':   return ['Dashboard', 'Caseload', 'Donors', 'Session Notes', 'Visits & Conferences', 'Reports', 'Pending Approvals'];
-    case 'CaseManager':  return ['Dashboard', 'Caseload', 'Session Notes', 'Visits & Conferences', 'Intervention Plans', 'Reports'];
-    case 'SocialWorker': return ['Dashboard', 'My Residents', 'Session Notes', 'Home Visits', 'Incident Reports'];
-    case 'FieldWorker':  return ['Dashboard', 'Residents', 'Health Records', 'Education Records', 'Home Visits', 'Incident Reports'];
-    default:             return ['Dashboard'];
-  }
-}
+const STAFF_BANNER_BG = 'linear-gradient(135deg, #6B9E8E 0%, #8BB5A8 55%, #A7C8BC 100%)';
 
 const tok = () => localStorage.getItem('hh_token') ?? '';
 const api = (url: string, opts?: RequestInit) =>
@@ -198,6 +193,130 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
   );
 }
 
+// ── Residents (with process recordings timeline) ───────────────────────────────
+
+type ResidentRow = {
+  residentId: number;
+  residentFirstName?: string;
+  residentLastName?: string;
+  caseControlNo: string;
+  caseStatus: string;
+  sex: string;
+  dateOfAdmission: string;
+  currentRiskLevel: string;
+  reintegrationStatus: string;
+  assignedSocialWorker: string;
+};
+
+function ResidentsPanel({
+  role,
+}: {
+  role: string | null;
+}) {
+  const [rows, setRows] = useState<ResidentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [selectedResident, setSelectedResident] = useState<ResidentRow | null>(null);
+  const searchId = useId();
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const d = await api('/api/residents').then((r) => r.json());
+      setRows(Array.isArray(d) ? d : []);
+    } catch {
+      setError('Failed to load residents.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const columns = useMemo(() => ([
+    { key: 'residentId', label: 'ID' }, { key: 'residentName', label: 'Name' }, { key: 'caseControlNo', label: 'Case No.' },
+    { key: 'caseStatus', label: 'Status' }, { key: 'sex', label: 'Sex' },
+    { key: 'dateOfAdmission', label: 'Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
+    { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'SW' },
+  ]), []);
+
+  const rowsWithName = useMemo(() => (
+    rows.map((row) => ({
+      ...row,
+      residentName: [row.residentFirstName, row.residentLastName].filter(Boolean).join(' ').trim() || '—',
+    }))
+  ), [rows]);
+
+  const filtered = useMemo(() => filterTableRows(rowsWithName as unknown as Record<string, unknown>[], columns, query) as unknown as (ResidentRow & { residentName: string })[], [rowsWithName, columns, query]);
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  const canCreate = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker' || role === 'FieldWorker';
+  const canEdit = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker';
+  const canDelete = role === 'Admin';
+
+  return (
+    <div>
+      <SectionTitle>Residents</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Click a resident to view their Process Recordings timeline (and create/edit if permitted).
+      </p>
+
+      <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search residents…" />
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: c.sageLight }}>
+              {columns.map((col) => (
+                <th key={col.key} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{col.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, i) => (
+              <tr
+                key={row.residentId}
+                onClick={() => setSelectedResident(row)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedResident(row);
+                }}
+                style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white, cursor: 'pointer' }}
+                aria-label={`Open resident ${row.residentId} details`}
+              >
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentId}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.residentName}</td>
+                <td style={{ padding: '8px 12px' }}>{row.caseControlNo ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.caseStatus ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.sex ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.dateOfAdmission ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.currentRiskLevel ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.reintegrationStatus ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.assignedSocialWorker ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedResident && (
+        <ResidentProcessRecordingsModal
+          residentId={selectedResident.residentId}
+          residentLabel={`${[selectedResident.residentFirstName, selectedResident.residentLastName].filter(Boolean).join(' ').trim() || `#${selectedResident.residentId}`} · ${selectedResident.caseControlNo ?? 'Resident'}`}
+          onClose={() => setSelectedResident(null)}
+          canCreate={canCreate}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      )}
+    </div>
+  );
+}
+
 function CrudDataPanel({
   title,
   url,
@@ -223,6 +342,7 @@ function CrudDataPanel({
   const [viewRow, setViewRow] = useState<Record<string, unknown> | null>(null);
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
   const [createRow, setCreateRow] = useState<Record<string, unknown> | null>(null);
+  const [residentNameById, setResidentNameById] = useState<Map<number, string>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -238,15 +358,66 @@ function CrudDataPanel({
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        if (!mounted || !Array.isArray(data)) return;
+        const next = new Map<number, string>();
+        data.forEach((item) => {
+          const row = item as { residentId?: unknown; residentFirstName?: unknown; residentLastName?: unknown };
+          const id = Number(row.residentId);
+          if (!Number.isFinite(id)) return;
+          const name = [row.residentFirstName, row.residentLastName]
+            .map((v) => String(v ?? '').trim())
+            .filter(Boolean)
+            .join(' ');
+          if (name) next.set(id, name);
+        });
+        setResidentNameById(next);
+      } catch {
+        if (mounted) setResidentNameById(new Map());
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const notify = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 2800);
   };
 
-  const filteredRows = useMemo(
-    () => filterTableRows(rows, columns, query),
-    [rows, columns, query],
-  );
+  const filteredRows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter((row) =>
+      columns.some((col) => {
+        const raw = row[col.key];
+        if (col.key === 'residentId') {
+          const id = Number(raw);
+          const name = Number.isFinite(id) ? residentNameById.get(id) : '';
+          const residentText = `${String(raw ?? '')} ${name ?? ''}`.toLowerCase();
+          return residentText.includes(needle);
+        }
+        if (raw == null || raw === '') return false;
+        return String(raw).toLowerCase().includes(needle);
+      }),
+    );
+  }, [rows, columns, query, residentNameById]);
+
+  const renderCellValue = (row: Record<string, unknown>, key: string) => {
+    if (key === 'residentId') {
+      const raw = row[key];
+      if (raw == null || raw === '') return '—';
+      const id = Number(raw);
+      const name = Number.isFinite(id) ? residentNameById.get(id) : undefined;
+      return name ? `${name} (#${String(raw)})` : `#${String(raw)}`;
+    }
+    return String(row[key] ?? '—');
+  };
 
   const normalizeRowForSave = (row: Record<string, unknown>) => {
     const payload: Record<string, unknown> = {};
@@ -393,7 +564,7 @@ function CrudDataPanel({
                     <tr key={String(row[keyField] ?? i)} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                       {columns.map((col) => (
                         <td key={col.key} style={{ padding: '8px 12px', color: c.text, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {String(row[col.key] ?? '—')}
+                          {renderCellValue(row, col.key)}
                         </td>
                       ))}
                       <td style={{ padding: '8px 12px' }}>
@@ -503,14 +674,53 @@ function CrudDataPanel({
 
 // ── Dashboard (role-aware) ────────────────────────────────────────────────────
 
+type EducationAttendanceOkrItem = {
+  period: string;
+  year: number;
+  quarter: number;
+  residentCount: number;
+  attendanceRateAvg: number | null;
+  progressPercentAvg: number | null;
+  targetAttendanceRate: number | null;
+};
+
+type EducationAttendanceOkrResponse = {
+  metricKey: string;
+  generatedAtUtc: string;
+  items: EducationAttendanceOkrItem[];
+};
+
 function StaffDashboard({ role }: { role: string | null }) {
   const [kpis, setKpis] = useState<Record<string, unknown> | null>(null);
+  const [okr, setOkr] = useState<EducationAttendanceOkrResponse | null>(null);
+  const [okrProcess, setOkrProcess] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrVisits, setOkrVisits] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrIncidents, setOkrIncidents] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrSocialRef, setOkrSocialRef] = useState<QuarterlyRateOkrResponse | null>(null);
+  const [okrSocialCtr, setOkrSocialCtr] = useState<QuarterlyRateOkrResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { setKpis(await api('/api/dashboard/kpis').then(r => r.json())); }
+    try {
+      const [k, o, op, ov, oi, osr, osc] = await Promise.all([
+        api('/api/dashboard/kpis').then(r => r.json()),
+        api('/api/okrs/education/attendance/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/healing/process-sessions/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
+      ]);
+      setKpis(k);
+      setOkr(o);
+      setOkrProcess(op);
+      setOkrVisits(ov);
+      setOkrIncidents(oi);
+      setOkrSocialRef(osr);
+      setOkrSocialCtr(osc);
+    }
     catch { setError('Failed to load dashboard.'); }
     finally { setLoading(false); }
   }, []);
@@ -521,6 +731,14 @@ function StaffDashboard({ role }: { role: string | null }) {
 
   const ops = (kpis as any)?.operations ?? {};
   const donor = (kpis as any)?.donor ?? {};
+  const educationItems = ((okr as any)?.items as EducationAttendanceOkrItem[] | undefined ?? [])
+    .filter((item) => item.year < 2025 || (item.year === 2025 && item.quarter <= 1));
+  const latest = educationItems[0];
+  const att = latest?.attendanceRateAvg;
+  const tgt = latest?.targetAttendanceRate;
+  const attPct = att != null ? Math.round(att * 100) : null;
+  const tgtPct = tgt != null ? Math.round(tgt * 100) : null;
+  const progressToTarget = (att != null && tgt != null && tgt > 0) ? Math.min(1, Math.max(0, att / tgt)) : null;
 
   return (
     <div>
@@ -532,6 +750,96 @@ function StaffDashboard({ role }: { role: string | null }) {
         <StatCard label="Process Sessions" value={ops.processSessions ?? '—'} />
         <StatCard label="Home Visits" value={ops.homeVisits ?? '—'} />
       </div>
+
+      <SectionTitle>OKR — Education Attendance (Quarterly)</SectionTitle>
+      <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 24 }}>
+        {latest ? (
+          <>
+            <p style={{ fontSize: 12, color: c.muted, marginTop: 0, marginBottom: 10 }}>
+              Latest period: <strong style={{ color: c.forest }}>{latest.period}</strong> · {latest.residentCount} residents with records
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+              <StatCard label="Attendance avg" value={attPct != null ? `${attPct}%` : '—'} accent={c.sageLight} />
+              <StatCard label="Target" value={tgtPct != null ? `${tgtPct}%` : '—'} accent={c.goldLight} />
+              <StatCard label="Edu progress avg" value={latest.progressPercentAvg != null ? `${Number(latest.progressPercentAvg).toFixed(1)}%` : '—'} />
+            </div>
+            {progressToTarget != null && (
+              <div>
+                <p style={{ fontSize: 11, color: c.muted, margin: 0, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Progress to target</p>
+                <div style={{ background: c.ivory, border: `1px solid ${c.sageLight}`, borderRadius: 999, overflow: 'hidden', height: 10 }}>
+                  <div style={{ width: `${Math.round(progressToTarget * 100)}%`, height: '100%', background: c.sage }} />
+                </div>
+              </div>
+            )}
+            {educationItems.length > 0 && (
+              <div style={{ overflowX: 'auto', marginTop: 14 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: c.sageLight }}>
+                      {['Quarter', 'Attendance avg', 'Target', 'Edu progress avg', 'Residents'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {educationItems.map((row: EducationAttendanceOkrItem, i: number) => (
+                      <tr key={`${row.period}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
+                        <td style={{ padding: '8px 12px' }}>{row.period}</td>
+                        <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.attendanceRateAvg != null ? `${Math.round(row.attendanceRateAvg * 100)}%` : '—'}</td>
+                        <td style={{ padding: '8px 12px', color: c.muted }}>{row.targetAttendanceRate != null ? `${Math.round(row.targetAttendanceRate * 100)}%` : '—'}</td>
+                        <td style={{ padding: '8px 12px', color: c.muted }}>{row.progressPercentAvg != null ? `${Number(row.progressPercentAvg).toFixed(1)}%` : '—'}</td>
+                        <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : (
+          <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>
+            No OKR data available yet. Add `education_records` and/or set quarterly targets.
+          </p>
+        )}
+      </div>
+
+      <QuarterlyOkrRateSection
+        title="OKR — Healing: Process sessions with progress (Quarterly)"
+        subtitle="Share of process sessions where progress was noted (numerator / total sessions)."
+        response={okrProcess}
+        unitLabel="Sessions"
+        emptyMessage="No quarterly data yet. Add process recordings with session dates and/or set targets."
+      />
+      <QuarterlyOkrRateSection
+        title="OKR — Caring: Home visits without safety concern (Quarterly)"
+        subtitle="Visits where no safety concern was noted, as a share of all dated home visits."
+        response={okrVisits}
+        unitLabel="Visits"
+        emptyMessage="No quarterly data yet. Add home visits with visit dates and/or set targets."
+      />
+      <QuarterlyOkrRateSection
+        title="OKR — Healing: Incident resolution (Quarterly)"
+        subtitle="Share of incident reports marked resolved in each quarter."
+        response={okrIncidents}
+        unitLabel="Incidents"
+        emptyMessage="No quarterly data yet. Add incident reports with incident dates and/or set targets."
+      />
+
+      <QuarterlyOkrRateSection
+        title="OKR — Outreach: Posts that drive donation referrals (Quarterly)"
+        subtitle="Share of social posts with at least one recorded donation referral in the quarter."
+        response={okrSocialRef}
+        unitLabel="Posts"
+        emptyMessage="No quarterly social post data yet. Add dated social posts and referral fields."
+      />
+      <QuarterlyOkrRateSection
+        title="OKR — Outreach: Social click-through rate (Quarterly)"
+        subtitle="Aggregate CTR for posts dated in each quarter (clicks ÷ impressions)."
+        response={okrSocialCtr}
+        unitLabel="Clicks vs impressions"
+        emptyMessage="No social impressions in dataset for recent quarters."
+      />
+
       {(role === 'Supervisor' || role === 'CaseManager') && (
         <>
           <SectionTitle>Donor Summary</SectionTitle>
@@ -568,7 +876,29 @@ type EngagementVsVanitySummary = {
   segments: { segment: string; postCount: number }[];
 };
 
+type AnnualAccomplishmentReport = {
+  year: number;
+  generatedAtUtc: string;
+  beneficiaries: { residentBeneficiaries: number; activeResidentsNow: number };
+  outcomes: {
+    reintegrationReadyNow: number;
+    progressSessionRate: number;
+    safetyConcernVisitRate: number;
+    incidentResolvedRate: number;
+    stayedInSchoolRate: number;
+    avgEducationProgressPercent: number;
+    avgGeneralHealthScore: number;
+  };
+  services: {
+    caring: { homeVisits: number; interventionPlans: number; visitsWithSafetyConcern: number };
+    healing: { processSessions: number; sessionsWithProgress: number; healthRecords: number; incidentReports: number; resolvedIncidents: number };
+    teaching: { educationRecords: number; enrolledCount: number };
+  };
+};
+
 function StaffReports() {
+  const [annual, setAnnual] = useState<AnnualAccomplishmentReport | null>(null);
+  const [annualYear, setAnnualYear] = useState<number>(new Date().getFullYear());
   const [bridge, setBridge] = useState<InsightBridgeRow[]>([]);
   const [campaigns, setCampaigns] = useState<InsightDonationByCampaignRow[]>([]);
   const [monthly, setMonthly] = useState<InsightDonationMonthlyRow[]>([]);
@@ -581,13 +911,18 @@ function StaffReports() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [bridgeRes, campaignRes, monthlyRes, evRes] = await Promise.allSettled([
+      const [annualRes, bridgeRes, campaignRes, monthlyRes, evRes] = await Promise.allSettled([
+        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then(async (r) => (r.ok ? r.json() : null)),
         api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(async (r) => (r.ok ? r.json() : [])),
         api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(async (r) => (r.ok ? r.json() : [])),
         api('/api/insights/donations/monthly?take=120').then(async (r) => (r.ok ? r.json() : [])),
         api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
       ]);
 
+      const nextAnnual =
+        annualRes.status === 'fulfilled' && annualRes.value && typeof annualRes.value === 'object' && 'services' in annualRes.value
+          ? (annualRes.value as AnnualAccomplishmentReport)
+          : null;
       const nextBridge = bridgeRes.status === 'fulfilled' && Array.isArray(bridgeRes.value) ? bridgeRes.value : [];
       const nextCampaigns = campaignRes.status === 'fulfilled' && Array.isArray(campaignRes.value) ? campaignRes.value : [];
       const nextMonthly = monthlyRes.status === 'fulfilled' && Array.isArray(monthlyRes.value) ? monthlyRes.value : [];
@@ -595,25 +930,50 @@ function StaffReports() {
         ? evRes.value as EngagementVsVanitySummary
         : null;
 
+      setAnnual(nextAnnual);
       setBridge(nextBridge);
       setCampaigns(nextCampaigns);
       setMonthly(nextMonthly);
       setEvSummary(nextEv);
 
-      if (nextBridge.length === 0 && nextCampaigns.length === 0 && nextMonthly.length === 0 && !nextEv) {
+      if (!nextAnnual && nextBridge.length === 0 && nextCampaigns.length === 0 && nextMonthly.length === 0 && !nextEv) {
         setError('Failed to load reports.');
       }
     } catch { setError('Failed to load reports.'); }
     finally { setLoading(false); }
-  }, [bridgeTake, campaignTake]);
+  }, [annualYear, bridgeTake, campaignTake]);
 
   useEffect(() => { load(); }, [load]);
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
-  const last = bridge.length ? bridge[bridge.length - 1] : null;
+  const bridgeCapped = sortRowsByMonthAsc(capRowsAtChartMaxMonth(bridge, (r) => r.month), (r) => r.month);
+  const bridgeByKey = new Map(
+    bridgeCapped
+      .map((r) => {
+        const d = parseMonthStart(r.month);
+        if (!d) return null;
+        return [monthKey(d), r] as const;
+      })
+      .filter((x): x is readonly [string, InsightBridgeRow] => x != null),
+  );
+  const bridgeWindow = buildMonthWindowEndingAtCap(18);
+  const bridgeWindowRows = bridgeWindow.map((d) => {
+    const row = bridgeByKey.get(monthKey(d));
+    return row ?? {
+      month: d.toISOString(),
+      posts_n: 0,
+      click_throughs: 0,
+      donation_referrals: 0,
+      donation_total_php: 0,
+      incidents: 0,
+      avg_edu_progress: 0,
+      avg_health: 0,
+    };
+  });
+  const last = bridgeWindowRows.length ? bridgeWindowRows[bridgeWindowRows.length - 1] : null;
   const campaignChartData = campaigns.map((r) => ({ name: r.campaignName, total: Number(r.totalValuePhp ?? 0) }));
-  const bridgeChartData = bridge.map((r) => ({
+  const bridgeChartData = bridgeWindowRows.map((r) => ({
     month: new Date(r.month).toLocaleDateString('en-US', { year: '2-digit', month: 'short' }),
     donations: Number(r.donation_total_php ?? 0),
     referrals: Number(r.donation_referrals ?? 0),
@@ -622,6 +982,83 @@ function StaffReports() {
 
   return (
     <div>
+      <SectionTitle>Annual Accomplishment Report</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Caring, Healing, and Teaching services + beneficiary counts + outcomes.
+      </p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+        <label style={{ fontSize: 12, color: c.muted }}>
+          Year:
+          <select value={annualYear} onChange={(e) => setAnnualYear(Number(e.target.value))}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </label>
+        {annual?.generatedAtUtc && (
+          <span style={{ fontSize: 12, color: c.muted }}>Generated: {new Date(annual.generatedAtUtc).toLocaleString()}</span>
+        )}
+      </div>
+
+      {annual ? (
+        <>
+          <SectionTitle>Beneficiaries</SectionTitle>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
+            <StatCard label="Residents served (unique)" value={annual.beneficiaries.residentBeneficiaries ?? '—'} accent={c.goldLight} />
+            <StatCard label="Active residents (current)" value={annual.beneficiaries.activeResidentsNow ?? '—'} />
+          </div>
+
+          <SectionTitle>Services</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 18 }}>
+            <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: c.forest }}>Caring</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: c.muted }}>Safety, stability, and continuity of care.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+                <StatCard label="Home visits" value={annual.services.caring.homeVisits} />
+                <StatCard label="Intervention plans" value={annual.services.caring.interventionPlans} />
+                <StatCard label="Safety concerns" value={annual.services.caring.visitsWithSafetyConcern} accent={c.roseLight} />
+              </div>
+            </div>
+            <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: c.forest }}>Healing</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: c.muted }}>Counseling, wellbeing checks, and incident response.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+                <StatCard label="Process sessions" value={annual.services.healing.processSessions} />
+                <StatCard label="Progress noted" value={annual.services.healing.sessionsWithProgress} accent={c.goldLight} />
+                <StatCard label="Health records" value={annual.services.healing.healthRecords} />
+                <StatCard label="Incidents" value={annual.services.healing.incidentReports} accent={c.roseLight} />
+              </div>
+            </div>
+            <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: c.forest }}>Teaching</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: c.muted }}>Education support and learning progress.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+                <StatCard label="Education records" value={annual.services.teaching.educationRecords} />
+                <StatCard label="Enrolled records" value={annual.services.teaching.enrolledCount} accent={c.sageLight} />
+              </div>
+            </div>
+          </div>
+
+          <SectionTitle>Outcomes</SectionTitle>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+            <StatCard label="Reintegration ready (current)" value={annual.outcomes.reintegrationReadyNow} accent={c.goldLight} />
+            <StatCard label="Progress session rate" value={`${Math.round((annual.outcomes.progressSessionRate ?? 0) * 100)}%`} />
+            <StatCard label="Safety concern visit rate" value={`${Math.round((annual.outcomes.safetyConcernVisitRate ?? 0) * 100)}%`} />
+            <StatCard label="Incident resolved rate" value={`${Math.round((annual.outcomes.incidentResolvedRate ?? 0) * 100)}%`} />
+            <StatCard label="Stayed in school rate" value={`${Math.round((annual.outcomes.stayedInSchoolRate ?? 0) * 100)}%`} />
+            <StatCard label="Avg education progress" value={`${Number(annual.outcomes.avgEducationProgressPercent ?? 0).toFixed(1)}%`} />
+            <StatCard label="Avg health score" value={Number(annual.outcomes.avgGeneralHealthScore ?? 0).toFixed(1)} />
+          </div>
+        </>
+      ) : (
+        <p style={{ fontSize: 12, color: c.muted, marginBottom: 18 }}>
+          Annual report data is unavailable for the selected year.
+        </p>
+      )}
+
+      <SocialMediaImpactSection api={api} />
+
       <SectionTitle>Reports (ML pipelines)</SectionTitle>
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
         These are aggregate, planning-focused indicators (not causal claims). Source: <code>/api/insights/*</code>
@@ -656,6 +1093,9 @@ function StaffReports() {
       )}
 
       <SectionTitle>Campaign effectiveness (top by total PHP)</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -8, marginBottom: 12 }}>
+        Labeled campaigns only; uncategorized gifts are excluded from this breakdown and included in monthly / bridge totals.
+      </p>
       {campaignChartData.length > 0 && (
         <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 16 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: c.forest, margin: 0, marginBottom: 8 }}>Top campaigns (total PHP)</p>
@@ -714,7 +1154,7 @@ function StaffReports() {
             </tr>
           </thead>
           <tbody>
-            {bridge.slice(-18).map((row, i) => (
+            {bridgeWindowRows.map((row, i) => (
               <tr key={`${row.month}-${i}`} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                 <td style={{ padding: '8px 12px' }}>{new Date(row.month).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</td>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.posts_n}</td>
@@ -985,8 +1425,22 @@ function StaffPendingApprovals({ onQueueChanged }: { onQueueChanged?: () => void
 export default function StaffPortal() {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
-  const navItems = getNavItems(role);
-  const [activeNav, setActiveNav] = useState('Dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navItems = useMemo(() => getStaffNavItems(role), [role]);
+  const tabSlug = searchParams.get('tab');
+  const activeNav = useMemo(() => {
+    const n = staffSlugToNavItem(tabSlug, role);
+    return navItems.includes(n) ? n : navItems[0] ?? 'Dashboard';
+  }, [tabSlug, role, navItems]);
+
+  useEffect(() => {
+    const desired = staffNavItemToSlug(activeNav);
+    if (searchParams.get('tab') !== desired) {
+      setSearchParams({ tab: desired }, { replace: true });
+    }
+  }, [activeNav, searchParams, setSearchParams]);
+
+  const setTab = (item: string) => setSearchParams({ tab: staffNavItemToSlug(item) }, { replace: true });
   const displayRole = role ?? 'Staff';
   const supervisor = role === 'Supervisor';
   const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(supervisor);
@@ -1002,12 +1456,7 @@ export default function StaffPortal() {
       case 'Caseload':
       case 'My Residents':
       case 'Residents':
-        return <DataPanel title="Residents" url="/api/residents" keyField="residentId" columns={[
-          { key: 'residentId', label: 'ID' }, { key: 'caseControlNo', label: 'Case No.' },
-          { key: 'caseStatus', label: 'Status' }, { key: 'sex', label: 'Sex' },
-          { key: 'dateOfAdmission', label: 'Date Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
-          { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'Social Worker' },
-        ]} />;
+        return <ResidentsPanel role={role} />;
 
       case 'Session Notes':
         return <CrudDataPanel title="Session Notes" url="/api/processrecordings" keyField="recordingId" canCreate canUpdate columns={[
@@ -1101,13 +1550,15 @@ export default function StaffPortal() {
         user={`${user?.userName ?? 'Staff'} · ${displayRole}`}
         onLogout={handleLogout}
       />
+      <Sidebar id="staff-sidebar" items={navItems} active={activeNav} setActive={setTab}
+        user={`${user?.userName ?? 'Staff'} · ${displayRole}`} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Command center"
           style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
           <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>{displayRole} Portal</p>
+            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>{displayRole} Dashboard</p>
             <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
-              Good morning, {user?.userName ?? 'Staff'}
+              Welcome, {user?.userName ?? 'Staff'}
             </h1>
           </div>
         </section>

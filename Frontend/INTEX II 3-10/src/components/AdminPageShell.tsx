@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
+import { adminNavItemToSlug } from '../lib/portalTabs';
 
 const c = {
   ivory: '#FBF8F2',
@@ -28,8 +29,7 @@ export function AdminPageShell({
 
   const onSelectNavItem = (item: string) => {
     if (item === 'Pipelines') navigate('/admin/pipelines');
-    else if (item === 'Dashboard') navigate('/admin');
-    else navigate('/admin', { state: { nav: item } });
+    else navigate(`/admin?tab=${adminNavItemToSlug(item)}`);
   };
 
   const handleLogout = () => {

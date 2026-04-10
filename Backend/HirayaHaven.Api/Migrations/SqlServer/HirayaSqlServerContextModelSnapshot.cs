@@ -56,6 +56,10 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("FirstName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("first_name");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -64,6 +68,10 @@ namespace HirayaHaven.Api.Migrations.SqlServer
 
                     b.Property<DateTime?>("LastLogin")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("last_name");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -262,6 +270,15 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
+
+                    b.Property<DateTime?>("RecurringCancelledAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("recurring_cancelled_at");
+
+                    b.Property<string>("RecurringSeriesKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("recurring_series_key");
 
                     b.Property<int?>("ReferralPostId")
                         .HasColumnType("int")
@@ -674,6 +691,41 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                     b.HasIndex("ResidentId");
 
                     b.ToTable("intervention_plans", (string)null);
+                });
+
+            modelBuilder.Entity("HirayaHaven.Api.Models.OkrTarget", b =>
+                {
+                    b.Property<int>("TargetId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("target_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TargetId"));
+
+                    b.Property<string>("MetricKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("metric_key");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("notes");
+
+                    b.Property<int>("Quarter")
+                        .HasColumnType("int")
+                        .HasColumnName("quarter");
+
+                    b.Property<double>("TargetValue")
+                        .HasColumnType("float")
+                        .HasColumnName("target_value");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int")
+                        .HasColumnName("year");
+
+                    b.HasKey("TargetId");
+
+                    b.ToTable("okr_targets", (string)null);
                 });
 
             modelBuilder.Entity("HirayaHaven.Api.Models.Organization", b =>
@@ -1259,6 +1311,14 @@ namespace HirayaHaven.Api.Migrations.SqlServer
                     b.Property<string>("Religion")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("religion");
+
+                    b.Property<string>("ResidentFirstName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("resident_first_name");
+
+                    b.Property<string>("ResidentLastName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("resident_last_name");
 
                     b.Property<int?>("SafehouseId")
                         .HasColumnType("int")

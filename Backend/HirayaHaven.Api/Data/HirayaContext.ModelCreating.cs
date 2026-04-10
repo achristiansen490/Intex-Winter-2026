@@ -42,6 +42,9 @@ public partial class HirayaContext
                 .WithMany()
                 .HasForeignKey(e => e.ResetInitiatedBy)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(e => e.FirstName).HasColumnName("first_name");
+            entity.Property(e => e.LastName).HasColumnName("last_name");
         });
 
         modelBuilder.Entity<Organization>(entity =>
@@ -293,6 +296,8 @@ public partial class HirayaContext
             MapText(entity, e => e.DonationType, "donation_type");
             MapText(entity, e => e.DonationDate, "donation_date");
             MapBool(entity, e => e.IsRecurring, "is_recurring");
+            entity.Property(e => e.RecurringSeriesKey).HasColumnName("recurring_series_key").HasMaxLength(64);
+            entity.Property(e => e.RecurringCancelledAt).HasColumnName("recurring_cancelled_at");
             MapText(entity, e => e.CampaignName, "campaign_name");
             MapText(entity, e => e.ChannelSource, "channel_source");
             MapText(entity, e => e.CurrencyCode, "currency_code");
@@ -361,6 +366,8 @@ public partial class HirayaContext
             entity.ToTable("residents");
             entity.HasKey(e => e.ResidentId);
             entity.Property(e => e.ResidentId).HasColumnName("resident_id").ValueGeneratedOnAdd();
+            MapText(entity, e => e.ResidentFirstName, "resident_first_name");
+            MapText(entity, e => e.ResidentLastName, "resident_last_name");
             MapText(entity, e => e.CaseControlNo, "case_control_no");
             MapText(entity, e => e.InternalCode, "internal_code");
             entity.Property(e => e.SafehouseId).HasColumnName("safehouse_id");
@@ -596,6 +603,18 @@ public partial class HirayaContext
             MapText(entity, e => e.MetricPayloadJson, "metric_payload_json");
             MapBool(entity, e => e.IsPublished, "is_published");
             MapText(entity, e => e.PublishedAt, "published_at");
+        });
+
+        modelBuilder.Entity<OkrTarget>(entity =>
+        {
+            entity.ToTable("okr_targets");
+            entity.HasKey(e => e.TargetId);
+            entity.Property(e => e.TargetId).HasColumnName("target_id").ValueGeneratedOnAdd();
+            MapText(entity, e => e.MetricKey, "metric_key");
+            entity.Property(e => e.Year).HasColumnName("year");
+            entity.Property(e => e.Quarter).HasColumnName("quarter");
+            entity.Property(e => e.TargetValue).HasColumnName("target_value");
+            MapText(entity, e => e.Notes, "notes");
         });
 
         modelBuilder.Entity<PipelineTrainingRun>(entity =>

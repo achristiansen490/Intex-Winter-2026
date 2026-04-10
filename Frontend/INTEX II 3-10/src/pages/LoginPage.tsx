@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth, type Role } from '../context/AuthContext';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/Logo';
+import { isSafeReturnPath, resolvePostLoginTarget } from '../lib/postLoginRouting';
 
 const c = {
   ivory: '#FBF8F2',
@@ -12,22 +13,12 @@ const c = {
   white: '#FFFFFF',
 };
 
-function getDashboardPath(role: Role | null): string {
-  switch (role) {
-    case 'Admin': return '/admin';
-    case 'Supervisor':
-    case 'CaseManager':
-    case 'SocialWorker':
-    case 'FieldWorker': return '/staff';
-    case 'Resident': return '/resident';
-    case 'Donor': return '/donor';
-    default: return '/';
-  }
-}
-
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrlRaw = searchParams.get('returnUrl');
+  const returnUrl = returnUrlRaw && isSafeReturnPath(returnUrlRaw) ? returnUrlRaw : null;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,7 +32,7 @@ export default function LoginPage() {
     try {
       // login() now resolves after /me completes and returns the role directly
       const resolvedRole = await login(email, password);
-      navigate(getDashboardPath(resolvedRole), { replace: true });
+      navigate(resolvePostLoginTarget(resolvedRole, returnUrl), { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -147,8 +138,16 @@ export default function LoginPage() {
 
         <p style={{ textAlign: 'center', fontSize: 13, color: c.muted, marginTop: '1.5rem' }}>
           New donor?{' '}
-          <Link to="/register" style={{ color: c.forest, fontWeight: 500 }}>
+          <Link
+            to={returnUrl ? `/register?returnUrl=${encodeURIComponent(returnUrl)}` : '/register'}
+            style={{ color: c.forest, fontWeight: 500 }}
+          >
             Create an account
+          </Link>
+        </p>
+        <p style={{ textAlign: 'center', fontSize: 13, color: c.muted, marginTop: '0.5rem' }}>
+          <Link to="/" style={{ color: c.forest, fontWeight: 500 }}>
+            Return to homepage
           </Link>
         </p>
       </div>

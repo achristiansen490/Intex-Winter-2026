@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using HirayaHaven.Api.Data;
 using HirayaHaven.Api.Models;
@@ -40,6 +41,7 @@ public abstract class CrudControllerBase<TEntity>(
         "organization" => "organization",
         "rolepermission" => "roles_permissions",
         "publicimpactsnapshot" => "reports",
+        "supporter" => "supporters",
         _ => typeof(TEntity).Name.ToLowerInvariant()
     };
 
@@ -70,6 +72,34 @@ public abstract class CrudControllerBase<TEntity>(
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null) return null;
         return await UserManager.FindByIdAsync(userId);
+    }
+
+    /// <summary>
+    /// Donor logins must reference a <see cref="Supporter"/> row so gifts can be tied in the database.
+    /// If the account has no link yet, creates a minimal supporter (name/email from the user) and saves <c>AppUser.SupporterId</c>.
+    /// </summary>
+    protected async Task<AppUser> EnsureDonorSupporterLinkedAsync(AppUser user, CancellationToken ct)
+    {
+        if (user.SupporterId.HasValue) return user;
+
+        var supporter = new Supporter
+        {
+            DisplayName = user.UserName ?? user.Email ?? "Donor",
+            Email = user.Email,
+            Status = "Active",
+            SupporterType = "Individual",
+            CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        };
+        Db.Supporters.Add(supporter);
+        await Db.SaveChangesAsync(ct);
+
+        user.SupporterId = supporter.SupporterId;
+        var updateResult = await UserManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", updateResult.Errors.Select(e => e.Description)));
+
+        var refreshed = await UserManager.FindByIdAsync(user.Id.ToString());
+        return refreshed ?? user;
     }
 
     /// <summary>
@@ -124,11 +154,12 @@ public abstract class CrudControllerBase<TEntity>(
                 query = query.Where(e => EF.Property<int>(e, "ResidentId") == user.ResidentId.Value);
         }
 
-        // Donor: own records only
-        if (role == "Donor" && user.SupporterId.HasValue)
+        // Donor: own records only (never return unscoped rows if SupporterId is missing)
+        if (role == "Donor" && typeof(TEntity).GetProperty("SupporterId") is not null)
         {
-            if (typeof(TEntity).GetProperty("SupporterId") is not null)
-                query = query.Where(e => EF.Property<int>(e, "SupporterId") == user.SupporterId.Value);
+            if (!user.SupporterId.HasValue)
+                return query.Where(_ => false);
+            query = query.Where(e => EF.Property<int>(e, "SupporterId") == user.SupporterId.Value);
         }
 
         return query;

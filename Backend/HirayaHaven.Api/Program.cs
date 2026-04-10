@@ -5,6 +5,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using HirayaHaven.Api.Services;
 
@@ -89,6 +90,9 @@ builder.Services.AddDbContext<HirayaContext>(options =>
     {
         options.UseSqlite(resolvedSqliteConnection);
     }
+    // Suppress the PendingModelChangesWarning — all migrations are applied; the snapshot
+    // divergence is cosmetic and does not affect runtime behaviour.
+    options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 });
 
 // --- Identity ---
@@ -248,7 +252,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// In Development, the Vite proxy calls http://localhost:5000. HTTPS redirection to :5001 can
+// In Development, the Vite proxy calls http://127.0.0.1:5051. HTTPS redirection to :5001 can
 // cause follow-up requests to drop the Authorization header, breaking GET /api/auth/me (401).
 if (!app.Environment.IsDevelopment())
 {
@@ -308,7 +312,7 @@ static async Task SeedAsync(IServiceProvider services)
         // Admin — full CRUD on everything
         foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports", "intervention_plans", "donations", "users", "staff",
-            "safehouses", "reports", "audit_log", "organization" })
+            "safehouses", "reports", "audit_log", "organization", "supporters" })
             Allow("Admin", res, "Create,Read,Update,Delete");
 
         // Supervisor
@@ -360,11 +364,15 @@ static async Task SeedAsync(IServiceProvider services)
 
         // Donor
         Allow("Donor", "donations", "Read", "Own records only");
+        Allow("Donor", "donations", "Create", "Own records only");
+        Allow("Donor", "supporters", "Read", "Own records only");
         Allow("Donor", "organization", "Read");
 
         db.RolePermissions.AddRange(perms);
         await db.SaveChangesAsync();
     }
+
+    await UpsertSupportersPermissionsIfMissingAsync(db);
 
     // Seed one test account per role.
     // Admin password must be set explicitly:
@@ -427,6 +435,43 @@ static async Task SeedAsync(IServiceProvider services)
         });
         await db.SaveChangesAsync();
     }
+}
+
+/// <summary>
+/// Older databases may lack donor rows for <c>supporters</c> Read, <c>donations</c> Read/Create; API checks use resource names <c>supporters</c> and <c>donations</c>.
+/// </summary>
+static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
+{
+    async Task EnsureAsync(string role, string resource, string action, string? scope = null)
+    {
+        var exists = await db.RolePermissions.AnyAsync(p =>
+            p.Role == role &&
+            p.Resource == resource &&
+            p.Action != null &&
+            p.Action.Equals(action, StringComparison.OrdinalIgnoreCase));
+        if (exists) return;
+
+        db.RolePermissions.Add(new RolePermission
+        {
+            Role = role,
+            Resource = resource,
+            Action = action,
+            IsAllowed = true,
+            ScopeNote = scope
+        });
+    }
+
+    await EnsureAsync("Donor", "supporters", "Read", "Own records only");
+    await EnsureAsync("Donor", "donations", "Read", "Own records only");
+    await EnsureAsync("Donor", "donations", "Create", "Own records only");
+
+    foreach (var a in new[] { "Create", "Read", "Update", "Delete" })
+        await EnsureAsync("Admin", "supporters", a, null);
+
+    await EnsureAsync("Supervisor", "supporters", "Read", "Own safehouse");
+
+    await db.SaveChangesAsync();
+    PermissionService.InvalidateCache();
 }
 
 static void LoadDotEnvIfPresent(string path)

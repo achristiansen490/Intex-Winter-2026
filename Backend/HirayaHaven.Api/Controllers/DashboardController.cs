@@ -100,8 +100,8 @@ public class DashboardController(HirayaContext context) : ControllerBase
             p.HasCallToAction == true && (p.DonationReferrals ?? 0) > 0);
 
         var topCampaignByReferrals = await context.SocialMediaPosts
-            .Where(p => p.CampaignName != null)
-            .GroupBy(p => p.CampaignName!)
+            .Where(p => p.CampaignName != null && !string.IsNullOrWhiteSpace(p.CampaignName))
+            .GroupBy(p => p.CampaignName!.Trim())
             .Select(g => new
             {
                 campaignName = g.Key,
@@ -152,6 +152,75 @@ public class DashboardController(HirayaContext context) : ControllerBase
                 ctaReferralRate = ctaPostCount == 0 ? 0 : (double)ctaPostsWithReferrals / ctaPostCount,
                 topCampaignByReferrals
             }
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpGet("public-impact-series")]
+    public async Task<IActionResult> GetPublicImpactSeries()
+    {
+        var monthlySupportTrendRaw = await context.Donations
+            .AsNoTracking()
+            .Where(d => d.DonationDate != null && d.DonationDate!.Length >= 7)
+            .Select(d => new
+            {
+                Month = d.DonationDate!.Substring(0, 7),
+                Total = (double)(d.Amount ?? d.EstimatedValue ?? 0m),
+            })
+            .GroupBy(x => x.Month)
+            .Select(g => new
+            {
+                month = g.Key,
+                total = g.Sum(x => x.Total),
+            })
+            .OrderByDescending(x => x.month)
+            .Take(12)
+            .ToListAsync();
+
+        var monthlySupportTrend = monthlySupportTrendRaw
+            .OrderBy(x => x.month)
+            .ToList();
+
+        var programAllocationMix = await context.DonationAllocations
+            .AsNoTracking()
+            .Where(a => a.ProgramArea != null)
+            .GroupBy(a => a.ProgramArea!)
+            .Select(g => new
+            {
+                name = g.Key,
+                total = g.Sum(x => x.AmountAllocated ?? 0),
+            })
+            .OrderByDescending(x => x.total)
+            .Take(8)
+            .ToListAsync();
+
+        var educationRecordCount = await context.EducationRecords.CountAsync();
+
+        var latestEducationMonth = await context.EducationRecords
+            .AsNoTracking()
+            .Where(r => r.RecordDate != null && r.RecordDate!.Length >= 7)
+            .Select(r => r.RecordDate!.Substring(0, 7))
+            .OrderByDescending(m => m)
+            .FirstOrDefaultAsync();
+
+        double? latestAvgEducationProgress = null;
+        if (!string.IsNullOrWhiteSpace(latestEducationMonth))
+        {
+            var monthEdu = context.EducationRecords
+                .AsNoTracking()
+                .Where(r => r.RecordDate != null && r.RecordDate!.StartsWith(latestEducationMonth)
+                    && r.ProgressPercent != null);
+            if (await monthEdu.AnyAsync())
+                latestAvgEducationProgress = await monthEdu.AverageAsync(r => r.ProgressPercent!.Value);
+        }
+
+        return Ok(new
+        {
+            monthlySupportTrend,
+            programAllocationMix,
+            educationRecordCount,
+            latestAvgEducationProgress,
+            latestEducationMonth,
         });
     }
 
