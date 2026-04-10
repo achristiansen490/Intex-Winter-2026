@@ -167,7 +167,7 @@ export default function LandingPage() {
               Hiraya Haven provides safe homes and long-term restoration support for girls who are survivors of abuse and exploitation in Metro Manila and nearby communities.
             </p>
             <div className="landing-hero-actions">
-              <Link to="/register" style={{ background: c.gold, color: c.forest, fontSize: 14, fontWeight: 600, padding: '12px 28px', borderRadius: 28, textDecoration: 'none', display: 'inline-block' }}>
+              <Link to="/login?returnUrl=/donate" style={{ background: c.gold, color: c.forest, fontSize: 14, fontWeight: 600, padding: '12px 28px', borderRadius: 28, textDecoration: 'none', display: 'inline-block' }}>
                 Give Hope Today
               </Link>
               <Link to="/impact" style={{ background: 'transparent', color: c.ivory, fontSize: 14, padding: '12px 28px', borderRadius: 28, border: '1px solid rgba(251,248,242,0.52)', textDecoration: 'none', display: 'inline-block' }}>
@@ -267,8 +267,8 @@ export default function LandingPage() {
                 <h2 id="cta-heading" style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: c.ivory, marginBottom: 8, fontWeight: 400 }}>Ready to make a difference?</h2>
                 <p style={{ fontSize: 14, color: 'rgba(251,248,242,0.75)' }}>Every peso goes directly toward safety, healing, and futures.</p>
               </div>
-              <Link to="/register" style={{ background: c.gold, color: c.forest, fontSize: 14, fontWeight: 600, padding: '14px 32px', borderRadius: 28, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-block' }}>
-                Create an account
+              <Link to="/login?returnUrl=/donate" style={{ background: c.gold, color: c.forest, fontSize: 14, fontWeight: 600, padding: '14px 32px', borderRadius: 28, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-block' }}>
+                Donate now
               </Link>
             </div>
           </div>
