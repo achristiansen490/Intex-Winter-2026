@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage';
 import ImpactPage from './pages/ImpactPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import RegisterSuccessPage from './pages/RegisterSuccessPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import DonorPortal from './pages/DonorPortal';
@@ -44,6 +45,7 @@ function AppRoutes() {
         <Route path="/impact" element={<ImpactPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/pending-approval" element={<PendingApprovalPage />} />
+        <Route path="/register/success" element={<RegisterSuccessPage />} />
         <Route path="/forbidden" element={<Navigate to="/" replace />} />
 
         {/* Auth routes — redirect if already logged in */}
