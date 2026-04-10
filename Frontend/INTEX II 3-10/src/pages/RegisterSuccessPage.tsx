@@ -71,7 +71,7 @@ export default function RegisterSuccessPage() {
                 fontWeight: 600,
               }}
             >
-              {afterLogin === '/donate' ? 'Sign in to donate' : 'Go to donor dashboard'}
+              Go to donor dashboard
             </Link>
           )}
           <Link
@@ -91,9 +91,7 @@ export default function RegisterSuccessPage() {
 
         {!isStaff && (
           <p style={{ fontSize: 13, color: c.muted, marginTop: 14 }}>
-            {afterLogin === '/donate'
-              ? 'Sign in with your new account to open the donate page.'
-              : 'You will sign in first, then be redirected to your donor dashboard.'}
+            You will sign in first, then be redirected to your donor dashboard.
           </p>
         )}
       </section>

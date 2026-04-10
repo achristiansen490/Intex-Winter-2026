@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
@@ -950,7 +951,7 @@ function MyProfile() {
 // ── Portal ────────────────────────────────────────────────────────────────────
 
 export default function DonorPortal() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [donateModalOpen, setDonateModalOpen] = useState(false);
@@ -974,6 +975,9 @@ export default function DonorPortal() {
     navigate('/');
   };
 
+  /** Display name shown in the donor portal shell (welcome + sidebar). */
+  const donorDisplayName = 'Rose';
+
   const renderContent = () => {
     switch (activeNav) {
       case 'My Impact':        return <MyImpact refreshSignal={donationRefreshSignal} />;
@@ -985,32 +989,33 @@ export default function DonorPortal() {
   };
 
   return (
-    <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="donor-sidebar" items={navItems} active={activeNav} setActive={setTab}
-        user={`${user?.userName ?? 'Donor'} · Donor`} onLogout={handleLogout} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
-        <section aria-label="Welcome"
-          style={{ background: DASH_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Donor Dashboard</p>
-              <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Donor'}</h1>
-            </div>
-            <button
-              type="button"
-              onClick={() => setDonateModalOpen(true)}
-              style={{ background: c.gold, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>
-              Donate Again
-            </button>
+    <DashboardLayout
+      sidebar={
+        <Sidebar id="donor-sidebar" items={navItems} active={activeNav} setActive={setTab}
+          user={`${donorDisplayName} · Donor`} onLogout={handleLogout} />
+      }
+    >
+      <section aria-label="Welcome"
+        style={{ background: DASH_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Donor Dashboard</p>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {donorDisplayName}</h1>
           </div>
-        </section>
-        {renderContent()}
-        <ExampleDonateModal
-          open={donateModalOpen}
-          onClose={() => setDonateModalOpen(false)}
-          onRecorded={() => setDonationRefreshSignal((s) => s + 1)}
-        />
-      </div>
-    </main>
+          <button
+            type="button"
+            onClick={() => setDonateModalOpen(true)}
+            style={{ background: c.gold, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>
+            Donate
+          </button>
+        </div>
+      </section>
+      {renderContent()}
+      <ExampleDonateModal
+        open={donateModalOpen}
+        onClose={() => setDonateModalOpen(false)}
+        onRecorded={() => setDonationRefreshSignal((s) => s + 1)}
+      />
+    </DashboardLayout>
   );
 }

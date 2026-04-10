@@ -382,6 +382,7 @@ static async Task SeedAsync(IServiceProvider services)
     }
 
     await UpsertSupportersPermissionsIfMissingAsync(db);
+    await EnsureDefaultOkrTargetsAsync(db);
 
     // Seed one test account per role.
     // Admin password must be set explicitly:
@@ -483,6 +484,64 @@ static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
 
     await db.SaveChangesAsync();
     PermissionService.InvalidateCache();
+}
+
+/// <summary>
+/// Fills missing <see cref="OkrTarget"/> rows so dashboard OKR cards show Target % (not em dash).
+/// Values are 0..1; admins can override via <c>PUT /api/okrs/targets</c> or metric-specific PUT routes.
+/// Idempotent: only inserts (metric, year, quarter) combinations that do not exist yet.
+/// </summary>
+static async Task EnsureDefaultOkrTargetsAsync(HirayaContext db)
+{
+    const int startYear = 2022;
+    const int endYear = 2028;
+
+    // Must match OkrsController metric keys and rate semantics (share 0..1).
+    var defaults = new Dictionary<string, double>(StringComparer.Ordinal)
+    {
+        ["education.attendance"] = 0.85,
+        ["healing.process_sessions.progress_rate"] = 0.72,
+        ["caring.home_visits.clean_rate"] = 0.92,
+        ["healing.incidents.resolution_rate"] = 0.88,
+        ["outreach.social.referral_conversion_rate"] = 0.12,
+        ["outreach.social.click_through_rate"] = 0.025,
+    };
+
+    var existing = await db.OkrTargets.AsNoTracking()
+        .Select(t => new { t.MetricKey, t.Year, t.Quarter })
+        .ToListAsync();
+
+    var existingSet = existing
+        .Select(e => $"{e.MetricKey}\u001f{e.Year}\u001f{e.Quarter}")
+        .ToHashSet(StringComparer.Ordinal);
+
+    var toAdd = new List<OkrTarget>();
+    foreach (var (metricKey, targetValue) in defaults)
+    {
+        for (var y = startYear; y <= endYear; y++)
+        {
+            for (var q = 1; q <= 4; q++)
+            {
+                var k = $"{metricKey}\u001f{y}\u001f{q}";
+                if (existingSet.Contains(k)) continue;
+
+                toAdd.Add(new OkrTarget
+                {
+                    MetricKey = metricKey,
+                    Year = y,
+                    Quarter = q,
+                    TargetValue = targetValue,
+                    Notes = "Default seed target",
+                });
+                existingSet.Add(k);
+            }
+        }
+    }
+
+    if (toAdd.Count == 0) return;
+
+    db.OkrTargets.AddRange(toAdd);
+    await db.SaveChangesAsync();
 }
 
 static void LoadDotEnvIfPresent(string path)

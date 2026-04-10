@@ -68,9 +68,7 @@ export function QuarterlyOkrRateSection({
   /** Shown in table header for the fraction column, e.g. "Sessions" */
   unitLabel: string;
 }) {
-  const cappedItems = (response?.items ?? []).filter((item) =>
-    item.year < 2026 || (item.year === 2026 && item.quarter <= 1),
-  );
+  const cappedItems = response?.items ?? [];
   const latest = cappedItems[0];
   const rate = latest?.rate;
   const tgt = latest?.targetRate;

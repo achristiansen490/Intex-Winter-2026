@@ -7,7 +7,6 @@ import { Footer } from './components/Footer';
 
 // Pages
 import LandingPage from './pages/LandingPage';
-import DonatePage from './pages/DonatePage';
 import ImpactPage from './pages/ImpactPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -56,7 +55,6 @@ function AppRoutes() {
         {/* Protected: Donor */}
         <Route element={<ProtectedRoute allowedRoles={['Donor']} />}>
           <Route path="/donor" element={<DonorPortal />} />
-          <Route path="/donate" element={<DonatePage />} />
         </Route>
 
         {/* Protected: Staff (all staff roles) */}

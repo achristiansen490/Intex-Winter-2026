@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useId, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../lib/api';
@@ -599,21 +600,22 @@ export default function ResidentPortal() {
   };
 
   return (
-    <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="resident-sidebar" items={navItems} active={activeNav} setActive={setTab}
-        user={user?.userName ?? 'Resident'} onLogout={handleLogout} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
-        <section aria-label="Welcome"
-          style={{ background: RESIDENT_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
-          <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>Your safe space</p>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
-              Welcome, {user?.userName ?? 'Resident'}
-            </h1>
-          </div>
-        </section>
-        {renderContent()}
-      </div>
-    </main>
+    <DashboardLayout
+      sidebar={
+        <Sidebar id="resident-sidebar" items={navItems} active={activeNav} setActive={setTab}
+          user={user?.userName ?? 'Resident'} onLogout={handleLogout} />
+      }
+    >
+      <section aria-label="Welcome"
+        style={{ background: RESIDENT_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
+        <div>
+          <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>Your safe space</p>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
+            Welcome, {user?.userName ?? 'Resident'}
+          </h1>
+        </div>
+      </section>
+      {renderContent()}
+    </DashboardLayout>
   );
 }

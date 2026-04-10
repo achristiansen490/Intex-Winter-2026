@@ -65,7 +65,7 @@ export default function LoginPage() {
             Welcome back
           </h1>
           <p style={{ fontSize: 13, color: c.muted, marginTop: 6 }}>
-            {returnUrl === '/donate' ? 'Sign in with your donor account to continue to donate.' : 'Sign in to your account'}
+            Sign in to your account
           </p>
         </div>
 
