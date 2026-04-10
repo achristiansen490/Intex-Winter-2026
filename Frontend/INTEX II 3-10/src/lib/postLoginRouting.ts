@@ -49,6 +49,9 @@ export function canRoleAccessPath(role: Role, pathname: string): boolean {
   if (pathname === '/' || pathname.startsWith('/impact') || pathname.startsWith('/privacy') || pathname.startsWith('/pending-approval')) {
     return true;
   }
+  if (pathname.startsWith('/donate')) {
+    return role === 'Donor';
+  }
   if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
     return true;
   }

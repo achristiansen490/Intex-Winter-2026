@@ -60,7 +60,9 @@ export default function RegisterPage() {
       if (role === 'FieldWorker') {
         navigate('/register/success?type=staff');
       } else {
-        navigate('/register/success?type=donor');
+        const sp = new URLSearchParams({ type: 'donor' });
+        if (returnUrl) sp.set('returnUrl', returnUrl);
+        navigate(`/register/success?${sp.toString()}`);
       }
     } catch {
       setError('Network error. Please try again.');

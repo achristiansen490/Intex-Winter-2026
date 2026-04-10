@@ -83,7 +83,7 @@ export function NavBar() {
                   <Link to="/impact" style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>Impact</Link>
                   <Link to="/login" style={{ fontSize: 13, color: c.muted, textDecoration: 'none' }}>Log In</Link>
                   <Link
-                    to="/register"
+                    to="/login?returnUrl=/donate"
                     style={{
                       background: c.gold, color: c.forest,
                       fontSize: 13, fontWeight: 600,
@@ -91,7 +91,7 @@ export function NavBar() {
                       border: 'none', cursor: 'pointer', textDecoration: 'none',
                     }}
                   >
-                    Create an account
+                    Donate now
                   </Link>
                 </>
               ) : (
@@ -167,7 +167,7 @@ export function NavBar() {
                 <Link role="menuitem" to="/login" onClick={() => setOpen(false)} style={{ fontSize: 15, color: c.text, textDecoration: 'none', padding: '8px 0', borderBottom: '0.5px solid rgba(44,43,40,0.08)' }}>Log In</Link>
                 <Link
                   role="menuitem"
-                  to="/register"
+                  to="/login?returnUrl=/donate"
                   onClick={() => setOpen(false)}
                   style={{
                     background: c.gold, color: c.forest,
@@ -176,7 +176,7 @@ export function NavBar() {
                     textDecoration: 'none', marginTop: 4, alignSelf: 'flex-start',
                   }}
                 >
-                  Create an account
+                  Donate now
                 </Link>
               </>
             ) : (
