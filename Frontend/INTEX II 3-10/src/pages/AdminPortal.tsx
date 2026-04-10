@@ -1,3 +1,9 @@
+import { useState, useEffect, useCallback, useMemo, useId, useRef, lazy, Suspense, type ReactNode } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Sidebar } from '../components/Sidebar';
+import { useAuth } from '../context/AuthContext';
+import { ADMIN_NAV_ITEMS } from '../admin/constants';
+import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -606,7 +612,7 @@ function AdminDashboard() {
 
 // ── Pending Approvals (sensitive field changes) ───────────────────────────────
 
-function AdminPendingApprovals() {
+function AdminPendingApprovals({ onQueueChanged }: { onQueueChanged?: () => void }) {
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -652,7 +658,7 @@ function AdminPendingApprovals() {
     setBusy(id);
     try {
       const r = await api(`/api/auditlogs/${id}/${type}`, { method: 'POST' });
-      if (r.ok) { notify(type === 'approve' ? '✓ Change approved and applied.' : 'Change rejected.'); await load(); }
+      if (r.ok) { notify(type === 'approve' ? '✓ Change approved and applied.' : 'Change rejected.'); await load(); onQueueChanged?.(); }
       else notify(`${type} failed.`);
     } finally { setBusy(null); }
   };
@@ -762,7 +768,7 @@ function AdminResidentsPanel() {
   const columns = useMemo(() => [
     { key: 'residentId', label: 'ID' }, { key: 'residentName', label: 'Name' }, { key: 'caseControlNo', label: 'Case No.' },
     { key: 'safehouseId', label: 'Safehouse' }, { key: 'caseStatus', label: 'Status' },
-    { key: 'sex', label: 'Sex' }, { key: 'dateOfAdmission', label: 'Admitted' },
+    { key: 'sex', label: 'Sex' }, { key: 'dateOfAdmission', label: 'Date Admitted' },
     { key: 'currentRiskLevel', label: 'Risk' }, { key: 'reintegrationStatus', label: 'Reintegration' },
     { key: 'assignedSocialWorker', label: 'Social Worker' },
   ], []);
@@ -1269,7 +1275,19 @@ function AdminResidentsPanel() {
 
 // ── Generic read-only data panels ─────────────────────────────────────────────
 
-function DataPanel({ title, url, columns, keyField }: { title: string; url: string; columns: { key: string; label: string }[]; keyField: string }) {
+function DataPanel({
+  title,
+  url,
+  columns,
+  keyField,
+  transformRows,
+}: {
+  title: string;
+  url: string;
+  columns: { key: string; label: string }[];
+  keyField: string;
+  transformRows?: (rows: Record<string, unknown>[]) => Record<string, unknown>[];
+}) {
   const searchId = useId();
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1279,11 +1297,16 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
   const [page, setPage] = useState(1);
   const [residentNameById, setResidentNameById] = useState<Map<number, string>>(new Map());
 
+  const transformRowsRef = useRef(transformRows);
+  transformRowsRef.current = transformRows;
+
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
       const data = await api(url).then(r => r.json());
-      setRows(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : [];
+      const fn = transformRowsRef.current;
+      setRows(fn ? fn(arr) : arr);
     } catch { setError('Failed to load data.'); }
     finally { setLoading(false); }
   }, [url]);
@@ -1688,7 +1711,273 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
   );
 }
 
-// ── Portal component ──────────────────────────────────────────────────────────
+// ── Social media impact (admin) ───────────────────────────────────────────────
+
+type EngagementVsVanitySummary = {
+  totalPosts: number;
+  thresholds: { engagementScoreP75: number; donationReferralsP75: number };
+  segments: { segment: string; postCount: number }[];
+};
+
+function formatEngagementRatePct(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  if (n >= 0 && n <= 1) return `${(n * 100).toFixed(2)}%`;
+  return `${n.toFixed(2)}%`;
+}
+
+/** Round numeric values to 2 decimal places for Social Media Impact page. */
+function round2(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return n.toFixed(2);
+}
+
+/** Whole number for counts (e.g. linkage table Posts column). */
+function formatWhole(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return String(Math.round(n));
+}
+
+function formatPhp2(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function transformSocialLinkageRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.map((r) => ({
+    ...r,
+    postCount: formatWhole(r.postCount),
+    willReferRate: formatEngagementRatePct(r.willReferRate),
+    avgReferrals: round2(r.avgReferrals),
+    totalEstimatedValuePhp: formatPhp2(r.totalEstimatedValuePhp),
+    boostedRate: formatEngagementRatePct(r.boostedRate),
+  }));
+}
+
+const SOCIAL_POST_TABLE_COLUMNS = [
+  { key: 'createdAt', label: 'Date' },
+  { key: 'platform', label: 'Platform' },
+  { key: 'campaignName', label: 'Campaign' },
+  { key: 'reach', label: 'Reach' },
+  { key: 'likes', label: 'Likes' },
+  { key: 'comments', label: 'Comments' },
+  { key: 'engagementRate', label: 'Engagement' },
+  { key: 'donationReferrals', label: 'Referrals' },
+  { key: 'estimatedDonationValuePhp', label: 'Estimated (PHP)' },
+];
+
+function AdminSocialImpact() {
+  const [kpis, setKpis] = useState<Record<string, unknown> | null>(null);
+  const [overview, setOverview] = useState<Record<string, unknown> | null>(null);
+  const [posts, setPosts] = useState<Record<string, unknown>[]>([]);
+  const [evSummary, setEvSummary] = useState<EngagementVsVanitySummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const searchId = useId();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [kr, or, pr, er] = await Promise.all([
+        api('/api/dashboard/kpis').then((r) => r.json()),
+        api('/api/dashboard/overview').then((r) => r.json()),
+        api('/api/socialmediaposts?take=100').then((r) => r.json()),
+        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
+      ]);
+      setKpis(kr);
+      setOverview(or);
+      setPosts(Array.isArray(pr) ? pr : []);
+      setEvSummary(
+        er && typeof er === 'object' && er !== null && 'segments' in er
+          ? (er as EngagementVsVanitySummary)
+          : null,
+      );
+    } catch {
+      setError('Failed to load social impact data.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const outreach = (kpis as { outreach?: Record<string, unknown> })?.outreach ?? {};
+  const topPost = (overview as { topPost?: Record<string, unknown> | null })?.topPost;
+
+  const postRows = useMemo(() => {
+    const rows = posts.map((p) => ({
+      ...p,
+      reach: round2(p.reach),
+      likes: round2(p.likes),
+      comments: round2(p.comments),
+      engagementRate: formatEngagementRatePct(p.engagementRate),
+      donationReferrals: round2(p.donationReferrals),
+      estimatedDonationValuePhp: formatPhp2(p.estimatedDonationValuePhp),
+    }));
+    return filterTableRows(rows, SOCIAL_POST_TABLE_COLUMNS, query);
+  }, [posts, query]);
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  const topCamp = outreach.topCampaignByReferrals as Record<string, unknown> | undefined;
+
+  return (
+    <div>
+      <SectionTitle>Social media impact</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
+        Outreach metrics and recent posts. Sources: <code>/api/dashboard/kpis</code>, <code>/api/dashboard/overview</code>,{' '}
+        <code>/api/socialmediaposts</code>, <code>/api/insights/social/engagement-vs-vanity</code>.
+      </p>
+
+      <SectionTitle>Outreach KPIs</SectionTitle>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <StatCard label="Posts tracked" value={formatWhole(outreach.socialPostCount)} accent={c.roseLight} />
+        <StatCard
+          label="Avg engagement"
+          value={formatEngagementRatePct(outreach.avgEngagementRate)}
+          accent={c.sageLight}
+        />
+        <StatCard label="Total reach" value={formatWhole(outreach.totalReach)} />
+        <StatCard label="Donation referrals" value={formatWhole(outreach.totalDonationReferrals)} accent={c.goldLight} />
+        <StatCard
+          label="Est. donation value (PHP)"
+          value={formatPhp2(outreach.totalEstimatedDonationValuePhp)}
+          accent={c.goldLight}
+        />
+        <StatCard
+          label="CTA → referral rate"
+          value={
+            outreach.ctaReferralRate != null
+              ? `${(Number(outreach.ctaReferralRate) * 100).toFixed(2)}%`
+              : '—'
+          }
+          sub={
+            outreach.ctaPostCount != null
+              ? `${round2(outreach.ctaPostsWithReferrals)} of ${round2(outreach.ctaPostCount)} CTA posts`
+              : undefined
+          }
+        />
+      </div>
+
+      {topCamp && (topCamp.campaignName != null || topCamp.donationReferrals != null) && (
+        <div
+          style={{
+            background: c.goldLight,
+            border: `1px solid ${c.gold}`,
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 20,
+            fontSize: 13,
+            color: c.text,
+          }}
+        >
+          <strong style={{ color: c.forest }}>Top campaign by referrals:</strong>{' '}
+          {String(topCamp.campaignName ?? '—')} · {round2(topCamp.postCount)} posts · {round2(topCamp.donationReferrals)}{' '}
+          referrals · {formatPhp2(topCamp.estimatedDonationValuePhp)} est. PHP
+        </div>
+      )}
+
+      {topPost && Object.keys(topPost).length > 0 && (
+        <>
+          <SectionTitle>Top post by engagement (overview)</SectionTitle>
+          <div
+            style={{
+              background: c.white,
+              border: `1px solid ${c.sageLight}`,
+              borderRadius: 12,
+              padding: '14px 18px',
+              marginBottom: 20,
+              fontSize: 13,
+            }}
+          >
+            <p style={{ margin: '0 0 8px', fontWeight: 600, color: c.forest }}>
+              {String(topPost.platform ?? '—')} · {String(topPost.campaignName ?? '—')}
+            </p>
+            <p style={{ margin: 0, color: c.muted, fontSize: 12 }}>
+              Engagement {formatEngagementRatePct(topPost.engagementRate)} · Reach {round2(topPost.reach)} · Referrals{' '}
+              {round2(topPost.donationReferrals)} · Est. PHP {formatPhp2(topPost.estimatedDonationValuePhp)}
+            </p>
+          </div>
+        </>
+      )}
+
+      <DataPanel
+        title="Post → donation linkage by platform"
+        url="/api/insights/posts/donation-linkage/by-group?group=platform&take=15"
+        keyField="key"
+        transformRows={transformSocialLinkageRows}
+        columns={[
+          { key: 'key', label: 'Platform' },
+          { key: 'postCount', label: 'Posts' },
+          { key: 'willReferRate', label: 'Refer Rate' },
+          { key: 'avgReferrals', label: 'Average Referrals' },
+          { key: 'totalEstimatedValuePhp', label: 'Total Est. PHP' },
+          { key: 'boostedRate', label: 'Boosted Rate' },
+        ]}
+      />
+
+      {evSummary && (
+        <div style={{ marginTop: 22 }}>
+          <SectionTitle>Engagement vs vanity (segment mix)</SectionTitle>
+          <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+            High engagement = likes+comments+shares at or above P75; high donation = referrals at or above P75. Associations
+            only — not causal.
+          </p>
+          <p style={{ fontSize: 12, color: c.muted, marginBottom: 10 }}>
+            P75 thresholds: engagement score {Number(evSummary.thresholds.engagementScoreP75).toFixed(2)}, donation
+            referrals {Number(evSummary.thresholds.donationReferralsP75).toFixed(2)} · {round2(evSummary.totalPosts)} posts
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: c.sageLight }}>
+                  {['Segment', 'Posts'].map((h) => (
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600 }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {evSummary.segments.map((row, i) => (
+                  <tr
+                    key={row.segment}
+                    style={{
+                      borderBottom: `1px solid ${c.sageLight}`,
+                      background: i % 2 === 0 ? c.ivory : c.white,
+                    }}
+                  >
+                    <td style={{ padding: '8px 12px' }}>{row.segment.replace(/_/g, ' ')}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{formatWhole(row.postCount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <SectionTitle>Recent posts (up to 100)</SectionTitle>
+      <DataSearchBar
+        id={searchId}
+        value={query}
+        onChange={setQuery}
+        placeholder="Filter by platform, campaign, date…"
+      />
+      <Table columns={SOCIAL_POST_TABLE_COLUMNS} rows={postRows} keyField="postId" totalCount={posts.length} />
+    </div>
+  );
+}
+
+// ── Reports (pipelines) ───────────────────────────────────────────────────────
 
 type InsightDonationByCampaignRow = { campaignName: string; totalValuePhp: number; donationCount: number; avgValuePhp: number };
 type InsightBridgeRow = {
@@ -1923,7 +2212,7 @@ function AdminReports() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['Campaign', 'Donations', 'Total (PHP)', 'Avg (PHP)'].map(h => (
+              {['Campaign', 'Donations', 'Total (PHP)', 'Average (PHP)'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -1960,7 +2249,7 @@ function AdminReports() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Avg Edu', 'Avg Health'].map(h => (
+              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Average Education', 'Average Health'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -1989,11 +2278,11 @@ function AdminReports() {
           keyField="supporterId"
           columns={[
             { key: 'supporterName', label: 'Supporter' },
-            { key: 'expectedNextValuePhp', label: 'Expected next (PHP)' },
-            { key: 'recencyDays', label: 'Recency (days)' },
+            { key: 'expectedNextValuePhp', label: 'Expected Next (PHP)' },
+            { key: 'recencyDays', label: 'Recency (Days)' },
             { key: 'donationCount', label: 'Donations' },
-            { key: 'lastValuePhp', label: 'Last gift (PHP)' },
-            { key: 'lastDonationDate', label: 'Last date' },
+            { key: 'lastValuePhp', label: 'Last Gift (PHP)' },
+            { key: 'lastDonationDate', label: 'Last Date' },
           ]}
         />
 
@@ -2004,10 +2293,10 @@ function AdminReports() {
           columns={[
             { key: 'key', label: 'Platform' },
             { key: 'postCount', label: 'Posts' },
-            { key: 'willReferRate', label: 'Refer rate' },
-            { key: 'avgReferrals', label: 'Avg referrals' },
-            { key: 'totalEstimatedValuePhp', label: 'Total est. PHP' },
-            { key: 'boostedRate', label: 'Boosted rate' },
+            { key: 'willReferRate', label: 'Refer Rate' },
+            { key: 'avgReferrals', label: 'Average Referrals' },
+            { key: 'totalEstimatedValuePhp', label: 'Total Est. PHP' },
+            { key: 'boostedRate', label: 'Boosted Rate' },
           ]}
         />
 
@@ -2019,10 +2308,10 @@ function AdminReports() {
             { key: 'safehouseName', label: 'Safehouse' },
             { key: 'month', label: 'Month' },
             { key: 'stressIndexZ', label: 'Stress (z)' },
-            { key: 'forecastNextMonthIncidents', label: 'Forecast next incidents' },
+            { key: 'forecastNextMonthIncidents', label: 'Forecast Next Incidents' },
             { key: 'incidentCount', label: 'Incidents' },
-            { key: 'incidentLag1', label: 'Incidents lag1' },
-            { key: 'activeResidents', label: 'Active residents' },
+            { key: 'incidentLag1', label: 'Incidents Lag 1' },
+            { key: 'activeResidents', label: 'Active Residents' },
           ]}
         />
 
@@ -2034,8 +2323,8 @@ function AdminReports() {
             { key: 'planCategory', label: 'Category' },
             { key: 'planCount', label: 'Plans' },
             { key: 'residentCount', label: 'Residents' },
-            { key: 'avgLatestProgressPercent', label: 'Avg progress %' },
-            { key: 'avgLatestHealthScore', label: 'Avg health' },
+            { key: 'avgLatestProgressPercent', label: 'Average Progress %' },
+            { key: 'avgLatestHealthScore', label: 'Average Health' },
           ]}
         />
 
@@ -2048,9 +2337,9 @@ function AdminReports() {
             { key: 'riskBand', label: 'Band' },
             { key: 'riskScore', label: 'Score' },
             { key: 'incidents90d', label: 'Incidents 90d' },
-            { key: 'concernSessions90d', label: 'Concern sessions 90d' },
-            { key: 'safetyVisitFlags90d', label: 'Safety flags 90d' },
-            { key: 'currentRiskLevel', label: 'Current risk' },
+            { key: 'concernSessions90d', label: 'Concern Sessions 90d' },
+            { key: 'safetyVisitFlags90d', label: 'Safety Flags 90d' },
+            { key: 'currentRiskLevel', label: 'Current Risk' },
             { key: 'safehouseId', label: 'Safehouse' },
           ]}
         />
@@ -2066,7 +2355,7 @@ function AdminReports() {
             { key: 'latestProgressPercent', label: 'Progress %' },
             { key: 'latestHealthScore', label: 'Health' },
             { key: 'incidentsLast365d', label: 'Incidents 365d' },
-            { key: 'homeVisitsLast180d', label: 'Visits 180d' },
+            { key: 'homeVisitsLast180d', label: 'Home Visits 180d' },
           ]}
         />
       </div>
@@ -2094,7 +2383,7 @@ function AdminReports() {
                 {evSummary.segments.map((row, i) => (
                   <tr key={row.segment} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                     <td style={{ padding: '8px 12px' }}>{row.segment.replace(/_/g, ' ')}</td>
-                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.postCount}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{formatWhole(row.postCount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2232,7 +2521,7 @@ function AdminStaff() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['ID', 'Code', 'First', 'Last', 'Role', 'Type', 'Safehouse', 'Status', 'Email', 'Actions'].map(h => (
+              {['ID', 'Code', 'First Name', 'Last Name', 'Role', 'Type', 'Safehouse', 'Status', 'Email', 'Actions'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -2897,7 +3186,7 @@ export default function AdminPortal() {
     switch (activeNav) {
       case 'Dashboard': return <AdminDashboard />;
       case 'Users': return <AdminAllUsers />;
-      case 'Pending Approvals': return <AdminPendingApprovals />;
+      case 'Pending Approvals': return <AdminPendingApprovals onQueueChanged={refreshPendingAuditCount} />;
       case 'Residents': return <AdminResidentsPanel />;
       case 'Staff': return <AdminStaff />;
       case 'Safehouses':
@@ -2916,6 +3205,7 @@ export default function AdminPortal() {
           { key: 'ipAddress', label: 'IP' }, { key: 'approvalStatus', label: 'Approval' },
         ]} />;
       case 'Reports': return <AdminReports />;
+      case 'Social Media Impact': return <AdminSocialImpact />;
       case 'Settings':
         return (
           <div>
@@ -2937,6 +3227,7 @@ export default function AdminPortal() {
           if (item === 'Pipelines') navigate('/admin/pipelines');
           else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
         }}
+        badgeCounts={{ 'Pending Approvals': pendingAuditCount }}
         user={`${user?.userName ?? 'Admin'} · Admin`}
         onLogout={handleLogout}
       />
