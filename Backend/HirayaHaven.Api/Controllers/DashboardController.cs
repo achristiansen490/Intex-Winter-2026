@@ -47,6 +47,30 @@ public class DashboardController(HirayaContext context) : ControllerBase
         });
     }
 
+    /// <summary>Donation amounts grouped by program area (allocation rows) — public Impact page.</summary>
+    [AllowAnonymous]
+    [HttpGet("impact/program-allocation")]
+    public async Task<IActionResult> GetImpactProgramAllocation(CancellationToken ct = default)
+    {
+        var rows = await context.DonationAllocations
+            .AsNoTracking()
+            .Select(a => new { a.ProgramArea, a.AmountAllocated })
+            .ToListAsync(ct);
+
+        var grouped = rows
+            .Where(x => x.AmountAllocated is > 0)
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.ProgramArea) ? "Other" : x.ProgramArea!.Trim())
+            .Select(g => new
+            {
+                name = g.Key,
+                total = g.Sum(x => x.AmountAllocated!.Value)
+            })
+            .OrderByDescending(x => x.total)
+            .ToList();
+
+        return Ok(grouped);
+    }
+
     [AllowAnonymous]
     [HttpGet("kpis")]
     public async Task<IActionResult> GetKpis()
