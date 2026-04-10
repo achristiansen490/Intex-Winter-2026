@@ -13,6 +13,7 @@ type Props = {
   height?: number;
   gridColor?: string;
   lineColor?: string;
+  showDots?: boolean;
   numberFormat?: 'php' | 'compact';
   seriesLabel?: string;
 };
@@ -32,6 +33,7 @@ export default function MonthlyLineChart({
   height = 260,
   gridColor = 'rgba(44,43,40,0.08)',
   lineColor = '#2A4A35',
+  showDots = false,
   numberFormat = 'php',
   seriesLabel = 'Total',
 }: Props) {
@@ -48,7 +50,13 @@ export default function MonthlyLineChart({
               return [numberFormat === 'php' ? formatPhp(n) : formatCompact(n), seriesLabel];
             }}
           />
-          <Line type="monotone" dataKey="total" stroke={lineColor} strokeWidth={2.5} dot={false} />
+          <Line
+            type="monotone"
+            dataKey="total"
+            stroke={lineColor}
+            strokeWidth={2.5}
+            dot={showDots ? { r: 4, fill: lineColor, stroke: lineColor } : false}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>
