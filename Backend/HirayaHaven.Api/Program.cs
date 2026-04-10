@@ -354,7 +354,7 @@ static async Task SeedAsync(IServiceProvider services)
         Allow("CaseManager", "organization", "Read");
 
         // Social Worker
-        Allow("SocialWorker", "residents", "Read,Update", "Own safehouse, sensitive changes require approval");
+        Allow("SocialWorker", "residents", "Create,Read,Update", "Own safehouse, sensitive changes require approval");
         foreach (var res in new[] { "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports" })
             Allow("SocialWorker", res, "Create,Read,Update", "Assigned residents");
@@ -365,7 +365,7 @@ static async Task SeedAsync(IServiceProvider services)
         Allow("SocialWorker", "organization", "Read");
 
         // Field Worker
-        Allow("FieldWorker", "residents", "Read", "Own safehouse");
+        Allow("FieldWorker", "residents", "Create,Read", "Own safehouse");
         foreach (var res in new[] { "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports" })
             Allow("FieldWorker", res, "Create,Read", "Own safehouse, cannot edit after submission");
@@ -519,6 +519,9 @@ static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
 
     foreach (var action in new[] { "Create", "Read", "Update", "Delete" })
         EnsureRow("Admin", "donation_allocations", action, null);
+
+    EnsureRow("SocialWorker", "residents", "Create", "Own safehouse, sensitive changes require approval");
+    EnsureRow("FieldWorker", "residents", "Create", "Own safehouse");
 
     if (changed)
         await db.SaveChangesAsync();

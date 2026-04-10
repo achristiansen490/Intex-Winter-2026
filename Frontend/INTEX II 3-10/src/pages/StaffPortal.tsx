@@ -274,7 +274,9 @@ function ResidentsPanel({
   const canCreate = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker' || role === 'FieldWorker';
   const canEdit = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker';
   const canDelete = role === 'Admin';
-  const canManageCaseload = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager';
+  const canManageCaseload = canCreate;
+  const canUpdateCaseload =
+    role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker';
 
   if (manageMode && canManageCaseload) {
     return (
@@ -292,8 +294,8 @@ function ResidentsPanel({
           title="Resident Profiles"
           url="/api/residents"
           keyField="residentId"
-          canCreate
-          canUpdate
+          canCreate={canCreate}
+          canUpdate={canUpdateCaseload}
           columns={[
             { key: 'residentId', label: 'ID' },
             { key: 'residentFirstName', label: 'First Name' },
