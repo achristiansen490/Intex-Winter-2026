@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NavBar } from '../components/NavBar';
-import { apiUrl } from '../lib/api';
+import { apiUrl, jsonIfOk } from '../lib/api';
 import { displayImpactHeadline } from '../lib/impactHeadline';
 import './LandingPage.css';
 
@@ -89,8 +89,8 @@ export default function LandingPage() {
     setLoading(true); setError('');
     try {
       const [snaps, ov] = await Promise.allSettled([
-        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => (r.ok ? r.json() : [])),
-        fetch(apiUrl('/api/dashboard/overview')).then(r => (r.ok ? r.json() : null)),
+        fetch(apiUrl('/api/publicimpactsnapshots')).then((r) => jsonIfOk(r, [])),
+        fetch(apiUrl('/api/dashboard/overview')).then((r) => jsonIfOk(r, null)),
       ]);
 
       const nextSnaps = snaps.status === 'fulfilled' && Array.isArray(snaps.value) ? snaps.value as PublicImpactSnapshot[] : [];

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
-import { apiUrl } from '../lib/api';
+import { apiFetch as api, apiUrl, jsonBody, jsonIfOk } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
 import { displayImpactHeadline } from '../lib/impactHeadline';
 import { DONOR_NAV_ITEMS, donorNavItemToSlug, donorSlugToNavItem } from '../lib/portalTabs';
@@ -20,10 +20,6 @@ const navItems = [...DONOR_NAV_ITEMS];
 
 const EXAMPLE_DONATION_DEFAULT_NOTES = 'Example Donation';
 const RECURRING_FREQUENCY_OPTIONS = ['Weekly', 'Biweekly', 'Monthly', 'Quarterly', 'Annually'] as const;
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string, opts?: RequestInit) =>
-  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 function filterRecordsByText(rows: Record<string, unknown>[], query: string): Record<string, unknown>[] {
   const needle = query.trim().toLowerCase();
@@ -142,7 +138,6 @@ function ExampleDonateModal({
       setOptionsLoading(true);
       try {
         const r = await api('/api/donations/form-options');
-        const j = (await r.json()) as { campaigns?: string[]; channels?: string[] };
         if (cancelled) return;
         if (!r.ok) {
           setOptionsError('Could not load campaign and channel lists.');
@@ -150,6 +145,10 @@ function ExampleDonateModal({
           setChannelOptions([]);
           return;
         }
+        const j = (await jsonIfOk(r, {} as { campaigns?: string[]; channels?: string[] })) as {
+          campaigns?: string[];
+          channels?: string[];
+        };
         setCampaignOptions(Array.isArray(j.campaigns) ? j.campaigns : []);
         setChannelOptions(Array.isArray(j.channels) ? j.channels : []);
       } catch {
@@ -195,7 +194,7 @@ function ExampleDonateModal({
         }),
       });
       if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { message?: string; title?: string };
+        const err = await jsonBody<{ message?: string; title?: string }>(res, {});
         const detail = err.message ?? err.title ?? 'Could not save donation.';
         setFormError(
           res.status === 403
@@ -410,29 +409,87 @@ function MyImpact({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [snapshots, setSnapshots] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [banner, setBanner] = useState('');
+  const [fatalError, setFatalError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true); setError('');
+    setLoading(true);
+    setBanner('');
+    setFatalError('');
     try {
-      const [s, snaps] = await Promise.all([
-        api('/api/donations/summary').then(r => r.json()),
-        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => r.json()),
+      const [sumOutcome, snapOutcome] = await Promise.allSettled([
+        api('/api/donations/summary'),
+        fetch(apiUrl('/api/publicimpactsnapshots')),
       ]);
-      setSummary(s);
-      setSnapshots(Array.isArray(snaps) ? snaps.slice(0, 3) : []);
-    } catch { setError('Failed to load impact data.'); }
-    finally { setLoading(false); }
+
+      let nextSummary: Record<string, unknown> | null = null;
+      let summaryBanner = '';
+
+      if (sumOutcome.status === 'fulfilled') {
+        const r = sumOutcome.value;
+        if (r.ok) {
+          const parsed = await jsonIfOk<Record<string, unknown> | null>(r, null);
+          if (parsed) nextSummary = parsed;
+          else summaryBanner = 'Could not read your giving summary from the server.';
+        } else if (r.status === 401) {
+          summaryBanner = 'Session expired. Sign out and sign in again to see your giving summary.';
+        } else if (r.status === 403) {
+          summaryBanner =
+            'Access denied for donation totals. Deploy the latest API (Donor + donations Read) or ask an admin, then sign out and sign in again.';
+        } else {
+          summaryBanner = `Giving summary unavailable (HTTP ${r.status}).`;
+        }
+      } else {
+        summaryBanner = 'Network error loading your giving summary.';
+      }
+      setSummary(nextSummary);
+      setBanner(summaryBanner);
+
+      let nextSnaps: Record<string, unknown>[] = [];
+      if (snapOutcome.status === 'fulfilled') {
+        const r = snapOutcome.value;
+        if (r.ok) {
+          const raw = await jsonIfOk<unknown>(r, null);
+          nextSnaps = Array.isArray(raw) ? raw.slice(0, 3) : [];
+        }
+      }
+      setSnapshots(nextSnaps);
+
+      if (!nextSummary && nextSnaps.length === 0 && !summaryBanner) {
+        setFatalError('Failed to load impact data.');
+      }
+    } catch {
+      setFatalError('Failed to load impact data.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load, refreshSignal]);
   if (loading) return <Loading />;
-  if (error) return <ApiError msg={error} retry={load} />;
+  if (fatalError) return <ApiError msg={fatalError} retry={load} />;
 
   const byType: Record<string, unknown>[] = Array.isArray((summary as any)?.byType) ? (summary as any).byType : [];
 
   return (
     <div>
+      {banner && (
+        <p
+          role="status"
+          style={{
+            fontSize: 13,
+            color: c.rose,
+            background: c.roseLight,
+            border: `1px solid ${c.rose}`,
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginBottom: 20,
+            lineHeight: 1.45,
+          }}
+        >
+          {banner}
+        </p>
+      )}
       <SectionTitle>Your Giving Summary</SectionTitle>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
         <StatCard label="Total Donations" value={(summary as any)?.totalDonationRows ?? '—'} accent={c.goldLight} />
@@ -511,8 +568,8 @@ function DonationHistory({ refreshSignal = 0 }: { refreshSignal?: number }) {
         api('/api/donations'),
         api('/api/donations/recurring-series'),
       ]);
-      const d = await dRes.json();
-      const r = await rRes.json();
+      const d = await jsonIfOk(dRes, []);
+      const r = await jsonIfOk(rRes, []);
       if (dRes.ok) setDonations(Array.isArray(d) ? d : []);
       else setDonations([]);
       if (rRes.ok) setRecurringSeries(Array.isArray(r) ? (r as RecurringSeriesRow[]) : []);
@@ -538,7 +595,7 @@ function DonationHistory({ refreshSignal = 0 }: { refreshSignal?: number }) {
           : { legacyDonationId: row.legacyDonationId };
         const res = await api('/api/donations/recurring/cancel', { method: 'POST', body: JSON.stringify(body) });
         if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as { message?: string };
+          const err = await jsonBody<{ message?: string }>(res, {});
           setError(err.message ?? 'Could not cancel recurring donation.');
           return;
         }
@@ -710,9 +767,9 @@ function ActiveCampaigns() {
     setLoading(true); setError('');
     try {
       const [snaps, camps, mon] = await Promise.all([
-        fetch(apiUrl('/api/publicimpactsnapshots')).then(r => r.json()),
-        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(r => r.json()),
-        api(`/api/insights/donations/monthly?take=${monthlyTake}`).then(r => r.json()),
+        fetch(apiUrl('/api/publicimpactsnapshots')).then((r) => jsonIfOk(r, [])),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then((r) => jsonIfOk(r, [])),
+        api(`/api/insights/donations/monthly?take=${monthlyTake}`).then((r) => jsonIfOk(r, [])),
       ]);
       setSnapshots(Array.isArray(snaps) ? snaps : []);
       setCampaigns(Array.isArray(camps) ? camps : []);
@@ -898,7 +955,7 @@ function MyProfile() {
     setLoading(true); setError('');
     try {
       // Fetch this donor's supporter record
-      const data = await api('/api/supporters').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/supporters'), []);
       // The API scopes to the logged-in user's supporterId; first result is theirs
       const arr = Array.isArray(data) ? data : [];
       setSupporter(arr.find((s: any) => s.supporterId === user?.supporterId) ?? arr[0] ?? null);

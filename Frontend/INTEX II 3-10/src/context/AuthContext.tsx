@@ -6,7 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { apiUrl } from '../lib/api';
+import { apiUrl, jsonBody, jsonIfOk } from '../lib/api';
 
 export type Role =
   | 'Admin'
@@ -75,7 +75,9 @@ async function fetchMe(token: string): Promise<AuthUser> {
     throw new Error(`Network error.${networkErrorMessage()}`);
   }
   if (!res.ok) throw new Error('Token invalid');
-  return res.json();
+  const body = await jsonIfOk(res, null);
+  if (!body || typeof body !== 'object') throw new Error('Token invalid');
+  return body as AuthUser;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -121,13 +123,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
+      const data = await jsonBody<{ message?: string }>(res, {});
       throw new Error(data.message ?? 'Login failed');
     }
 
-    const data = (await res.json()) as { token?: string; Token?: string };
+    const data = (await jsonIfOk(res, null)) as { token?: string; Token?: string } | null;
+    if (!data) {
+      throw new Error('Login response missing token. Check API JSON and CORS/proxy settings.');
+    }
     const jwt = data.token ?? data.Token;
-    if (!jwt || typeof jwt !== 'string') {
+    if (typeof jwt !== 'string' || !jwt) {
       throw new Error('Login response missing token. Check API JSON and CORS/proxy settings.');
     }
 

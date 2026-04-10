@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
 import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { adminNavItemToSlug, adminSlugToNavItem } from '../lib/portalTabs';
-import { apiUrl } from '../lib/api';
+import { apiFetch as api, jsonBody, jsonIfOk } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey as chartMonthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
 import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
 import { SocialMediaImpactSection } from '../components/reports/SocialMediaImpactSection';
@@ -22,10 +22,6 @@ const c = {
 };
 const ADMIN_BANNER_BG = 'linear-gradient(135deg, #244232 0%, #2A4A35 52%, #35624A 100%)';
 const navItems = [...ADMIN_NAV_ITEMS];
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string, opts?: RequestInit) =>
-  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 /** Client-side filter: any column value contains query (case-insensitive). */
 function filterTableRows(
@@ -237,17 +233,17 @@ function AdminDashboard() {
     setLoading(true); setError('');
     try {
       const [k, p, o, op, ov, oi, osr, osc, bridgeRows, campaignRows, socialRows] = await Promise.all([
-        api('/api/dashboard/kpis').then(r => r.json()),
-        api('/api/dashboard/admin-proof').then(r => r.json()),
-        api('/api/okrs/education/attendance/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/healing/process-sessions/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/insights/bridge/monthly?take=18').then(r => (r.ok ? r.json() : [])),
-        api('/api/insights/donations/by-campaign?take=8').then(r => (r.ok ? r.json() : [])),
-        api('/api/insights/social/engagement-vs-vanity').then(r => (r.ok ? r.json() : null)),
+        api('/api/dashboard/kpis').then((r) => jsonIfOk(r, null)),
+        api('/api/dashboard/admin-proof').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/education/attendance/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/healing/process-sessions/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/insights/bridge/monthly?take=18').then((r) => jsonIfOk(r, [])),
+        api('/api/insights/donations/by-campaign?take=8').then((r) => jsonIfOk(r, [])),
+        api('/api/insights/social/engagement-vs-vanity').then((r) => jsonIfOk(r, null)),
       ]);
       setKpis(k); setProof(p);
       setOkr(o);
@@ -638,7 +634,7 @@ function AdminPendingApprovals({ onQueueChanged }: { onQueueChanged?: () => void
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/auditlogs/pending').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/auditlogs/pending'), []);
       setItems(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load pending approvals.'); }
     finally { setLoading(false); }
@@ -771,7 +767,7 @@ function AdminResidentsPanel() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/residents').then((r) => r.json());
+      const data = await jsonIfOk(await api('/api/residents'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch {
       setError('Failed to load residents.');
@@ -852,8 +848,8 @@ function AdminResidentsPanel() {
       };
       const res = await api(`/api/residents/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? 'Save failed.');
+        const body = await jsonBody<{ message?: string }>(res, {});
+        throw new Error(body.message ?? 'Save failed.');
       }
       notify('Resident updated.');
       setEditRow(null);
@@ -880,8 +876,8 @@ function AdminResidentsPanel() {
       };
       const res = await api('/api/residents', { method: 'POST', body: JSON.stringify(payload) });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? 'Create failed.');
+        const body = await jsonBody<{ message?: string }>(res, {});
+        throw new Error(body.message ?? 'Create failed.');
       }
       notify('Resident created.');
       setCreateRow(null);
@@ -1298,7 +1294,7 @@ function DataPanel({
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api(url).then(r => r.json());
+      const data = await jsonIfOk(await api(url), []);
       const arr = Array.isArray(data) ? data : [];
       const fn = transformRowsRef.current;
       setRows(fn ? fn(arr) : arr);
@@ -1312,7 +1308,7 @@ function DataPanel({
     let mounted = true;
     (async () => {
       try {
-        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        const data = await jsonIfOk(await api('/api/residents'), []);
         if (!mounted || !Array.isArray(data)) return;
         const next = new Map<number, string>();
         data.forEach((item) => {
@@ -1386,7 +1382,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api(url).then(r => r.json());
+      const data = await jsonIfOk(await api(url), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load data.'); }
     finally { setLoading(false); }
@@ -1398,7 +1394,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
     let mounted = true;
     (async () => {
       try {
-        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        const data = await jsonIfOk(await api('/api/residents'), []);
         if (!mounted || !Array.isArray(data)) return;
         const next = new Map<number, string>();
         data.forEach((item) => {
@@ -1779,10 +1775,10 @@ function AdminSocialImpact() {
     setError('');
     try {
       const [kr, or, pr, er] = await Promise.all([
-        api('/api/dashboard/kpis').then((r) => r.json()),
-        api('/api/dashboard/overview').then((r) => r.json()),
-        api('/api/socialmediaposts?take=100').then((r) => r.json()),
-        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
+        api('/api/dashboard/kpis').then((r) => jsonIfOk(r, null)),
+        api('/api/dashboard/overview').then((r) => jsonIfOk(r, null)),
+        api('/api/socialmediaposts?take=100').then((r) => jsonIfOk(r, [])),
+        api('/api/insights/social/engagement-vs-vanity').then((r) => jsonIfOk(r, null)),
       ]);
       setKpis(kr);
       setOverview(or);
@@ -2022,10 +2018,10 @@ function AdminReports() {
     setLoading(true); setError('');
     try {
       const [annualRes, bridgeRes, campaignRes, evRes] = await Promise.allSettled([
-        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then(async (r) => (r.ok ? r.json() : null)),
-        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(async (r) => (r.ok ? r.json() : [])),
-        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(async (r) => (r.ok ? r.json() : [])),
-        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
+        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then((r) => jsonIfOk(r, null)),
+        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then((r) => jsonIfOk(r, [])),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then((r) => jsonIfOk(r, [])),
+        api('/api/insights/social/engagement-vs-vanity').then((r) => jsonIfOk(r, null)),
       ]);
 
       const nextAnnual =
@@ -2422,7 +2418,7 @@ function AdminStaff() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/staff').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/staff'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load staff.'); }
     finally { setLoading(false); }
@@ -2458,7 +2454,10 @@ function AdminStaff() {
         ? await api('/api/staff', { method: 'POST', body: JSON.stringify(form) })
         : await api(`/api/staff/${editId}`, { method: 'PUT', body: JSON.stringify({ ...form, staffId: editId }) });
       if (r.ok) { notify(modal === 'create' ? '✓ Staff member created.' : '✓ Staff member updated.'); setModal(null); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Save failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Save failed.');
+      }
     } finally { setBusy(false); }
   };
 
@@ -2596,8 +2595,8 @@ function AdminAllUsers() {
     setLoading(true); setError('');
     try {
       const [u, p] = await Promise.all([
-        api('/api/auth/users').then(r => r.json()),
-        api('/api/auth/pending').then(r => r.json()),
+        api('/api/auth/users').then((r) => jsonIfOk(r, [])),
+        api('/api/auth/pending').then((r) => jsonIfOk(r, [])),
       ]);
       setUsers(Array.isArray(u) ? u : []);
       setPending(Array.isArray(p) ? p : []);
@@ -2658,7 +2657,12 @@ function AdminAllUsers() {
     try {
       const r = await api('/api/auth/create-user', { method: 'POST', body: JSON.stringify({ username: createForm.username, email: createForm.email, password: createForm.password, role: createForm.role }) });
       if (r.ok) { notify('✓ User created.'); setCreateModal(false); setCreateForm({ username: '', email: '', password: '', role: 'Donor' }); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? ((err as any).errors?.[0]) ?? 'Create failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string; errors?: unknown[] }>(r, {});
+        const first =
+          Array.isArray(err.errors) && err.errors.length > 0 ? String(err.errors[0]) : undefined;
+        notify(err.message ?? first ?? 'Create failed.');
+      }
     } finally { setCreateBusy(false); }
   };
 
@@ -2831,7 +2835,7 @@ export function AdminResidents() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/residents').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/residents'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load residents.'); }
     finally { setLoading(false); }
@@ -2871,7 +2875,10 @@ export function AdminResidents() {
     try {
       const r = await api('/api/residents', { method: 'POST', body: JSON.stringify(createForm) });
       if (r.ok) { notify('✓ Resident created.'); setModal(null); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Create failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Create failed.');
+      }
     } finally { setBusy(false); }
   };
 
@@ -2882,7 +2889,10 @@ export function AdminResidents() {
       const body = { ...editRow, ...editForm };
       const r = await api(`/api/residents/${editRow.residentId}`, { method: 'PUT', body: JSON.stringify(body) });
       if (r.ok) { notify('✓ Resident record updated.'); setModal(null); setEditRow(null); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Save failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Save failed.');
+      }
     } finally { setBusy(false); }
   };
 
@@ -3144,7 +3154,7 @@ function AdminDonations() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/donations').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/donations'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load donations.'); }
     finally { setLoading(false); }
@@ -3223,8 +3233,8 @@ function AdminDonations() {
         closeModal();
         await load();
       } else {
-        const err = await r.json().catch(() => ({}));
-        notify((err as { message?: string }).message ?? 'Create failed.');
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Create failed.');
       }
     } finally {
       setSaving(false);
@@ -3242,8 +3252,8 @@ function AdminDonations() {
         closeModal();
         await load();
       } else {
-        const err = await r.json().catch(() => ({}));
-        notify((err as { message?: string }).message ?? 'Update failed.');
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Update failed.');
       }
     } finally {
       setSaving(false);
@@ -3259,8 +3269,8 @@ function AdminDonations() {
         notify('✓ Donation deleted.');
         await load();
       } else {
-        const err = await r.json().catch(() => ({}));
-        notify((err as { message?: string }).message ?? 'Delete failed.');
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Delete failed.');
       }
     } finally {
       setSaving(false);
