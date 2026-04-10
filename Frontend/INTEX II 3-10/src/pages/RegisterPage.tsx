@@ -58,10 +58,9 @@ export default function RegisterPage() {
       }
 
       if (role === 'FieldWorker') {
-        navigate('/pending-approval');
+        navigate('/register/success?type=staff');
       } else {
-        const loginPath = returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/login';
-        navigate(loginPath, { state: { registered: true } });
+        navigate('/register/success?type=donor');
       }
     } catch {
       setError('Network error. Please try again.');

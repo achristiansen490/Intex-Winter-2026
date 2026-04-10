@@ -16,11 +16,13 @@ interface SidebarProps {
   setActive?: (item: string) => void;
   /** When set, called instead of <code>setActive</code> (for cross-route admin navigation). */
   onSelectNavItem?: (item: string) => void;
+  /** Optional per-item counts (e.g. pending approvals). Shown only when &gt; 0. */
+  badgeCounts?: Partial<Record<string, number>>;
   user: string;
   onLogout?: () => void;
 }
 
-export function Sidebar({ id, items, active, setActive, onSelectNavItem, user, onLogout }: SidebarProps) {
+export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCounts, user, onLogout }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
@@ -102,7 +104,11 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, user, o
         </div>
 
         <ul style={{ listStyle: 'none', flex: 1, margin: 0, padding: 0 }}>
-          {items.map((item) => (
+          {items.map((item) => {
+            const badge = badgeCounts?.[item];
+            const showBadge = typeof badge === 'number' && badge > 0;
+            const badgeText = badge! > 99 ? '99+' : String(badge);
+            return (
             <li key={item}>
               <button
                 onClick={() => {
@@ -113,8 +119,14 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, user, o
                 onMouseEnter={() => setHoveredItem(item)}
                 onMouseLeave={() => setHoveredItem(null)}
                 aria-current={active === item ? 'page' : undefined}
+                aria-label={
+                  showBadge
+                    ? `${item}, ${badge! > 99 ? 'over 99' : badge} pending change approvals`
+                    : undefined
+                }
                 style={{
-                  display: 'block', width: '100%', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  width: '100%', textAlign: 'left',
                   padding: '10px 1rem', fontSize: hoveredItem === item ? 14 : 13,
                   background: active === item ? 'rgba(212,164,76,0.18)' : 'none',
                   color: active === item ? c.gold : hoveredItem === item ? c.ivory : 'rgba(251,248,242,0.65)',
@@ -128,10 +140,31 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, user, o
                   transition: 'transform 0.15s ease, color 0.15s ease, font-size 0.15s ease',
                 }}
               >
-                {item}
+                <span style={{ flex: 1, minWidth: 0 }}>{item}</span>
+                {showBadge && (
+                  <span
+                    aria-hidden={true}
+                    style={{
+                      flexShrink: 0,
+                      minWidth: 20,
+                      height: 20,
+                      padding: '0 6px',
+                      borderRadius: 999,
+                      background: c.gold,
+                      color: c.forest,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      lineHeight: '20px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {badgeText}
+                  </span>
+                )}
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
 
         <div

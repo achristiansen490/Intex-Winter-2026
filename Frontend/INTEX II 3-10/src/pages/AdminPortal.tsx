@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId, useRef, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
+import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { adminNavItemToSlug, adminSlugToNavItem } from '../lib/portalTabs';
 import { apiUrl } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey as chartMonthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
@@ -606,7 +607,7 @@ function AdminDashboard() {
 
 // ── Pending Approvals (sensitive field changes) ───────────────────────────────
 
-function AdminPendingApprovals() {
+function AdminPendingApprovals({ onQueueChanged }: { onQueueChanged?: () => void }) {
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -652,7 +653,7 @@ function AdminPendingApprovals() {
     setBusy(id);
     try {
       const r = await api(`/api/auditlogs/${id}/${type}`, { method: 'POST' });
-      if (r.ok) { notify(type === 'approve' ? '✓ Change approved and applied.' : 'Change rejected.'); await load(); }
+      if (r.ok) { notify(type === 'approve' ? '✓ Change approved and applied.' : 'Change rejected.'); await load(); onQueueChanged?.(); }
       else notify(`${type} failed.`);
     } finally { setBusy(null); }
   };
@@ -762,7 +763,7 @@ function AdminResidentsPanel() {
   const columns = useMemo(() => [
     { key: 'residentId', label: 'ID' }, { key: 'residentName', label: 'Name' }, { key: 'caseControlNo', label: 'Case No.' },
     { key: 'safehouseId', label: 'Safehouse' }, { key: 'caseStatus', label: 'Status' },
-    { key: 'sex', label: 'Sex' }, { key: 'dateOfAdmission', label: 'Admitted' },
+    { key: 'sex', label: 'Sex' }, { key: 'dateOfAdmission', label: 'Date Admitted' },
     { key: 'currentRiskLevel', label: 'Risk' }, { key: 'reintegrationStatus', label: 'Reintegration' },
     { key: 'assignedSocialWorker', label: 'Social Worker' },
   ], []);
@@ -1269,7 +1270,19 @@ function AdminResidentsPanel() {
 
 // ── Generic read-only data panels ─────────────────────────────────────────────
 
-function DataPanel({ title, url, columns, keyField }: { title: string; url: string; columns: { key: string; label: string }[]; keyField: string }) {
+function DataPanel({
+  title,
+  url,
+  columns,
+  keyField,
+  transformRows,
+}: {
+  title: string;
+  url: string;
+  columns: { key: string; label: string }[];
+  keyField: string;
+  transformRows?: (rows: Record<string, unknown>[]) => Record<string, unknown>[];
+}) {
   const searchId = useId();
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1279,11 +1292,16 @@ function DataPanel({ title, url, columns, keyField }: { title: string; url: stri
   const [page, setPage] = useState(1);
   const [residentNameById, setResidentNameById] = useState<Map<number, string>>(new Map());
 
+  const transformRowsRef = useRef(transformRows);
+  transformRowsRef.current = transformRows;
+
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
       const data = await api(url).then(r => r.json());
-      setRows(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : [];
+      const fn = transformRowsRef.current;
+      setRows(fn ? fn(arr) : arr);
     } catch { setError('Failed to load data.'); }
     finally { setLoading(false); }
   }, [url]);
@@ -1688,7 +1706,273 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
   );
 }
 
-// ── Portal component ──────────────────────────────────────────────────────────
+// ── Social media impact (admin) ───────────────────────────────────────────────
+
+type EngagementVsVanitySummary = {
+  totalPosts: number;
+  thresholds: { engagementScoreP75: number; donationReferralsP75: number };
+  segments: { segment: string; postCount: number }[];
+};
+
+function formatEngagementRatePct(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  if (n >= 0 && n <= 1) return `${(n * 100).toFixed(2)}%`;
+  return `${n.toFixed(2)}%`;
+}
+
+/** Round numeric values to 2 decimal places for Social Media Impact page. */
+function round2(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return n.toFixed(2);
+}
+
+/** Whole number for counts (e.g. linkage table Posts column). */
+function formatWhole(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return String(Math.round(n));
+}
+
+function formatPhp2(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function transformSocialLinkageRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.map((r) => ({
+    ...r,
+    postCount: formatWhole(r.postCount),
+    willReferRate: formatEngagementRatePct(r.willReferRate),
+    avgReferrals: round2(r.avgReferrals),
+    totalEstimatedValuePhp: formatPhp2(r.totalEstimatedValuePhp),
+    boostedRate: formatEngagementRatePct(r.boostedRate),
+  }));
+}
+
+const SOCIAL_POST_TABLE_COLUMNS = [
+  { key: 'createdAt', label: 'Date' },
+  { key: 'platform', label: 'Platform' },
+  { key: 'campaignName', label: 'Campaign' },
+  { key: 'reach', label: 'Reach' },
+  { key: 'likes', label: 'Likes' },
+  { key: 'comments', label: 'Comments' },
+  { key: 'engagementRate', label: 'Engagement' },
+  { key: 'donationReferrals', label: 'Referrals' },
+  { key: 'estimatedDonationValuePhp', label: 'Estimated (PHP)' },
+];
+
+function AdminSocialImpact() {
+  const [kpis, setKpis] = useState<Record<string, unknown> | null>(null);
+  const [overview, setOverview] = useState<Record<string, unknown> | null>(null);
+  const [posts, setPosts] = useState<Record<string, unknown>[]>([]);
+  const [evSummary, setEvSummary] = useState<EngagementVsVanitySummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const searchId = useId();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [kr, or, pr, er] = await Promise.all([
+        api('/api/dashboard/kpis').then((r) => r.json()),
+        api('/api/dashboard/overview').then((r) => r.json()),
+        api('/api/socialmediaposts?take=100').then((r) => r.json()),
+        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
+      ]);
+      setKpis(kr);
+      setOverview(or);
+      setPosts(Array.isArray(pr) ? pr : []);
+      setEvSummary(
+        er && typeof er === 'object' && er !== null && 'segments' in er
+          ? (er as EngagementVsVanitySummary)
+          : null,
+      );
+    } catch {
+      setError('Failed to load social impact data.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const outreach = (kpis as { outreach?: Record<string, unknown> })?.outreach ?? {};
+  const topPost = (overview as { topPost?: Record<string, unknown> | null })?.topPost;
+
+  const postRows = useMemo(() => {
+    const rows = posts.map((p) => ({
+      ...p,
+      reach: round2(p.reach),
+      likes: round2(p.likes),
+      comments: round2(p.comments),
+      engagementRate: formatEngagementRatePct(p.engagementRate),
+      donationReferrals: round2(p.donationReferrals),
+      estimatedDonationValuePhp: formatPhp2(p.estimatedDonationValuePhp),
+    }));
+    return filterTableRows(rows, SOCIAL_POST_TABLE_COLUMNS, query);
+  }, [posts, query]);
+
+  if (loading) return <Loading />;
+  if (error) return <ApiError msg={error} retry={load} />;
+
+  const topCamp = outreach.topCampaignByReferrals as Record<string, unknown> | undefined;
+
+  return (
+    <div>
+      <SectionTitle>Social media impact</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 16 }}>
+        Outreach metrics and recent posts. Sources: <code>/api/dashboard/kpis</code>, <code>/api/dashboard/overview</code>,{' '}
+        <code>/api/socialmediaposts</code>, <code>/api/insights/social/engagement-vs-vanity</code>.
+      </p>
+
+      <SectionTitle>Outreach KPIs</SectionTitle>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <StatCard label="Posts tracked" value={formatWhole(outreach.socialPostCount)} accent={c.roseLight} />
+        <StatCard
+          label="Avg engagement"
+          value={formatEngagementRatePct(outreach.avgEngagementRate)}
+          accent={c.sageLight}
+        />
+        <StatCard label="Total reach" value={formatWhole(outreach.totalReach)} />
+        <StatCard label="Donation referrals" value={formatWhole(outreach.totalDonationReferrals)} accent={c.goldLight} />
+        <StatCard
+          label="Est. donation value (PHP)"
+          value={formatPhp2(outreach.totalEstimatedDonationValuePhp)}
+          accent={c.goldLight}
+        />
+        <StatCard
+          label="CTA → referral rate"
+          value={
+            outreach.ctaReferralRate != null
+              ? `${(Number(outreach.ctaReferralRate) * 100).toFixed(2)}%`
+              : '—'
+          }
+          sub={
+            outreach.ctaPostCount != null
+              ? `${round2(outreach.ctaPostsWithReferrals)} of ${round2(outreach.ctaPostCount)} CTA posts`
+              : undefined
+          }
+        />
+      </div>
+
+      {topCamp && (topCamp.campaignName != null || topCamp.donationReferrals != null) && (
+        <div
+          style={{
+            background: c.goldLight,
+            border: `1px solid ${c.gold}`,
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 20,
+            fontSize: 13,
+            color: c.text,
+          }}
+        >
+          <strong style={{ color: c.forest }}>Top campaign by referrals:</strong>{' '}
+          {String(topCamp.campaignName ?? '—')} · {round2(topCamp.postCount)} posts · {round2(topCamp.donationReferrals)}{' '}
+          referrals · {formatPhp2(topCamp.estimatedDonationValuePhp)} est. PHP
+        </div>
+      )}
+
+      {topPost && Object.keys(topPost).length > 0 && (
+        <>
+          <SectionTitle>Top post by engagement (overview)</SectionTitle>
+          <div
+            style={{
+              background: c.white,
+              border: `1px solid ${c.sageLight}`,
+              borderRadius: 12,
+              padding: '14px 18px',
+              marginBottom: 20,
+              fontSize: 13,
+            }}
+          >
+            <p style={{ margin: '0 0 8px', fontWeight: 600, color: c.forest }}>
+              {String(topPost.platform ?? '—')} · {String(topPost.campaignName ?? '—')}
+            </p>
+            <p style={{ margin: 0, color: c.muted, fontSize: 12 }}>
+              Engagement {formatEngagementRatePct(topPost.engagementRate)} · Reach {round2(topPost.reach)} · Referrals{' '}
+              {round2(topPost.donationReferrals)} · Est. PHP {formatPhp2(topPost.estimatedDonationValuePhp)}
+            </p>
+          </div>
+        </>
+      )}
+
+      <DataPanel
+        title="Post → donation linkage by platform"
+        url="/api/insights/posts/donation-linkage/by-group?group=platform&take=15"
+        keyField="key"
+        transformRows={transformSocialLinkageRows}
+        columns={[
+          { key: 'key', label: 'Platform' },
+          { key: 'postCount', label: 'Posts' },
+          { key: 'willReferRate', label: 'Refer Rate' },
+          { key: 'avgReferrals', label: 'Average Referrals' },
+          { key: 'totalEstimatedValuePhp', label: 'Total Est. PHP' },
+          { key: 'boostedRate', label: 'Boosted Rate' },
+        ]}
+      />
+
+      {evSummary && (
+        <div style={{ marginTop: 22 }}>
+          <SectionTitle>Engagement vs vanity (segment mix)</SectionTitle>
+          <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+            High engagement = likes+comments+shares at or above P75; high donation = referrals at or above P75. Associations
+            only — not causal.
+          </p>
+          <p style={{ fontSize: 12, color: c.muted, marginBottom: 10 }}>
+            P75 thresholds: engagement score {Number(evSummary.thresholds.engagementScoreP75).toFixed(2)}, donation
+            referrals {Number(evSummary.thresholds.donationReferralsP75).toFixed(2)} · {round2(evSummary.totalPosts)} posts
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: c.sageLight }}>
+                  {['Segment', 'Posts'].map((h) => (
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600 }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {evSummary.segments.map((row, i) => (
+                  <tr
+                    key={row.segment}
+                    style={{
+                      borderBottom: `1px solid ${c.sageLight}`,
+                      background: i % 2 === 0 ? c.ivory : c.white,
+                    }}
+                  >
+                    <td style={{ padding: '8px 12px' }}>{row.segment.replace(/_/g, ' ')}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{formatWhole(row.postCount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <SectionTitle>Recent posts (up to 100)</SectionTitle>
+      <DataSearchBar
+        id={searchId}
+        value={query}
+        onChange={setQuery}
+        placeholder="Filter by platform, campaign, date…"
+      />
+      <Table columns={SOCIAL_POST_TABLE_COLUMNS} rows={postRows} keyField="postId" totalCount={posts.length} />
+    </div>
+  );
+}
+
+// ── Reports (pipelines) ───────────────────────────────────────────────────────
 
 type InsightDonationByCampaignRow = { campaignName: string; totalValuePhp: number; donationCount: number; avgValuePhp: number };
 type InsightBridgeRow = {
@@ -1701,12 +1985,6 @@ type InsightBridgeRow = {
   active_residents?: number;
   avg_edu_progress: number;
   avg_health: number;
-};
-
-type EngagementVsVanitySummary = {
-  totalPosts: number;
-  thresholds: { engagementScoreP75: number; donationReferralsP75: number };
-  segments: { segment: string; postCount: number }[];
 };
 
 type AnnualAccomplishmentReport = {
@@ -1923,7 +2201,7 @@ function AdminReports() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['Campaign', 'Donations', 'Total (PHP)', 'Avg (PHP)'].map(h => (
+              {['Campaign', 'Donations', 'Total (PHP)', 'Average (PHP)'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -1960,7 +2238,7 @@ function AdminReports() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Avg Edu', 'Avg Health'].map(h => (
+              {['Month', 'Posts', 'Clicks', 'Referrals', 'Donations (PHP)', 'Incidents', 'Average Education', 'Average Health'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -1989,11 +2267,11 @@ function AdminReports() {
           keyField="supporterId"
           columns={[
             { key: 'supporterName', label: 'Supporter' },
-            { key: 'expectedNextValuePhp', label: 'Expected next (PHP)' },
-            { key: 'recencyDays', label: 'Recency (days)' },
+            { key: 'expectedNextValuePhp', label: 'Expected Next (PHP)' },
+            { key: 'recencyDays', label: 'Recency (Days)' },
             { key: 'donationCount', label: 'Donations' },
-            { key: 'lastValuePhp', label: 'Last gift (PHP)' },
-            { key: 'lastDonationDate', label: 'Last date' },
+            { key: 'lastValuePhp', label: 'Last Gift (PHP)' },
+            { key: 'lastDonationDate', label: 'Last Date' },
           ]}
         />
 
@@ -2004,10 +2282,10 @@ function AdminReports() {
           columns={[
             { key: 'key', label: 'Platform' },
             { key: 'postCount', label: 'Posts' },
-            { key: 'willReferRate', label: 'Refer rate' },
-            { key: 'avgReferrals', label: 'Avg referrals' },
-            { key: 'totalEstimatedValuePhp', label: 'Total est. PHP' },
-            { key: 'boostedRate', label: 'Boosted rate' },
+            { key: 'willReferRate', label: 'Refer Rate' },
+            { key: 'avgReferrals', label: 'Average Referrals' },
+            { key: 'totalEstimatedValuePhp', label: 'Total Est. PHP' },
+            { key: 'boostedRate', label: 'Boosted Rate' },
           ]}
         />
 
@@ -2019,10 +2297,10 @@ function AdminReports() {
             { key: 'safehouseName', label: 'Safehouse' },
             { key: 'month', label: 'Month' },
             { key: 'stressIndexZ', label: 'Stress (z)' },
-            { key: 'forecastNextMonthIncidents', label: 'Forecast next incidents' },
+            { key: 'forecastNextMonthIncidents', label: 'Forecast Next Incidents' },
             { key: 'incidentCount', label: 'Incidents' },
-            { key: 'incidentLag1', label: 'Incidents lag1' },
-            { key: 'activeResidents', label: 'Active residents' },
+            { key: 'incidentLag1', label: 'Incidents Lag 1' },
+            { key: 'activeResidents', label: 'Active Residents' },
           ]}
         />
 
@@ -2034,8 +2312,8 @@ function AdminReports() {
             { key: 'planCategory', label: 'Category' },
             { key: 'planCount', label: 'Plans' },
             { key: 'residentCount', label: 'Residents' },
-            { key: 'avgLatestProgressPercent', label: 'Avg progress %' },
-            { key: 'avgLatestHealthScore', label: 'Avg health' },
+            { key: 'avgLatestProgressPercent', label: 'Average Progress %' },
+            { key: 'avgLatestHealthScore', label: 'Average Health' },
           ]}
         />
 
@@ -2048,9 +2326,9 @@ function AdminReports() {
             { key: 'riskBand', label: 'Band' },
             { key: 'riskScore', label: 'Score' },
             { key: 'incidents90d', label: 'Incidents 90d' },
-            { key: 'concernSessions90d', label: 'Concern sessions 90d' },
-            { key: 'safetyVisitFlags90d', label: 'Safety flags 90d' },
-            { key: 'currentRiskLevel', label: 'Current risk' },
+            { key: 'concernSessions90d', label: 'Concern Sessions 90d' },
+            { key: 'safetyVisitFlags90d', label: 'Safety Flags 90d' },
+            { key: 'currentRiskLevel', label: 'Current Risk' },
             { key: 'safehouseId', label: 'Safehouse' },
           ]}
         />
@@ -2066,7 +2344,7 @@ function AdminReports() {
             { key: 'latestProgressPercent', label: 'Progress %' },
             { key: 'latestHealthScore', label: 'Health' },
             { key: 'incidentsLast365d', label: 'Incidents 365d' },
-            { key: 'homeVisitsLast180d', label: 'Visits 180d' },
+            { key: 'homeVisitsLast180d', label: 'Home Visits 180d' },
           ]}
         />
       </div>
@@ -2094,7 +2372,7 @@ function AdminReports() {
                 {evSummary.segments.map((row, i) => (
                   <tr key={row.segment} style={{ borderBottom: `1px solid ${c.sageLight}`, background: i % 2 === 0 ? c.ivory : c.white }}>
                     <td style={{ padding: '8px 12px' }}>{row.segment.replace(/_/g, ' ')}</td>
-                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.postCount}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{formatWhole(row.postCount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2232,7 +2510,7 @@ function AdminStaff() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['ID', 'Code', 'First', 'Last', 'Role', 'Type', 'Safehouse', 'Status', 'Email', 'Actions'].map(h => (
+              {['ID', 'Code', 'First Name', 'Last Name', 'Role', 'Type', 'Safehouse', 'Status', 'Email', 'Actions'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -2749,22 +3027,119 @@ export function AdminResidents() {
 // ── Donations with recurring filter + pagination ──────────────────────────────
 
 type DonationRow = {
-  donationId: number; donationDate: string; donationType: string;
-  campaignName: string; amount: number | null; currencyCode: string;
-  channelSource: string; isRecurring: boolean | null;
+  donationId: number;
+  supporterId: number;
+  donationDate: string;
+  donationType: string;
+  campaignName: string;
+  amount: number | null;
+  currencyCode: string;
+  channelSource: string;
+  isRecurring: boolean | null;
+  recurringSeriesKey?: string | null;
+  estimatedValue?: number | null;
+  impactUnit?: string | null;
+  notes?: string | null;
+  referralPostId?: number | null;
 };
 
 type RecurringFilter = 'all' | 'recurring' | 'one-time';
+type DonationModal = 'create' | 'edit' | null;
+type DonationForm = {
+  supporterId: string;
+  donationDate: string;
+  donationType: string;
+  campaignName: string;
+  amount: string;
+  estimatedValue: string;
+  currencyCode: string;
+  channelSource: string;
+  isRecurring: boolean;
+  recurringSeriesKey: string;
+  impactUnit: string;
+  notes: string;
+  referralPostId: string;
+};
+
+const DONATION_TYPES = ['Monetary', 'In-Kind', 'Pledge', 'Grant'] as const;
+const CURRENCY_CODES = ['PHP', 'USD', 'EUR'] as const;
+
+const DONATION_FORM_BLANK: DonationForm = {
+  supporterId: '',
+  donationDate: '',
+  donationType: 'Monetary',
+  campaignName: '',
+  amount: '',
+  estimatedValue: '',
+  currencyCode: 'PHP',
+  channelSource: '',
+  isRecurring: false,
+  recurringSeriesKey: '',
+  impactUnit: '',
+  notes: '',
+  referralPostId: '',
+};
+
+function toDonationForm(row: DonationRow): DonationForm {
+  return {
+    supporterId: String(row.supporterId ?? ''),
+    donationDate: String(row.donationDate ?? '').slice(0, 10),
+    donationType: row.donationType ?? 'Monetary',
+    campaignName: row.campaignName ?? '',
+    amount: row.amount == null ? '' : String(row.amount),
+    estimatedValue: row.estimatedValue == null ? '' : String(row.estimatedValue),
+    currencyCode: row.currencyCode ?? 'PHP',
+    channelSource: row.channelSource ?? '',
+    isRecurring: row.isRecurring === true,
+    recurringSeriesKey: row.recurringSeriesKey ?? '',
+    impactUnit: row.impactUnit ?? '',
+    notes: row.notes ?? '',
+    referralPostId: row.referralPostId == null ? '' : String(row.referralPostId),
+  };
+}
+
+function toDonationPayload(form: DonationForm) {
+  const amount = form.amount.trim();
+  const estimated = form.estimatedValue.trim();
+  const referralPostId = form.referralPostId.trim();
+  const recurringSeriesKey = form.recurringSeriesKey.trim();
+
+  return {
+    supporterId: Number(form.supporterId),
+    donationDate: form.donationDate.trim() || null,
+    donationType: form.donationType.trim() || null,
+    campaignName: form.campaignName.trim() || null,
+    amount: amount === '' ? null : Number(amount),
+    estimatedValue: estimated === '' ? null : Number(estimated),
+    currencyCode: form.currencyCode.trim() || null,
+    channelSource: form.channelSource.trim() || null,
+    isRecurring: form.isRecurring,
+    recurringSeriesKey: form.isRecurring ? (recurringSeriesKey || null) : null,
+    impactUnit: form.impactUnit.trim() || null,
+    notes: form.notes.trim() || null,
+    referralPostId: referralPostId === '' ? null : Number(referralPostId),
+  };
+}
 
 function AdminDonations() {
   const [rows, setRows] = useState<DonationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
   const [query, setQuery] = useState('');
   const [recurringFilter, setRecurringFilter] = useState<RecurringFilter>('all');
   const [perPage, setPerPage] = useState(25);
   const [page, setPage] = useState(1);
+  const [modal, setModal] = useState<DonationModal>(null);
+  const [editRow, setEditRow] = useState<DonationRow | null>(null);
+  const [form, setForm] = useState<DonationForm>(DONATION_FORM_BLANK);
   const searchId = useId();
+
+  const notify = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2400);
+  };
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -2799,12 +3174,111 @@ function AdminDonations() {
     'one-time': rows.filter(r => r.isRecurring !== true).length,
   }), [rows]);
 
+  const openCreate = () => {
+    setForm(DONATION_FORM_BLANK);
+    setEditRow(null);
+    setModal('create');
+  };
+
+  const openEdit = (row: DonationRow) => {
+    setEditRow(row);
+    setForm(toDonationForm(row));
+    setModal('edit');
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setModal(null);
+    setEditRow(null);
+  };
+
+  const validate = () => {
+    const supporterId = Number(form.supporterId);
+    if (!Number.isInteger(supporterId) || supporterId <= 0) {
+      notify('Supporter ID is required.');
+      return false;
+    }
+    if (form.amount.trim() !== '' && Number.isNaN(Number(form.amount))) {
+      notify('Amount must be numeric.');
+      return false;
+    }
+    if (form.estimatedValue.trim() !== '' && Number.isNaN(Number(form.estimatedValue))) {
+      notify('Estimated value must be numeric.');
+      return false;
+    }
+    if (form.referralPostId.trim() !== '' && (!Number.isInteger(Number(form.referralPostId)) || Number(form.referralPostId) <= 0)) {
+      notify('Referral Post ID must be a positive whole number.');
+      return false;
+    }
+    return true;
+  };
+
+  const saveCreate = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const r = await api('/api/donations', { method: 'POST', body: JSON.stringify(toDonationPayload(form)) });
+      if (r.ok) {
+        notify('✓ Donation created.');
+        closeModal();
+        await load();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        notify((err as { message?: string }).message ?? 'Create failed.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editRow || !validate()) return;
+    setSaving(true);
+    try {
+      const body = { donationId: editRow.donationId, ...toDonationPayload(form) };
+      const r = await api(`/api/donations/${editRow.donationId}`, { method: 'PUT', body: JSON.stringify(body) });
+      if (r.ok) {
+        notify('✓ Donation updated.');
+        closeModal();
+        await load();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        notify((err as { message?: string }).message ?? 'Update failed.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (row: DonationRow) => {
+    if (!window.confirm(`Delete donation #${row.donationId}? This cannot be undone.`)) return;
+    setSaving(true);
+    try {
+      const r = await api(`/api/donations/${row.donationId}`, { method: 'DELETE' });
+      if (r.ok) {
+        notify('✓ Donation deleted.');
+        await load();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        notify((err as { message?: string }).message ?? 'Delete failed.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
   return (
     <div>
-      <SectionTitle>Donations ({rows.length})</SectionTitle>
+      {toast && <div style={{ background: c.sageLight, color: c.forest, borderRadius: 8, padding: '10px 16px', marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <SectionTitle>Donations ({rows.length})</SectionTitle>
+        <button onClick={openCreate} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          + Add Donation
+        </button>
+      </div>
 
       {/* Recurring filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -2832,7 +3306,7 @@ function AdminDonations() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['ID', 'Date', 'Type', 'Campaign', 'Amount', 'Currency', 'Channel', 'Recurring'].map(h => (
+              {['ID', 'Date', 'Type', 'Campaign', 'Amount', 'Currency', 'Channel', 'Recurring', 'Actions'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -2852,12 +3326,119 @@ function AdminDonations() {
                     ? <span style={{ background: c.sageLight, color: c.forest, borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>Yes</span>
                     : <span style={{ background: c.ivory, color: c.muted, borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>No</span>}
                 </td>
+                <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                  <button onClick={() => openEdit(row)} style={{ background: c.goldLight, color: c.text, border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, marginRight: 6 }}>
+                    Edit
+                  </button>
+                  <button onClick={() => remove(row)} disabled={saving}
+                    style={{ background: c.roseLight, color: c.rose, border: `1px solid ${c.rose}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
+
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 1rem' }}>
+              {modal === 'create' ? 'Add Donation' : `Edit Donation #${editRow?.donationId ?? ''}`}
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Supporter ID</span>
+                <input type="number" min={1} value={form.supporterId} onChange={(e) => setForm((f) => ({ ...f, supporterId: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Donation Date</span>
+                <input type="date" value={form.donationDate} onChange={(e) => setForm((f) => ({ ...f, donationDate: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Donation Type</span>
+                <select value={form.donationType} onChange={(e) => setForm((f) => ({ ...f, donationType: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+                  {DONATION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Campaign Name</span>
+                <input type="text" value={form.campaignName} onChange={(e) => setForm((f) => ({ ...f, campaignName: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Amount</span>
+                <input type="number" step="0.01" min={0} value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Estimated Value</span>
+                <input type="number" step="0.01" min={0} value={form.estimatedValue} onChange={(e) => setForm((f) => ({ ...f, estimatedValue: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Currency</span>
+                <select value={form.currencyCode} onChange={(e) => setForm((f) => ({ ...f, currencyCode: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+                  {CURRENCY_CODES.map((code) => <option key={code} value={code}>{code}</option>)}
+                </select>
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Channel Source</span>
+                <input type="text" value={form.channelSource} onChange={(e) => setForm((f) => ({ ...f, channelSource: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Impact Unit</span>
+                <input type="text" value={form.impactUnit} onChange={(e) => setForm((f) => ({ ...f, impactUnit: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Referral Post ID</span>
+                <input type="number" min={1} value={form.referralPostId} onChange={(e) => setForm((f) => ({ ...f, referralPostId: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <input type="checkbox" checked={form.isRecurring} onChange={(e) => setForm((f) => ({ ...f, isRecurring: e.target.checked }))} />
+              <span style={{ fontSize: 13, color: c.text }}>Recurring donation</span>
+            </label>
+
+            {form.isRecurring && (
+              <label style={{ display: 'block', marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Recurring Series Key (optional)</span>
+                <input type="text" value={form.recurringSeriesKey} onChange={(e) => setForm((f) => ({ ...f, recurringSeriesKey: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+            )}
+
+            <label style={{ display: 'block', marginBottom: 16 }}>
+              <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</span>
+              <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={3}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }} />
+            </label>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={closeModal} disabled={saving}
+                style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                Cancel
+              </button>
+              <button onClick={modal === 'create' ? saveCreate : saveEdit} disabled={saving}
+                style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2867,6 +3448,7 @@ export default function AdminPortal() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabSlug = searchParams.get('tab');
+  const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(true);
 
   useEffect(() => {
     if (tabSlug === 'pipelines') {
@@ -2897,7 +3479,7 @@ export default function AdminPortal() {
     switch (activeNav) {
       case 'Dashboard': return <AdminDashboard />;
       case 'Users': return <AdminAllUsers />;
-      case 'Pending Approvals': return <AdminPendingApprovals />;
+      case 'Pending Approvals': return <AdminPendingApprovals onQueueChanged={refreshPendingAuditCount} />;
       case 'Residents': return <AdminResidentsPanel />;
       case 'Staff': return <AdminStaff />;
       case 'Safehouses':
@@ -2916,6 +3498,7 @@ export default function AdminPortal() {
           { key: 'ipAddress', label: 'IP' }, { key: 'approvalStatus', label: 'Approval' },
         ]} />;
       case 'Reports': return <AdminReports />;
+      case 'Social Media Impact': return <AdminSocialImpact />;
       case 'Settings':
         return (
           <div>
@@ -2937,6 +3520,7 @@ export default function AdminPortal() {
           if (item === 'Pipelines') navigate('/admin/pipelines');
           else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
         }}
+        badgeCounts={{ 'Pending Approvals': pendingAuditCount }}
         user={`${user?.userName ?? 'Admin'} · Admin`}
         onLogout={handleLogout}
       />
