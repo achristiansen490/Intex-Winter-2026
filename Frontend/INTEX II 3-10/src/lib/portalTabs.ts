@@ -116,6 +116,7 @@ const ADMIN_NAV_TO_SLUG: Record<string, string> = {
   Donations: 'donations',
   'Audit Log': 'audit-log',
   Reports: 'reports',
+  'Social Media Impact': 'social-media-impact',
   Settings: 'settings',
 };
 

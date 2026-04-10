@@ -3528,10 +3528,11 @@ export default function AdminPortal() {
           id="admin-sidebar"
           items={navItems}
           active={activeNav}
-          onSelectNavItem={(item) => {
-            if (item === 'Pipelines') navigate('/admin/pipelines');
-            else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
-          }}
+        onSelectNavItem={(item) => {
+          if (item === 'Pipelines') navigate('/admin/pipelines');
+          else if (item === 'Social Media Impact') navigate('/admin/social-impact');
+          else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
+        }}
           badgeCounts={{ 'Pending Approvals': pendingAuditCount }}
           user={`${user?.userName ?? 'Admin'} · Admin`}
           onLogout={handleLogout}

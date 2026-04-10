@@ -13,7 +13,7 @@ const c = {
   sageLight: '#D4EAD9',
 };
 
-const ADMIN_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.82) 0%,rgba(196,134,122,0.38) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
+const ADMIN_BANNER_BG = 'linear-gradient(135deg, #244232 0%, #2A4A35 52%, #35624A 100%)';
 
 export function AdminPageShell({
   activeNav,
@@ -30,6 +30,7 @@ export function AdminPageShell({
 
   const onSelectNavItem = (item: string) => {
     if (item === 'Pipelines') navigate('/admin/pipelines');
+    else if (item === 'Social Media Impact') navigate('/admin/social-impact');
     else navigate(`/admin?tab=${adminNavItemToSlug(item)}`);
   };
 
