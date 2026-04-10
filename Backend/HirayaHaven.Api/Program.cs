@@ -160,25 +160,30 @@ builder.Services.AddCors(options =>
         .ToArray();
 
     var configuredOriginSet = configuredOrigins.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var allowAnyHttps = builder.Configuration.GetValue("Cors:AllowAnyHttpsOrigin", false);
 
     options.AddPolicy("Frontend", policy =>
     {
         policy.SetIsOriginAllowed(origin =>
-            Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
-            (
-                // Explicitly configured origins from config/app settings
-                configuredOriginSet.Contains(origin.TrimEnd('/'))
-                // Local dev
-                || (
-                    uri.Scheme == Uri.UriSchemeHttp &&
-                    (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
-                )
-                // Azure Static Web Apps production host fallback
-                || (
-                    uri.Scheme == Uri.UriSchemeHttps &&
-                    uri.Host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
-                )
-            ))
+        {
+            if (string.IsNullOrWhiteSpace(origin)) return false;
+            if (allowAnyHttps
+                && Uri.TryCreate(origin, UriKind.Absolute, out var anyHttps)
+                && anyHttps.Scheme == Uri.UriSchemeHttps)
+                return true;
+            if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+            return configuredOriginSet.Contains(origin.TrimEnd('/'))
+                   // Local dev
+                   || (
+                       uri.Scheme == Uri.UriSchemeHttp
+                       && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
+                   )
+                   // Azure Static Web Apps (including preview URLs like app--123.azurestaticapps.net)
+                   || (
+                       uri.Scheme == Uri.UriSchemeHttps
+                       && uri.Host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
+                   );
+        })
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -264,6 +269,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// CORS must run before auth and before other middleware that might terminate OPTIONS preflights.
+app.UseCors("Frontend");
+
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("Content-Security-Policy",
@@ -276,11 +284,12 @@ app.Use(async (context, next) =>
         "frame-ancestors 'none'");
     await next();
 });
-
-app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/api/health", () => Results.Json(new { ok = true, utc = DateTime.UtcNow }))
+    .WithName("Health")
+    .AllowAnonymous();
 
 app.Run();
 
