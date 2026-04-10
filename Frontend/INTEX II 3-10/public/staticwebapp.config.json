@@ -22,6 +22,6 @@
     }
   },
   "globalHeaders": {
-    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://hiraya-backend-b5hfcmcufmhqb2eh.francecentral-01.azurewebsites.net; frame-ancestors 'none'"
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'"
   }
 }
