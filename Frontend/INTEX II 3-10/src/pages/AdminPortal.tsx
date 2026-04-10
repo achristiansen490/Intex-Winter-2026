@@ -1566,7 +1566,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
       if (raw == null || raw === '') return '—';
       const id = Number(raw);
       const name = Number.isFinite(id) ? residentNameById.get(id) : undefined;
-      return name ? `${name} (#${String(raw)})` : `#${String(raw)}`;
+      return name ?? `#${String(raw)}`;
     }
     return String(row[key] ?? '—');
   };

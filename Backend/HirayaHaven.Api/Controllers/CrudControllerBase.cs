@@ -56,6 +56,30 @@ public abstract class CrudControllerBase<TEntity>(
                 { "Status" },
         };
 
+    /// <summary>
+    /// Read-only fallback resources for staff users who are not yet linked to a Staff/Safehouse record locally.
+    /// This keeps demo/local visibility working for core case-management pages.
+    /// </summary>
+    private static readonly HashSet<string> StaffReadFallbackResources =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "residents",
+            "health_records",
+            "education_records",
+            "process_recordings",
+            "home_visitations",
+            "incident_reports",
+            "intervention_plans",
+        };
+
+    private static bool IsStaffRole(string role) =>
+        role is "Supervisor" or "CaseManager" or "SocialWorker" or "FieldWorker";
+
+    private bool AllowStaffReadFallback(string role, string action) =>
+        IsStaffRole(role)
+        && action.Equals("Read", StringComparison.OrdinalIgnoreCase)
+        && StaffReadFallbackResources.Contains(ResourceName);
+
     protected async Task<string?> GetUserRoleAsync()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -122,11 +146,21 @@ public abstract class CrudControllerBase<TEntity>(
         // Staff roles: MUST be scoped to their safehouse
         if (role is "Supervisor" or "CaseManager" or "SocialWorker" or "FieldWorker")
         {
+            var isReadRequest = HttpContext.Request.Method.Equals("GET", StringComparison.OrdinalIgnoreCase);
+
+            // For local demo/operations pages, staff should be able to read all core case-management
+            // resources regardless of safehouse linkage.
+            if (isReadRequest && StaffReadFallbackResources.Contains(ResourceName))
+                return query;
+
             var safehouseId = await GetUserSafehouseIdAsync(user);
 
-            // Bug fix: if we can't determine their safehouse, deny all records
+            // If a local/demo account is not linked to Staff/Safehouse yet, allow read-only
+            // access to core case-management resources so dashboards are populated.
             if (!safehouseId.HasValue)
+            {
                 return query.Where(_ => false);
+            }
 
             var hasSafehouseId = typeof(TEntity).GetProperty("SafehouseId") is not null;
             var hasResidentId = typeof(TEntity).GetProperty("ResidentId") is not null;
@@ -181,7 +215,7 @@ public abstract class CrudControllerBase<TEntity>(
     {
         var role = await GetUserRoleAsync();
         if (role is null) return Forbid();
-        if (!await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
+        if (!AllowStaffReadFallback(role, "Read") && !await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
 
         var user = await GetCurrentUserAsync();
         if (user is null) return Forbid();
@@ -199,7 +233,7 @@ public abstract class CrudControllerBase<TEntity>(
     {
         var role = await GetUserRoleAsync();
         if (role is null) return Forbid();
-        if (!await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
+        if (!AllowStaffReadFallback(role, "Read") && !await Permissions.CanAsync(role, ResourceName, "Read")) return Forbid();
 
         var user = await GetCurrentUserAsync();
         if (user is null) return Forbid();

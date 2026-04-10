@@ -26,6 +26,66 @@ public class PermissionService(HirayaContext db) : IPermissionService
         };
     }
 
+    private static string NormalizeResource(string resource)
+    {
+        return resource.Trim().ToLowerInvariant();
+    }
+
+    private static IEnumerable<string> ResourceAliases(string resource)
+    {
+        var r = NormalizeResource(resource);
+        var aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { r };
+
+        // Common import/name variants across environments.
+        switch (r)
+        {
+            case "residents":
+                aliases.Add("resident");
+                break;
+            case "health_records":
+                aliases.Add("healthrecord");
+                aliases.Add("healthrecords");
+                aliases.Add("health_wellbeing_records");
+                aliases.Add("healthwellbeingrecord");
+                aliases.Add("healthwellbeingrecords");
+                break;
+            case "education_records":
+                aliases.Add("educationrecord");
+                aliases.Add("educationrecords");
+                break;
+            case "process_recordings":
+                aliases.Add("processrecording");
+                aliases.Add("processrecordings");
+                break;
+            case "home_visitations":
+                aliases.Add("homevisitation");
+                aliases.Add("homevisitations");
+                break;
+            case "incident_reports":
+                aliases.Add("incidentreport");
+                aliases.Add("incidentreports");
+                break;
+            case "intervention_plans":
+                aliases.Add("interventionplan");
+                aliases.Add("interventionplans");
+                break;
+            case "safehouses":
+                aliases.Add("safehouse");
+                break;
+            case "audit_log":
+                aliases.Add("auditlog");
+                break;
+            case "donation_allocations":
+                aliases.Add("donationallocation");
+                aliases.Add("donationallocations");
+                break;
+        }
+
+        // Also tolerate underscore/no-underscore variants.
+        aliases.Add(r.Replace("_", string.Empty));
+        return aliases;
+    }
+
     private async Task<Dictionary<string, (bool allowed, string? scope)>> GetCacheAsync()
     {
         if (_cache is not null) return _cache;
@@ -46,11 +106,14 @@ public class PermissionService(HirayaContext db) : IPermissionService
             {
                 if (string.IsNullOrWhiteSpace(p.Role) || string.IsNullOrWhiteSpace(p.Resource))
                     continue;
-                var key =
-                    $"{p.Role.Trim()}:{p.Resource.Trim()}:{NormalizeAction(p.Action ?? string.Empty)}"
-                        .ToLowerInvariant();
-                if (!dict.ContainsKey(key))
-                    dict[key] = (true, p.ScopeNote);
+                var roleKey = p.Role.Trim().ToLowerInvariant();
+                var actionKey = NormalizeAction(p.Action ?? string.Empty);
+                foreach (var resourceKey in ResourceAliases(p.Resource))
+                {
+                    var key = $"{roleKey}:{resourceKey}:{actionKey}".ToLowerInvariant();
+                    if (!dict.ContainsKey(key))
+                        dict[key] = (true, p.ScopeNote);
+                }
             }
 
             _cache = dict;
@@ -84,11 +147,14 @@ public class PermissionService(HirayaContext db) : IPermissionService
         var cache = await GetCacheAsync();
         foreach (var act in ActionAliases(action))
         {
-            var key =
-                $"{role.Trim()}:{resource.Trim()}:{NormalizeAction(act)}"
-                    .ToLowerInvariant();
-            if (cache.ContainsKey(key))
-                return true;
+            foreach (var res in ResourceAliases(resource))
+            {
+                var key =
+                    $"{role.Trim()}:{res}:{NormalizeAction(act)}"
+                        .ToLowerInvariant();
+                if (cache.ContainsKey(key))
+                    return true;
+            }
         }
 
         return false;
@@ -99,11 +165,14 @@ public class PermissionService(HirayaContext db) : IPermissionService
         var cache = await GetCacheAsync();
         foreach (var act in ActionAliases(action))
         {
-            var key =
-                $"{role.Trim()}:{resource.Trim()}:{NormalizeAction(act)}"
-                    .ToLowerInvariant();
-            if (cache.TryGetValue(key, out var entry))
-                return entry.scope;
+            foreach (var res in ResourceAliases(resource))
+            {
+                var key =
+                    $"{role.Trim()}:{res}:{NormalizeAction(act)}"
+                        .ToLowerInvariant();
+                if (cache.TryGetValue(key, out var entry))
+                    return entry.scope;
+            }
         }
 
         return null;

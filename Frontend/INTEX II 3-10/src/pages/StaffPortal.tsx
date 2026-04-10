@@ -521,7 +521,7 @@ function CrudDataPanel({
       if (raw == null || raw === '') return '—';
       const id = Number(raw);
       const name = Number.isFinite(id) ? residentNameById.get(id) : undefined;
-      return name ? `${name} (#${String(raw)})` : `#${String(raw)}`;
+      return name ?? `#${String(raw)}`;
     }
     return String(row[key] ?? '—');
   };
@@ -1865,13 +1865,19 @@ export default function StaffPortal() {
       }
     >
       <section aria-label="Command center"
-        style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
+        style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>{displayRole} Dashboard</p>
           <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
             Welcome, {staffDisplayName}
           </h1>
         </div>
+        <button
+          onClick={handleLogout}
+          style={{ background: c.white, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}
+        >
+          Logout
+        </button>
       </section>
       {renderContent()}
     </DashboardLayout>
