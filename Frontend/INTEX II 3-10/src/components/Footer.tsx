@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
-import { COOKIE_SETTINGS_OPEN_EVENT, getConsentStatus } from './CookieConsent';
+import { COOKIE_SETTINGS_OPEN_EVENT, getConsentStatus, getThemePreference, setThemePreference, THEME_CHANGED_EVENT } from './CookieConsent';
 
 const c = {
   ivory: '#FBF8F2',
@@ -10,6 +10,7 @@ const c = {
 
 export function Footer() {
   const [savedConsent, setSavedConsent] = useState(() => getConsentStatus());
+  const [theme, setTheme] = useState(() => getThemePreference());
 
   useEffect(() => {
     const sync = () => setSavedConsent(getConsentStatus());
@@ -17,8 +18,24 @@ export function Footer() {
     return () => window.removeEventListener('hh-cookie-consent-changed', sync);
   }, []);
 
+  useEffect(() => {
+    const onTheme = () => setTheme(getThemePreference());
+    window.addEventListener(THEME_CHANGED_EVENT, onTheme);
+    return () => window.removeEventListener(THEME_CHANGED_EVENT, onTheme);
+  }, []);
+
   function openCookieSettings() {
     window.dispatchEvent(new CustomEvent(COOKIE_SETTINGS_OPEN_EVENT));
+  }
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    const saved = setThemePreference(next);
+    if (!saved) {
+      openCookieSettings();
+      return;
+    }
+    setTheme(next);
   }
 
   return (
@@ -57,6 +74,26 @@ export function Footer() {
                 Contact
               </a>
             </li>
+            {savedConsent === 'accepted' && (
+              <li>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  style={{
+                    fontSize: 13,
+                    color: c.muted,
+                    textDecoration: 'none',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Theme: {theme === 'dark' ? 'Dark' : 'Light'}
+                </button>
+              </li>
+            )}
           </ul>
         </nav>
         <p style={{ fontSize: 12, color: c.muted }}>

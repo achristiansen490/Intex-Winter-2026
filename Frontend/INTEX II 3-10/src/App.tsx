@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { isSafeReturnPath, resolvePostLoginTarget } from './lib/postLoginRouting';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { CookieConsent } from './components/CookieConsent';
+import { CookieConsent, getConsentStatus, getThemePreference, THEME_CHANGED_EVENT, type ThemePreference } from './components/CookieConsent';
 import { Footer } from './components/Footer';
 
 // Pages
@@ -85,6 +86,31 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const applyTheme = (theme: ThemePreference) => {
+      document.documentElement.setAttribute('data-theme', theme);
+    };
+    const syncThemeFromConsent = () => {
+      if (getConsentStatus() === 'accepted') applyTheme(getThemePreference());
+      else applyTheme('light');
+    };
+    syncThemeFromConsent();
+    const onTheme = (e: Event) => {
+      const detail = (e as CustomEvent<ThemePreference>).detail;
+      if (getConsentStatus() !== 'accepted') {
+        applyTheme('light');
+        return;
+      }
+      applyTheme(detail === 'dark' ? 'dark' : 'light');
+    };
+    window.addEventListener('hh-cookie-consent-changed', syncThemeFromConsent);
+    window.addEventListener(THEME_CHANGED_EVENT, onTheme);
+    return () => {
+      window.removeEventListener('hh-cookie-consent-changed', syncThemeFromConsent);
+      window.removeEventListener(THEME_CHANGED_EVENT, onTheme);
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
