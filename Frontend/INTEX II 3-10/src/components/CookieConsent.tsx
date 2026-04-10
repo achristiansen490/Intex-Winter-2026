@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
 const COOKIE_KEY = 'hh_cookie_consent';
+const THEME_COOKIE_KEY = 'hh_theme';
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180; // 180 days
 
 type ConsentValue = 'accepted' | 'declined';
+export type ThemePreference = 'light' | 'dark';
 
 function secureSuffix(): string {
   return typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; secure' : '';
@@ -35,6 +37,24 @@ export function getConsentStatus(): ConsentValue | null {
 
 /** Footer (or elsewhere) dispatches this to open the cookie dialog */
 export const COOKIE_SETTINGS_OPEN_EVENT = 'hh-open-cookie-settings';
+export const THEME_CHANGED_EVENT = 'hh-theme-changed';
+
+export function getThemePreference(): ThemePreference {
+  const value = readCookie(THEME_COOKIE_KEY);
+  return value === 'dark' ? 'dark' : 'light';
+}
+
+export function setThemePreference(theme: ThemePreference): boolean {
+  if (getConsentStatus() !== 'accepted') return false;
+  writeCookie(THEME_COOKIE_KEY, theme, COOKIE_MAX_AGE_SECONDS);
+  window.dispatchEvent(new CustomEvent(THEME_CHANGED_EVENT, { detail: theme }));
+  return true;
+}
+
+function clearThemePreference(): void {
+  deleteCookie(THEME_COOKIE_KEY);
+  window.dispatchEvent(new CustomEvent(THEME_CHANGED_EVENT, { detail: 'light' as ThemePreference }));
+}
 
 function notifyConsentChanged(): void {
   window.dispatchEvent(new CustomEvent('hh-cookie-consent-changed'));
@@ -79,12 +99,7 @@ export function CookieConsent() {
 
   function decline() {
     writeCookie(COOKIE_KEY, 'declined', COOKIE_MAX_AGE_SECONDS);
-    document.cookie.split(';').forEach((cookie) => {
-      const name = cookie.split('=')[0].trim();
-      if (name === 'hh_theme') {
-        deleteCookie(name);
-      }
-    });
+    clearThemePreference();
     setConsent('declined');
     setSettingsOpen(false);
     notifyConsentChanged();

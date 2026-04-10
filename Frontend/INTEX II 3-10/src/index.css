@@ -16,6 +16,21 @@ body {
   min-height: 100vh;
 }
 
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] #root {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html[data-theme='dark'] #root img,
+html[data-theme='dark'] #root video,
+html[data-theme='dark'] #root canvas,
+html[data-theme='dark'] #root iframe {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 /* Logged-in dashboard sidebar: drawer + hamburger only on small screens (Sidebar.tsx MOBILE_NAV_QUERY). */
 @media (max-width: 768px) {
   .sidebar-toggle {
