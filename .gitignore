@@ -4,6 +4,10 @@
 *.userosscache
 *.sln.docstates
 
+# Local dotnet publish output (build in CI or deploy from pipeline)
+Backend/publish-out/
+Backend/publish-out2/
+
 # Build outputs
 [Bb]in/
 [Oo]bj/
