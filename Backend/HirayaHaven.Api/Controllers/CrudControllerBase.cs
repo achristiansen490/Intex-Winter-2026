@@ -63,7 +63,7 @@ public abstract class CrudControllerBase<TEntity>(
         if (user is null) return null;
         var roles = await UserManager.GetRolesAsync(user);
         foreach (var r in new[] { "Admin", "Supervisor", "CaseManager", "SocialWorker", "FieldWorker", "Resident", "Donor" })
-            if (roles.Contains(r)) return r;
+            if (roles.Any(x => string.Equals(x, r, StringComparison.OrdinalIgnoreCase))) return r;
         return roles.FirstOrDefault();
     }
 

@@ -495,7 +495,6 @@ function MyImpact({ refreshSignal = 0 }: { refreshSignal?: number }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
         <StatCard label="Total Donations" value={(summary as any)?.totalDonationRows ?? '—'} accent={c.goldLight} />
         <StatCard label="Monetary Total" value={(summary as any)?.totalMonetaryAmount != null ? `₱${Number((summary as any).totalMonetaryAmount).toLocaleString()}` : '—'} accent={c.goldLight} />
-        <StatCard label="Total Value (incl. in-kind)" value={(summary as any)?.totalEstimatedValue != null ? `₱${Number((summary as any).totalEstimatedValue).toLocaleString()}` : '—'} accent={c.sageLight} />
       </div>
 
       {byType.length > 0 && (
@@ -1008,7 +1007,7 @@ function MyProfile() {
 // ── Portal ────────────────────────────────────────────────────────────────────
 
 export default function DonorPortal() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [donateModalOpen, setDonateModalOpen] = useState(false);
@@ -1033,7 +1032,7 @@ export default function DonorPortal() {
   };
 
   /** Display name shown in the donor portal shell (welcome + sidebar). */
-  const donorDisplayName = 'Rose';
+  const donorDisplayName = user?.userName?.trim() || 'Donor';
 
   const renderContent = () => {
     switch (activeNav) {
