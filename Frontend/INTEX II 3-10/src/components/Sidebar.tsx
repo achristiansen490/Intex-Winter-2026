@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
+
+/** Must match `index.css` — drawer + hamburger only below this width. */
+const MOBILE_NAV_QUERY = '(max-width: 768px)';
 
 const c = {
   forest: '#2A4A35',
@@ -25,15 +28,36 @@ interface SidebarProps {
 export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCounts, user, onLogout }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [isMobileNav, setIsMobileNav] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(MOBILE_NAV_QUERY).matches,
+  );
+
+  // Keep desktop and mobile nav in sync: CSS only styles the drawer below 768px.
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_NAV_QUERY);
+    const sync = () => setIsMobileNav(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  // If the user resizes from mobile to desktop while the drawer is open, clear it.
+  useEffect(() => {
+    if (!isMobileNav) setOpen(false);
+  }, [isMobileNav]);
+
+  const drawerOpen = isMobileNav && open;
 
   return (
     <>
       {/* Mobile toggle button */}
       <button
+        type="button"
         onClick={() => setOpen(true)}
         aria-label="Open sidebar navigation"
-        aria-expanded={open}
+        aria-expanded={drawerOpen}
         aria-controls={id}
+        hidden={!isMobileNav}
         style={{
           position: 'fixed', bottom: 20, left: 20, zIndex: 150,
           background: c.forest, color: c.ivory,
@@ -47,8 +71,8 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
         ☰
       </button>
 
-      {/* Mobile overlay */}
-      {open && (
+      {/* Mobile overlay (desktop never uses drawer; see MOBILE_NAV_QUERY) */}
+      {drawerOpen && (
         <div
           onClick={() => setOpen(false)}
           aria-hidden="true"
@@ -61,6 +85,7 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
 
       <nav
         id={id}
+        className={`dashboard-sidebar ${drawerOpen ? 'is-open' : ''}`}
         aria-label="Dashboard navigation"
         style={{
           background: c.forest,
@@ -69,7 +94,12 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
           flexDirection: 'column',
           padding: '1.25rem 0',
           flexShrink: 0,
-          minHeight: 'calc(100vh - 56px)',
+          alignSelf: 'flex-start',
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          maxHeight: '100vh',
+          overflow: 'hidden',
         }}
       >
         <button
@@ -88,6 +118,7 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
 
         <div
           style={{
+            flexShrink: 0,
             padding: '0 1rem 1.25rem',
             borderBottom: '0.5px solid rgba(255,255,255,0.1)',
             marginBottom: '0.75rem',
@@ -103,7 +134,17 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
           </Link>
         </div>
 
-        <ul style={{ listStyle: 'none', flex: 1, margin: 0, padding: 0 }}>
+        <ul
+          style={{
+            listStyle: 'none',
+            flex: 1,
+            minHeight: 0,
+            margin: 0,
+            padding: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
           {items.map((item) => {
             const badge = badgeCounts?.[item];
             const showBadge = typeof badge === 'number' && badge > 0;
@@ -169,11 +210,12 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
 
         <div
           style={{
+            flexShrink: 0,
             padding: '0.75rem 1rem',
             borderTop: '0.5px solid rgba(255,255,255,0.1)',
             fontSize: 12,
             color: 'rgba(251,248,242,0.5)',
-            textAlign: 'center',
+            textAlign: 'left',
           }}
         >
           {onLogout && (

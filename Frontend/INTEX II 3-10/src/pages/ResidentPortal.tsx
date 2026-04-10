@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useId, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
-import { apiUrl } from '../lib/api';
+import { apiFetch as api, jsonIfOk } from '../lib/api';
 import { RESIDENT_NAV_ITEMS, residentNavItemToSlug, residentSlugToNavItem } from '../lib/portalTabs';
 
 const c = {
@@ -12,10 +13,6 @@ const c = {
 };
 const RESIDENT_BANNER_BG = `linear-gradient(120deg,rgba(42,74,53,0.72) 0%,rgba(107,158,126,0.42) 100%), url("/Smiles under the sun.png") center/cover no-repeat`;
 const navItems = [...RESIDENT_NAV_ITEMS];
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string) =>
-  fetch(apiUrl(url), { headers: { Authorization: `Bearer ${tok()}` } });
 
 function filterRecordsByText(rows: Record<string, unknown>[], query: string): Record<string, unknown>[] {
   const needle = query.trim().toLowerCase();
@@ -120,7 +117,7 @@ function MyProfile({ residentId }: { residentId: number | null }) {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/residents').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/residents'), []);
       const arr = Array.isArray(data) ? data : [];
       setResident(residentId != null ? (arr.find((r: any) => r.residentId === residentId) ?? arr[0] ?? null) : arr[0] ?? null);
     } catch { setError('Failed to load profile.'); }
@@ -170,7 +167,7 @@ function MyProgress({ residentId }: { residentId: number | null }) {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/residents').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/residents'), []);
       const arr = Array.isArray(data) ? data : [];
       setResident(residentId != null ? (arr.find((r: any) => r.residentId === residentId) ?? arr[0] ?? null) : arr[0] ?? null);
     } catch { setError('Failed to load progress.'); }
@@ -238,7 +235,7 @@ function HealthWellbeing({ residentId }: { residentId: number | null }) {
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const d = await api('/api/healthwellbeingrecords').then(r => r.json()); setRecords(Array.isArray(d) ? d : []); }
+    try { const d = await jsonIfOk(await api('/api/healthwellbeingrecords'), []); setRecords(Array.isArray(d) ? d : []); }
     catch { setError('Failed to load health records.'); }
     finally { setLoading(false); }
   }, [residentId]);
@@ -349,7 +346,7 @@ function Education({ residentId }: { residentId: number | null }) {
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const d = await api('/api/educationrecords').then(r => r.json()); setRecords(Array.isArray(d) ? d : []); }
+    try { const d = await jsonIfOk(await api('/api/educationrecords'), []); setRecords(Array.isArray(d) ? d : []); }
     catch { setError('Failed to load education records.'); }
     finally { setLoading(false); }
   }, [residentId]);
@@ -428,7 +425,7 @@ function VisitSchedule({ residentId }: { residentId: number | null }) {
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const d = await api('/api/homevisitations').then(r => r.json()); setVisits(Array.isArray(d) ? d : []); }
+    try { const d = await jsonIfOk(await api('/api/homevisitations'), []); setVisits(Array.isArray(d) ? d : []); }
     catch { setError('Failed to load visit schedule.'); }
     finally { setLoading(false); }
   }, [residentId]);
@@ -500,7 +497,7 @@ function MyGoals({ residentId }: { residentId: number | null }) {
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const d = await api('/api/interventionplans').then(r => r.json()); setPlans(Array.isArray(d) ? d : []); }
+    try { const d = await jsonIfOk(await api('/api/interventionplans'), []); setPlans(Array.isArray(d) ? d : []); }
     catch { setError('Failed to load goals.'); }
     finally { setLoading(false); }
   }, [residentId]);
@@ -599,21 +596,22 @@ export default function ResidentPortal() {
   };
 
   return (
-    <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar id="resident-sidebar" items={navItems} active={activeNav} setActive={setTab}
-        user={user?.userName ?? 'Resident'} onLogout={handleLogout} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
-        <section aria-label="Welcome"
-          style={{ background: RESIDENT_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
-          <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>Your safe space</p>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
-              Welcome, {user?.userName ?? 'Resident'}
-            </h1>
-          </div>
-        </section>
-        {renderContent()}
-      </div>
-    </main>
+    <DashboardLayout
+      sidebar={
+        <Sidebar id="resident-sidebar" items={navItems} active={activeNav} setActive={setTab}
+          user={user?.userName ?? 'Resident'} onLogout={handleLogout} />
+      }
+    >
+      <section aria-label="Welcome"
+        style={{ background: RESIDENT_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
+        <div>
+          <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.65)', marginBottom: 3 }}>Your safe space</p>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
+            Welcome, {user?.userName ?? 'Resident'}
+          </h1>
+        </div>
+      </section>
+      {renderContent()}
+    </DashboardLayout>
   );
 }

@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Logo';
+import { isSafeReturnPath } from '../lib/postLoginRouting';
 
 const c = {
   ivory: '#FBF8F2',
@@ -14,6 +15,10 @@ export default function RegisterSuccessPage() {
   const [searchParams] = useSearchParams();
   const type = (searchParams.get('type') ?? '').toLowerCase();
   const isStaff = type === 'staff';
+  const returnUrlRaw = searchParams.get('returnUrl');
+  const afterLogin =
+    returnUrlRaw && isSafeReturnPath(returnUrlRaw) ? returnUrlRaw : '/donor';
+  const loginHref = `/login?returnUrl=${encodeURIComponent(afterLogin)}`;
 
   return (
     <main
@@ -56,7 +61,7 @@ export default function RegisterSuccessPage() {
         <div style={{ marginTop: 28, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           {!isStaff && (
             <Link
-              to="/login?returnUrl=%2Fdonor"
+              to={loginHref}
               style={{
                 background: c.forest,
                 color: c.ivory,

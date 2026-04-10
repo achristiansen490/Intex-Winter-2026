@@ -134,9 +134,12 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSection["Issuer"],
-        ValidAudience = jwtSection["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        ValidIssuer = jwtSection["Issuer"]?.Trim(),
+        ValidAudience = jwtSection["Audience"]?.Trim(),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        // Match ClaimTypes.Role on the token so [Authorize(Roles = "...")] and User.IsInRole stay consistent.
+        NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier,
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
     };
 });
 
@@ -321,14 +324,16 @@ static async Task SeedAsync(IServiceProvider services)
         // Admin — full CRUD on everything
         foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports", "intervention_plans", "donations", "users", "staff",
-            "safehouses", "reports", "audit_log", "organization", "supporters" })
+            "safehouses", "reports", "audit_log", "organization", "supporters", "donation_allocations" })
             Allow("Admin", res, "Create,Read,Update,Delete");
 
         // Supervisor
         foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports", "intervention_plans" })
             Allow("Supervisor", res, "Create,Read,Update", "Own safehouse");
-        Allow("Supervisor", "donations", "Read");
+        Allow("Supervisor", "donations", "Create,Read,Update", "Own safehouse");
+        Allow("Supervisor", "supporters", "Create,Read,Update", "Own safehouse");
+        Allow("Supervisor", "donation_allocations", "Create,Read,Update", "Own safehouse");
         Allow("Supervisor", "users", "Create,Read,Update", "Resident accounts only");
         Allow("Supervisor", "staff", "Read,Update", "Own safehouse");
         Allow("Supervisor", "safehouses", "Read,Update", "Own safehouse");
@@ -340,13 +345,16 @@ static async Task SeedAsync(IServiceProvider services)
         foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports", "intervention_plans" })
             Allow("CaseManager", res, "Create,Read,Update", "Own safehouse");
+        Allow("CaseManager", "donations", "Create,Read,Update", "Own safehouse");
+        Allow("CaseManager", "supporters", "Create,Read,Update", "Own safehouse");
+        Allow("CaseManager", "donation_allocations", "Create,Read,Update", "Own safehouse");
         Allow("CaseManager", "staff", "Read");
         Allow("CaseManager", "safehouses", "Read");
         Allow("CaseManager", "reports", "Create,Read");
         Allow("CaseManager", "organization", "Read");
 
         // Social Worker
-        Allow("SocialWorker", "residents", "Read,Update", "Own safehouse, sensitive changes require approval");
+        Allow("SocialWorker", "residents", "Create,Read,Update", "Own safehouse, sensitive changes require approval");
         foreach (var res in new[] { "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports" })
             Allow("SocialWorker", res, "Create,Read,Update", "Assigned residents");
@@ -357,7 +365,7 @@ static async Task SeedAsync(IServiceProvider services)
         Allow("SocialWorker", "organization", "Read");
 
         // Field Worker
-        Allow("FieldWorker", "residents", "Read", "Own safehouse");
+        Allow("FieldWorker", "residents", "Create,Read", "Own safehouse");
         foreach (var res in new[] { "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports" })
             Allow("FieldWorker", res, "Create,Read", "Own safehouse, cannot edit after submission");
@@ -379,9 +387,11 @@ static async Task SeedAsync(IServiceProvider services)
 
         db.RolePermissions.AddRange(perms);
         await db.SaveChangesAsync();
+        PermissionService.InvalidateCache();
     }
 
     await UpsertSupportersPermissionsIfMissingAsync(db);
+    await EnsureDefaultOkrTargetsAsync(db);
 
     // Seed one test account per role.
     // Admin password must be set explicitly:
@@ -448,41 +458,133 @@ static async Task SeedAsync(IServiceProvider services)
 
 /// <summary>
 /// Older databases may lack donor rows for <c>supporters</c> Read, <c>donations</c> Read/Create; API checks use resource names <c>supporters</c> and <c>donations</c>.
+/// Uses in-memory matching so casing / whitespace in imported rows does not block detection, and repairs <c>IsAllowed = false</c> for these grants.
 /// </summary>
 static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
 {
-    async Task EnsureAsync(string role, string resource, string action, string? scope = null)
-    {
-        // SQLite (and many providers) cannot translate string.Equals(..., StringComparison).
-        var actionNorm = action.ToLowerInvariant();
-        var exists = await db.RolePermissions.AnyAsync(p =>
-            p.Role == role &&
-            p.Resource == resource &&
-            p.Action != null &&
-            p.Action.ToLower() == actionNorm);
-        if (exists) return;
+    var all = await db.RolePermissions.ToListAsync();
+    var changed = false;
 
-        db.RolePermissions.Add(new RolePermission
+    static bool ActionMatches(string? stored, string expected) =>
+        stored != null && string.Equals(stored.Trim(), expected.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    void EnsureRow(string role, string resource, string action, string? scope)
+    {
+        var match = all.FirstOrDefault(p =>
+            p.Role != null &&
+            p.Resource != null &&
+            string.Equals(p.Role.Trim(), role, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(p.Resource.Trim(), resource, StringComparison.OrdinalIgnoreCase) &&
+            ActionMatches(p.Action, action));
+
+        if (match is null)
         {
-            Role = role,
-            Resource = resource,
-            Action = action,
-            IsAllowed = true,
-            ScopeNote = scope
-        });
+            var row = new RolePermission
+            {
+                Role = role,
+                Resource = resource,
+                Action = action.Trim(),
+                IsAllowed = true,
+                ScopeNote = scope
+            };
+            db.RolePermissions.Add(row);
+            all.Add(row);
+            changed = true;
+            return;
+        }
+
+        if (match.IsAllowed != true)
+        {
+            match.IsAllowed = true;
+            changed = true;
+        }
     }
 
-    await EnsureAsync("Donor", "supporters", "Read", "Own records only");
-    await EnsureAsync("Donor", "donations", "Read", "Own records only");
-    await EnsureAsync("Donor", "donations", "Create", "Own records only");
+    EnsureRow("Donor", "donations", "Read", "Own records only");
+    EnsureRow("Donor", "donations", "Create", "Own records only");
+    EnsureRow("Donor", "supporters", "Read", "Own records only");
 
     foreach (var a in new[] { "Create", "Read", "Update", "Delete" })
-        await EnsureAsync("Admin", "supporters", a, null);
+        EnsureRow("Admin", "supporters", a, null);
 
-    await EnsureAsync("Supervisor", "supporters", "Read", "Own safehouse");
+    foreach (var action in new[] { "Create", "Read", "Update" })
+    {
+        EnsureRow("Supervisor", "supporters", action, "Own safehouse");
+        EnsureRow("CaseManager", "supporters", action, "Own safehouse");
+        EnsureRow("Supervisor", "donations", action, "Own safehouse");
+        EnsureRow("CaseManager", "donations", action, "Own safehouse");
+        EnsureRow("Supervisor", "donation_allocations", action, "Own safehouse");
+        EnsureRow("CaseManager", "donation_allocations", action, "Own safehouse");
+    }
 
-    await db.SaveChangesAsync();
+    foreach (var action in new[] { "Create", "Read", "Update", "Delete" })
+        EnsureRow("Admin", "donation_allocations", action, null);
+
+    EnsureRow("SocialWorker", "residents", "Create", "Own safehouse, sensitive changes require approval");
+    EnsureRow("FieldWorker", "residents", "Create", "Own safehouse");
+
+    if (changed)
+        await db.SaveChangesAsync();
+
     PermissionService.InvalidateCache();
+}
+
+/// <summary>
+/// Fills missing <see cref="OkrTarget"/> rows so dashboard OKR cards show Target % (not em dash).
+/// Values are 0..1; admins can override via <c>PUT /api/okrs/targets</c> or metric-specific PUT routes.
+/// Idempotent: only inserts (metric, year, quarter) combinations that do not exist yet.
+/// </summary>
+static async Task EnsureDefaultOkrTargetsAsync(HirayaContext db)
+{
+    const int startYear = 2022;
+    const int endYear = 2028;
+
+    // Must match OkrsController metric keys and rate semantics (share 0..1).
+    var defaults = new Dictionary<string, double>(StringComparer.Ordinal)
+    {
+        ["education.attendance"] = 0.85,
+        ["healing.process_sessions.progress_rate"] = 0.72,
+        ["caring.home_visits.clean_rate"] = 0.92,
+        ["healing.incidents.resolution_rate"] = 0.88,
+        ["outreach.social.referral_conversion_rate"] = 0.12,
+        ["outreach.social.click_through_rate"] = 0.025,
+    };
+
+    var existing = await db.OkrTargets.AsNoTracking()
+        .Select(t => new { t.MetricKey, t.Year, t.Quarter })
+        .ToListAsync();
+
+    var existingSet = existing
+        .Select(e => $"{e.MetricKey}\u001f{e.Year}\u001f{e.Quarter}")
+        .ToHashSet(StringComparer.Ordinal);
+
+    var toAdd = new List<OkrTarget>();
+    foreach (var (metricKey, targetValue) in defaults)
+    {
+        for (var y = startYear; y <= endYear; y++)
+        {
+            for (var q = 1; q <= 4; q++)
+            {
+                var k = $"{metricKey}\u001f{y}\u001f{q}";
+                if (existingSet.Contains(k)) continue;
+
+                toAdd.Add(new OkrTarget
+                {
+                    MetricKey = metricKey,
+                    Year = y,
+                    Quarter = q,
+                    TargetValue = targetValue,
+                    Notes = "Default seed target",
+                });
+                existingSet.Add(k);
+            }
+        }
+    }
+
+    if (toAdd.Count == 0) return;
+
+    db.OkrTargets.AddRange(toAdd);
+    await db.SaveChangesAsync();
 }
 
 static void LoadDotEnvIfPresent(string path)

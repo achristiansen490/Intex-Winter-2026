@@ -20,6 +20,7 @@ import ResidentPortal from './pages/ResidentPortal';
 import AdminPortal from './pages/AdminPortal';
 import AdminPipelineDashboard from './pages/AdminPipelineDashboard';
 import AdminPipelineDetail from './pages/AdminPipelineDetail';
+import AdminSocialImpactPage from './pages/AdminSocialImpactPage';
 
 /** Redirects already-logged-in users away from /login and /register */
 function AuthRedirect({ children }: { children: React.ReactNode }) {
@@ -71,6 +72,7 @@ function AppRoutes() {
         {/* Protected: Admin */}
         <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/admin/social-impact" element={<AdminSocialImpactPage />} />
           <Route path="/admin/pipelines" element={<AdminPipelineDashboard />} />
           <Route path="/admin/pipelines/:pipelineId" element={<AdminPipelineDetail />} />
         </Route>

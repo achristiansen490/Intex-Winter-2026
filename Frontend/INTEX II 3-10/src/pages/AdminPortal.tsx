@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useId, useRef, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
 import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { adminNavItemToSlug, adminSlugToNavItem } from '../lib/portalTabs';
-import { apiUrl } from '../lib/api';
+import { apiFetch as api, jsonBody, jsonIfOk } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey as chartMonthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
 import { QuarterlyOkrRateSection, type QuarterlyRateOkrResponse } from '../components/dashboard/QuarterlyOkrRateSection';
 import { SocialMediaImpactSection } from '../components/reports/SocialMediaImpactSection';
@@ -22,10 +23,6 @@ const c = {
 };
 const ADMIN_BANNER_BG = 'linear-gradient(135deg, #244232 0%, #2A4A35 52%, #35624A 100%)';
 const navItems = [...ADMIN_NAV_ITEMS];
-
-const tok = () => localStorage.getItem('hh_token') ?? '';
-const api = (url: string, opts?: RequestInit) =>
-  fetch(apiUrl(url), { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok()}`, ...(opts?.headers ?? {}) } });
 
 /** Client-side filter: any column value contains query (case-insensitive). */
 function filterTableRows(
@@ -237,17 +234,17 @@ function AdminDashboard() {
     setLoading(true); setError('');
     try {
       const [k, p, o, op, ov, oi, osr, osc, bridgeRows, campaignRows, socialRows] = await Promise.all([
-        api('/api/dashboard/kpis').then(r => r.json()),
-        api('/api/dashboard/admin-proof').then(r => r.json()),
-        api('/api/okrs/education/attendance/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/healing/process-sessions/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then(r => (r.ok ? r.json() : null)),
-        api('/api/insights/bridge/monthly?take=18').then(r => (r.ok ? r.json() : [])),
-        api('/api/insights/donations/by-campaign?take=8').then(r => (r.ok ? r.json() : [])),
-        api('/api/insights/social/engagement-vs-vanity').then(r => (r.ok ? r.json() : null)),
+        api('/api/dashboard/kpis').then((r) => jsonIfOk(r, null)),
+        api('/api/dashboard/admin-proof').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/education/attendance/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/healing/process-sessions/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/caring/home-visits/clean-rate/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/healing/incidents/resolution-rate/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/outreach/social/referral-conversion/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/okrs/outreach/social/click-through/quarterly?take=6').then((r) => jsonIfOk(r, null)),
+        api('/api/insights/bridge/monthly?take=18').then((r) => jsonIfOk(r, [])),
+        api('/api/insights/donations/by-campaign?take=8').then((r) => jsonIfOk(r, [])),
+        api('/api/insights/social/engagement-vs-vanity').then((r) => jsonIfOk(r, null)),
       ]);
       setKpis(k); setProof(p);
       setOkr(o);
@@ -291,7 +288,7 @@ function AdminDashboard() {
       } as EducationAttendanceOkrItem;
     });
   const educationItems = Array.isArray((okr as any)?.items) && (okr as any).items.length > 0
-    ? ((okr as any).items as EducationAttendanceOkrItem[]).filter((item) => item.year < 2026 || (item.year === 2026 && item.quarter <= 1))
+    ? ((okr as any).items as EducationAttendanceOkrItem[])
     : buildDummyEducationItems();
   const latest = educationItems[0];
   const att = latest?.attendanceRateAvg;
@@ -638,7 +635,7 @@ function AdminPendingApprovals({ onQueueChanged }: { onQueueChanged?: () => void
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/auditlogs/pending').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/auditlogs/pending'), []);
       setItems(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load pending approvals.'); }
     finally { setLoading(false); }
@@ -747,6 +744,7 @@ function AdminResidentsPanel() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
   const [safehouseFilter, setSafehouseFilter] = useState('All');
+  const [caseCategoryFilter, setCaseCategoryFilter] = useState('All');
   const [page, setPage] = useState(1);
   const pageSize = 15;
   const [toast, setToast] = useState('');
@@ -763,6 +761,7 @@ function AdminResidentsPanel() {
   const columns = useMemo(() => [
     { key: 'residentId', label: 'ID' }, { key: 'residentName', label: 'Name' }, { key: 'caseControlNo', label: 'Case No.' },
     { key: 'safehouseId', label: 'Safehouse' }, { key: 'caseStatus', label: 'Status' },
+    { key: 'caseCategory', label: 'Category' },
     { key: 'sex', label: 'Sex' }, { key: 'dateOfAdmission', label: 'Date Admitted' },
     { key: 'currentRiskLevel', label: 'Risk' }, { key: 'reintegrationStatus', label: 'Reintegration' },
     { key: 'assignedSocialWorker', label: 'Social Worker' },
@@ -771,7 +770,7 @@ function AdminResidentsPanel() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/residents').then((r) => r.json());
+      const data = await jsonIfOk(await api('/api/residents'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch {
       setError('Failed to load residents.');
@@ -783,6 +782,7 @@ function AdminResidentsPanel() {
   const statusOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.caseStatus ?? '').trim()).filter(Boolean))).sort()], [rows]);
   const riskOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.currentRiskLevel ?? '').trim()).filter(Boolean))).sort()], [rows]);
   const safehouseOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.safehouseId ?? '').trim()).filter(Boolean))).sort((a, b) => Number(a) - Number(b))], [rows]);
+  const caseCategoryOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.caseCategory ?? '').trim()).filter(Boolean))).sort()], [rows]);
 
   const rowsWithName = useMemo(
     () =>
@@ -803,12 +803,13 @@ function AdminResidentsPanel() {
     if (statusFilter !== 'All' && String(row.caseStatus ?? '') !== statusFilter) return false;
     if (riskFilter !== 'All' && String(row.currentRiskLevel ?? '') !== riskFilter) return false;
     if (safehouseFilter !== 'All' && String(row.safehouseId ?? '') !== safehouseFilter) return false;
+    if (caseCategoryFilter !== 'All' && String(row.caseCategory ?? '') !== caseCategoryFilter) return false;
     return true;
-  }), [searchedRows, statusFilter, riskFilter, safehouseFilter]);
+  }), [searchedRows, statusFilter, riskFilter, safehouseFilter, caseCategoryFilter]);
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const pagedRows = useMemo(() => filteredRows.slice((page - 1) * pageSize, page * pageSize), [filteredRows, page]);
 
-  useEffect(() => { setPage(1); }, [query, statusFilter, riskFilter, safehouseFilter]);
+  useEffect(() => { setPage(1); }, [query, statusFilter, riskFilter, safehouseFilter, caseCategoryFilter]);
   useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
 
   const getResidentKey = (row: Record<string, unknown>) =>
@@ -852,8 +853,8 @@ function AdminResidentsPanel() {
       };
       const res = await api(`/api/residents/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? 'Save failed.');
+        const body = await jsonBody<{ message?: string }>(res, {});
+        throw new Error(body.message ?? 'Save failed.');
       }
       notify('Resident updated.');
       setEditRow(null);
@@ -868,20 +869,39 @@ function AdminResidentsPanel() {
     if (!validateResident(createRow)) return;
     setSaving(true);
     try {
+      const parseBool = (v: unknown) => {
+        if (typeof v === 'boolean') return v;
+        const s = String(v ?? '').trim().toLowerCase();
+        if (s === 'true' || s === 'yes') return true;
+        if (s === 'false' || s === 'no') return false;
+        return undefined;
+      };
       const payload = {
         caseControlNo: String(createRow.caseControlNo ?? '').trim() || undefined,
+        residentFirstName: String(createRow.residentFirstName ?? '').trim() || undefined,
+        residentLastName: String(createRow.residentLastName ?? '').trim() || undefined,
         safehouseId: Number(createRow.safehouseId),
         assignedSocialWorker: String(createRow.assignedSocialWorker ?? '').trim(),
         caseStatus: String(createRow.caseStatus ?? '').trim(),
+        caseCategory: String(createRow.caseCategory ?? '').trim() || undefined,
         currentRiskLevel: String(createRow.currentRiskLevel ?? '').trim(),
         reintegrationStatus: String(createRow.reintegrationStatus ?? '').trim(),
+        referralSource: String(createRow.referralSource ?? '').trim() || undefined,
         sex: String(createRow.sex ?? '').trim() || undefined,
         dateOfAdmission: String(createRow.dateOfAdmission ?? '').trim() || undefined,
+        subCatTrafficked: parseBool(createRow.subCatTrafficked),
+        subCatPhysicalAbuse: parseBool(createRow.subCatPhysicalAbuse),
+        subCatSexualAbuse: parseBool(createRow.subCatSexualAbuse),
+        hasSpecialNeeds: parseBool(createRow.hasSpecialNeeds),
+        familyIs4ps: parseBool(createRow.familyIs4ps),
+        familySoloParent: parseBool(createRow.familySoloParent),
+        familyIndigenous: parseBool(createRow.familyIndigenous),
+        familyInformalSettler: parseBool(createRow.familyInformalSettler),
       };
       const res = await api('/api/residents', { method: 'POST', body: JSON.stringify(payload) });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? 'Create failed.');
+        const body = await jsonBody<{ message?: string }>(res, {});
+        throw new Error(body.message ?? 'Create failed.');
       }
       notify('Resident created.');
       setCreateRow(null);
@@ -948,14 +968,26 @@ function AdminResidentsPanel() {
           onClick={() => {
             setFieldErrors({});
             setCreateRow({
+              residentFirstName: '',
+              residentLastName: '',
               caseControlNo: '',
               safehouseId: '',
               assignedSocialWorker: '',
               caseStatus: 'Active',
+              caseCategory: '',
               currentRiskLevel: 'Low',
               reintegrationStatus: 'Not Started',
+              referralSource: '',
               sex: 'F',
               dateOfAdmission: '',
+              subCatTrafficked: 'false',
+              subCatPhysicalAbuse: 'false',
+              subCatSexualAbuse: 'false',
+              hasSpecialNeeds: 'false',
+              familyIs4ps: 'false',
+              familySoloParent: 'false',
+              familyIndigenous: 'false',
+              familyInformalSettler: 'false',
             });
           }}
           style={{ background: c.forest, color: c.white, border: 'none', borderRadius: 7, padding: '8px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
@@ -989,6 +1021,13 @@ function AdminResidentsPanel() {
           <select value={safehouseFilter} onChange={(e) => setSafehouseFilter(e.target.value)}
             style={{ marginLeft: 6, padding: '5px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
             {safehouseOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: 11, color: c.muted }}>
+          Case category
+          <select value={caseCategoryFilter} onChange={(e) => setCaseCategoryFilter(e.target.value)}
+            style={{ marginLeft: 6, padding: '5px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {caseCategoryOptions.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
         </label>
       </div>
@@ -1117,6 +1156,16 @@ function AdminResidentsPanel() {
             <h3 style={{ margin: 0, color: c.forest, fontSize: 16 }}>Edit resident</h3>
             <p style={{ margin: '4px 0 10px 0', fontSize: 12, color: c.muted }}>Update key case-management fields. Sensitive updates may route through approvals.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
+              <label style={{ fontSize: 11, color: c.muted }}>First Name
+                <input value={String(editRow.residentFirstName ?? '')}
+                  onChange={(e) => setEditRow((r) => (r ? { ...r, residentFirstName: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
+              <label style={{ fontSize: 11, color: c.muted }}>Last Name
+                <input value={String(editRow.residentLastName ?? '')}
+                  onChange={(e) => setEditRow((r) => (r ? { ...r, residentLastName: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
               <label style={{ fontSize: 11, color: c.muted }}>Case No.
                 <input disabled value={String(editRow.caseControlNo ?? '')}
                   style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}`, background: '#F4F4F4', color: c.muted }} />
@@ -1141,6 +1190,11 @@ function AdminResidentsPanel() {
                 </select>
                 {fieldErrors.caseStatus && <span style={{ fontSize: 11, color: c.rose }}>{fieldErrors.caseStatus}</span>}
               </label>
+              <label style={{ fontSize: 11, color: c.muted }}>Case Category
+                <input value={String(editRow.caseCategory ?? '')}
+                  onChange={(e) => setEditRow((r) => (r ? { ...r, caseCategory: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
               <label style={{ fontSize: 11, color: c.muted }}>Current Risk Level
                 <select value={String(editRow.currentRiskLevel ?? '')}
                   onChange={(e) => setEditRow((r) => (r ? { ...r, currentRiskLevel: e.target.value } : r))}
@@ -1157,6 +1211,32 @@ function AdminResidentsPanel() {
                 </select>
                 {fieldErrors.reintegrationStatus && <span style={{ fontSize: 11, color: c.rose }}>{fieldErrors.reintegrationStatus}</span>}
               </label>
+              <label style={{ fontSize: 11, color: c.muted }}>Referral Source
+                <input value={String(editRow.referralSource ?? '')}
+                  onChange={(e) => setEditRow((r) => (r ? { ...r, referralSource: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
+              {[
+                ['subCatTrafficked', 'Trafficked'],
+                ['subCatPhysicalAbuse', 'Physical Abuse'],
+                ['subCatSexualAbuse', 'Sexual Abuse'],
+                ['hasSpecialNeeds', 'Special Needs'],
+                ['familyIs4ps', '4Ps Beneficiary'],
+                ['familySoloParent', 'Solo Parent Household'],
+                ['familyIndigenous', 'Indigenous Group'],
+                ['familyInformalSettler', 'Informal Settler'],
+              ].map(([key, label]) => (
+                <label key={key} style={{ fontSize: 11, color: c.muted }}>
+                  {label}
+                  <select value={String(editRow[key] ?? '')}
+                    onChange={(e) => setEditRow((r) => (r ? { ...r, [key]: e.target.value } : r))}
+                    style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}`, background: c.white }}>
+                    <option value="">Unknown</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              ))}
             </div>
             <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button disabled={saving} onClick={() => {
@@ -1184,8 +1264,18 @@ function AdminResidentsPanel() {
         }} style={{ position: 'fixed', inset: 0, background: 'rgba(44,43,40,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(760px, 92vw)', background: c.white, borderRadius: 12, border: `1px solid ${c.sageLight}`, padding: '1rem 1.25rem' }}>
             <h3 style={{ margin: 0, color: c.forest, fontSize: 16 }}>Create resident</h3>
-            <p style={{ margin: '4px 0 10px 0', fontSize: 12, color: c.muted }}>Create a new resident record (minimum required fields).</p>
+            <p style={{ margin: '4px 0 10px 0', fontSize: 12, color: c.muted }}>Create a new resident record with case, referral, and family profile data.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 10 }}>
+              <label style={{ fontSize: 11, color: c.muted }}>First Name
+                <input value={String(createRow.residentFirstName ?? '')}
+                  onChange={(e) => setCreateRow((r) => (r ? { ...r, residentFirstName: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
+              <label style={{ fontSize: 11, color: c.muted }}>Last Name
+                <input value={String(createRow.residentLastName ?? '')}
+                  onChange={(e) => setCreateRow((r) => (r ? { ...r, residentLastName: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
               <label style={{ fontSize: 11, color: c.muted }}>Case No.
                 <input value={String(createRow.caseControlNo ?? '')}
                   onChange={(e) => setCreateRow((r) => (r ? { ...r, caseControlNo: e.target.value } : r))}
@@ -1211,6 +1301,11 @@ function AdminResidentsPanel() {
                 </select>
                 {fieldErrors.caseStatus && <span style={{ fontSize: 11, color: c.rose }}>{fieldErrors.caseStatus}</span>}
               </label>
+              <label style={{ fontSize: 11, color: c.muted }}>Case Category
+                <input value={String(createRow.caseCategory ?? '')}
+                  onChange={(e) => setCreateRow((r) => (r ? { ...r, caseCategory: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
               <label style={{ fontSize: 11, color: c.muted }}>Current Risk Level
                 <select value={String(createRow.currentRiskLevel ?? '')}
                   onChange={(e) => setCreateRow((r) => (r ? { ...r, currentRiskLevel: e.target.value } : r))}
@@ -1227,6 +1322,32 @@ function AdminResidentsPanel() {
                 </select>
                 {fieldErrors.reintegrationStatus && <span style={{ fontSize: 11, color: c.rose }}>{fieldErrors.reintegrationStatus}</span>}
               </label>
+              <label style={{ fontSize: 11, color: c.muted }}>Referral Source
+                <input value={String(createRow.referralSource ?? '')}
+                  onChange={(e) => setCreateRow((r) => (r ? { ...r, referralSource: e.target.value } : r))}
+                  style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}` }} />
+              </label>
+              {[
+                ['subCatTrafficked', 'Trafficked'],
+                ['subCatPhysicalAbuse', 'Physical Abuse'],
+                ['subCatSexualAbuse', 'Sexual Abuse'],
+                ['hasSpecialNeeds', 'Special Needs'],
+                ['familyIs4ps', '4Ps Beneficiary'],
+                ['familySoloParent', 'Solo Parent Household'],
+                ['familyIndigenous', 'Indigenous Group'],
+                ['familyInformalSettler', 'Informal Settler'],
+              ].map(([key, label]) => (
+                <label key={key} style={{ fontSize: 11, color: c.muted }}>
+                  {label}
+                  <select value={String(createRow[key] ?? '')}
+                    onChange={(e) => setCreateRow((r) => (r ? { ...r, [key]: e.target.value } : r))}
+                    style={{ marginTop: 4, width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${c.sageLight}`, background: c.white }}>
+                    <option value="">Unknown</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              ))}
             </div>
             <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button disabled={saving} onClick={() => setCreateRow(null)}
@@ -1298,7 +1419,7 @@ function DataPanel({
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api(url).then(r => r.json());
+      const data = await jsonIfOk(await api(url), []);
       const arr = Array.isArray(data) ? data : [];
       const fn = transformRowsRef.current;
       setRows(fn ? fn(arr) : arr);
@@ -1312,7 +1433,7 @@ function DataPanel({
     let mounted = true;
     (async () => {
       try {
-        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        const data = await jsonIfOk(await api('/api/residents'), []);
         if (!mounted || !Array.isArray(data)) return;
         const next = new Map<number, string>();
         data.forEach((item) => {
@@ -1386,7 +1507,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api(url).then(r => r.json());
+      const data = await jsonIfOk(await api(url), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load data.'); }
     finally { setLoading(false); }
@@ -1398,7 +1519,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
     let mounted = true;
     (async () => {
       try {
-        const data = await api('/api/residents').then((r) => (r.ok ? r.json() : []));
+        const data = await jsonIfOk(await api('/api/residents'), []);
         if (!mounted || !Array.isArray(data)) return;
         const next = new Map<number, string>();
         data.forEach((item) => {
@@ -1445,7 +1566,7 @@ function CrudDataPanel({ title, url, columns, keyField }: { title: string; url: 
       if (raw == null || raw === '') return '—';
       const id = Number(raw);
       const name = Number.isFinite(id) ? residentNameById.get(id) : undefined;
-      return name ? `${name} (#${String(raw)})` : `#${String(raw)}`;
+      return name ?? `#${String(raw)}`;
     }
     return String(row[key] ?? '—');
   };
@@ -1779,10 +1900,10 @@ function AdminSocialImpact() {
     setError('');
     try {
       const [kr, or, pr, er] = await Promise.all([
-        api('/api/dashboard/kpis').then((r) => r.json()),
-        api('/api/dashboard/overview').then((r) => r.json()),
-        api('/api/socialmediaposts?take=100').then((r) => r.json()),
-        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
+        api('/api/dashboard/kpis').then((r) => jsonIfOk(r, null)),
+        api('/api/dashboard/overview').then((r) => jsonIfOk(r, null)),
+        api('/api/socialmediaposts?take=100').then((r) => jsonIfOk(r, [])),
+        api('/api/insights/social/engagement-vs-vanity').then((r) => jsonIfOk(r, null)),
       ]);
       setKpis(kr);
       setOverview(or);
@@ -2022,10 +2143,10 @@ function AdminReports() {
     setLoading(true); setError('');
     try {
       const [annualRes, bridgeRes, campaignRes, evRes] = await Promise.allSettled([
-        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then(async (r) => (r.ok ? r.json() : null)),
-        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then(async (r) => (r.ok ? r.json() : [])),
-        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then(async (r) => (r.ok ? r.json() : [])),
-        api('/api/insights/social/engagement-vs-vanity').then(async (r) => (r.ok ? r.json() : null)),
+        api(`/api/reports/annual-accomplishment?year=${annualYear}`).then((r) => jsonIfOk(r, null)),
+        api(`/api/insights/bridge/monthly?take=${bridgeTake}`).then((r) => jsonIfOk(r, [])),
+        api(`/api/insights/donations/by-campaign?take=${campaignTake}`).then((r) => jsonIfOk(r, [])),
+        api('/api/insights/social/engagement-vs-vanity').then((r) => jsonIfOk(r, null)),
       ]);
 
       const nextAnnual =
@@ -2422,7 +2543,7 @@ function AdminStaff() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/staff').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/staff'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load staff.'); }
     finally { setLoading(false); }
@@ -2458,7 +2579,10 @@ function AdminStaff() {
         ? await api('/api/staff', { method: 'POST', body: JSON.stringify(form) })
         : await api(`/api/staff/${editId}`, { method: 'PUT', body: JSON.stringify({ ...form, staffId: editId }) });
       if (r.ok) { notify(modal === 'create' ? '✓ Staff member created.' : '✓ Staff member updated.'); setModal(null); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Save failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Save failed.');
+      }
     } finally { setBusy(false); }
   };
 
@@ -2596,8 +2720,8 @@ function AdminAllUsers() {
     setLoading(true); setError('');
     try {
       const [u, p] = await Promise.all([
-        api('/api/auth/users').then(r => r.json()),
-        api('/api/auth/pending').then(r => r.json()),
+        api('/api/auth/users').then((r) => jsonIfOk(r, [])),
+        api('/api/auth/pending').then((r) => jsonIfOk(r, [])),
       ]);
       setUsers(Array.isArray(u) ? u : []);
       setPending(Array.isArray(p) ? p : []);
@@ -2658,7 +2782,12 @@ function AdminAllUsers() {
     try {
       const r = await api('/api/auth/create-user', { method: 'POST', body: JSON.stringify({ username: createForm.username, email: createForm.email, password: createForm.password, role: createForm.role }) });
       if (r.ok) { notify('✓ User created.'); setCreateModal(false); setCreateForm({ username: '', email: '', password: '', role: 'Donor' }); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? ((err as any).errors?.[0]) ?? 'Create failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string; errors?: unknown[] }>(r, {});
+        const first =
+          Array.isArray(err.errors) && err.errors.length > 0 ? String(err.errors[0]) : undefined;
+        notify(err.message ?? first ?? 'Create failed.');
+      }
     } finally { setCreateBusy(false); }
   };
 
@@ -2831,7 +2960,7 @@ export function AdminResidents() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/residents').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/residents'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load residents.'); }
     finally { setLoading(false); }
@@ -2871,7 +3000,10 @@ export function AdminResidents() {
     try {
       const r = await api('/api/residents', { method: 'POST', body: JSON.stringify(createForm) });
       if (r.ok) { notify('✓ Resident created.'); setModal(null); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Create failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Create failed.');
+      }
     } finally { setBusy(false); }
   };
 
@@ -2882,7 +3014,10 @@ export function AdminResidents() {
       const body = { ...editRow, ...editForm };
       const r = await api(`/api/residents/${editRow.residentId}`, { method: 'PUT', body: JSON.stringify(body) });
       if (r.ok) { notify('✓ Resident record updated.'); setModal(null); setEditRow(null); await load(); }
-      else { const err = await r.json().catch(() => ({})); notify((err as any).message ?? 'Save failed.'); }
+      else {
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Save failed.');
+      }
     } finally { setBusy(false); }
   };
 
@@ -3144,7 +3279,7 @@ function AdminDonations() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const data = await api('/api/donations').then(r => r.json());
+      const data = await jsonIfOk(await api('/api/donations'), []);
       setRows(Array.isArray(data) ? data : []);
     } catch { setError('Failed to load donations.'); }
     finally { setLoading(false); }
@@ -3223,8 +3358,8 @@ function AdminDonations() {
         closeModal();
         await load();
       } else {
-        const err = await r.json().catch(() => ({}));
-        notify((err as { message?: string }).message ?? 'Create failed.');
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Create failed.');
       }
     } finally {
       setSaving(false);
@@ -3242,8 +3377,8 @@ function AdminDonations() {
         closeModal();
         await load();
       } else {
-        const err = await r.json().catch(() => ({}));
-        notify((err as { message?: string }).message ?? 'Update failed.');
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Update failed.');
       }
     } finally {
       setSaving(false);
@@ -3259,8 +3394,8 @@ function AdminDonations() {
         notify('✓ Donation deleted.');
         await load();
       } else {
-        const err = await r.json().catch(() => ({}));
-        notify((err as { message?: string }).message ?? 'Delete failed.');
+        const err = await jsonBody<{ message?: string }>(r, {});
+        notify(err.message ?? 'Delete failed.');
       }
     } finally {
       setSaving(false);
@@ -3443,6 +3578,42 @@ function AdminDonations() {
   );
 }
 
+function AdminDonorsContributions() {
+  return (
+    <div>
+      <SectionTitle>Donors & Contributions</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Manage supporter profiles, track contribution activity across donation types, and view allocations by safehouse and program area.
+      </p>
+      <CrudDataPanel
+        title="Supporter Profiles"
+        url="/api/supporters"
+        keyField="supporterId"
+        columns={[
+          { key: 'supporterId', label: 'ID' }, { key: 'displayName', label: 'Name' },
+          { key: 'supporterType', label: 'Type' }, { key: 'status', label: 'Status' },
+          { key: 'organizationName', label: 'Organization' }, { key: 'relationshipType', label: 'Relationship' },
+          { key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' },
+          { key: 'country', label: 'Country' }, { key: 'region', label: 'Region' },
+          { key: 'firstDonationDate', label: 'First Donation' }, { key: 'acquisitionChannel', label: 'Acquisition Channel' },
+        ]}
+      />
+      <AdminDonations />
+      <CrudDataPanel
+        title="Donation Allocations"
+        url="/api/donationallocations"
+        keyField="allocationId"
+        columns={[
+          { key: 'allocationId', label: 'ID' }, { key: 'donationId', label: 'Donation' },
+          { key: 'safehouseId', label: 'Safehouse' }, { key: 'programArea', label: 'Program Area' },
+          { key: 'amountAllocated', label: 'Amount Allocated' }, { key: 'allocationDate', label: 'Allocation Date' },
+          { key: 'allocationNotes', label: 'Notes' },
+        ]}
+      />
+    </div>
+  );
+}
+
 export default function AdminPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -3489,7 +3660,7 @@ export default function AdminPortal() {
           { key: 'region', label: 'Region' }, { key: 'status', label: 'Status' },
           { key: 'capacityGirls', label: 'Capacity' }, { key: 'currentOccupancy', label: 'Occupancy' },
         ]} />;
-      case 'Donations': return <AdminDonations />;
+      case 'Donations': return <AdminDonorsContributions />;
       case 'Audit Log':
         return <DataPanel title="Audit Log" url="/api/auditlogs" keyField="auditId" columns={[
           { key: 'auditId', label: 'ID' }, { key: 'timestamp', label: 'Time' },
@@ -3499,42 +3670,37 @@ export default function AdminPortal() {
         ]} />;
       case 'Reports': return <AdminReports />;
       case 'Social Media Impact': return <AdminSocialImpact />;
-      case 'Settings':
-        return (
-          <div>
-            <SectionTitle>Settings</SectionTitle>
-            <p style={{ fontSize: 13, color: c.muted }}>System settings coming soon.</p>
-          </div>
-        );
       default: return null;
     }
   };
 
   return (
-    <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar
-        id="admin-sidebar"
-        items={navItems}
-        active={activeNav}
+    <DashboardLayout
+      sidebar={
+        <Sidebar
+          id="admin-sidebar"
+          items={navItems}
+          active={activeNav}
         onSelectNavItem={(item) => {
           if (item === 'Pipelines') navigate('/admin/pipelines');
+          else if (item === 'Social Media Impact') navigate('/admin/social-impact');
           else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
         }}
-        badgeCounts={{ 'Pending Approvals': pendingAuditCount }}
-        user={`${user?.userName ?? 'Admin'} · Admin`}
-        onLogout={handleLogout}
-      />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
-        <section aria-label="Admin dashboard"
-          style={{ background: ADMIN_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Admin Dashboard</p>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Admin'}</h1>
-          </div>
-          <button onClick={handleLogout} style={{ background: c.white, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>Logout</button>
-        </section>
-        {renderContent()}
-      </div>
-    </main>
+          badgeCounts={{ 'Pending Approvals': pendingAuditCount }}
+          user={`${user?.userName ?? 'Admin'} · Admin`}
+          onLogout={handleLogout}
+        />
+      }
+    >
+      <section aria-label="Admin dashboard"
+        style={{ background: ADMIN_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Admin Dashboard</p>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Admin'}</h1>
+        </div>
+        <button onClick={handleLogout} style={{ background: c.white, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>Logout</button>
+      </section>
+      {renderContent()}
+    </DashboardLayout>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/Logo';
-import { apiUrl } from '../lib/api';
+import { apiUrl, jsonBody } from '../lib/api';
 import { isSafeReturnPath } from '../lib/postLoginRouting';
 
 const c = {
@@ -46,7 +46,8 @@ export default function RegisterPage() {
         body: JSON.stringify({ username, email, password, role }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      type RegBody = { errors?: unknown; message?: string };
+      const data = await jsonBody<RegBody>(res, {});
 
       if (!res.ok) {
         if (data.errors) {
@@ -60,7 +61,9 @@ export default function RegisterPage() {
       if (role === 'FieldWorker') {
         navigate('/register/success?type=staff');
       } else {
-        navigate('/register/success?type=donor');
+        const sp = new URLSearchParams({ type: 'donor' });
+        if (returnUrl) sp.set('returnUrl', returnUrl);
+        navigate(`/register/success?${sp.toString()}`);
       }
     } catch {
       setError('Network error. Please try again.');
