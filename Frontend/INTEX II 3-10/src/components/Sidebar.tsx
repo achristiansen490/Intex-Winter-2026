@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
+
+/** Must match `index.css` — drawer + hamburger only below this width. */
+const MOBILE_NAV_QUERY = '(max-width: 768px)';
 
 const c = {
   forest: '#2A4A35',
@@ -25,15 +28,36 @@ interface SidebarProps {
 export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCounts, user, onLogout }: SidebarProps) {
   const [open, setOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [isMobileNav, setIsMobileNav] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(MOBILE_NAV_QUERY).matches,
+  );
+
+  // Keep desktop and mobile nav in sync: CSS only styles the drawer below 768px.
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_NAV_QUERY);
+    const sync = () => setIsMobileNav(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  // If the user resizes from mobile to desktop while the drawer is open, clear it.
+  useEffect(() => {
+    if (!isMobileNav) setOpen(false);
+  }, [isMobileNav]);
+
+  const drawerOpen = isMobileNav && open;
 
   return (
     <>
       {/* Mobile toggle button */}
       <button
+        type="button"
         onClick={() => setOpen(true)}
         aria-label="Open sidebar navigation"
-        aria-expanded={open}
+        aria-expanded={drawerOpen}
         aria-controls={id}
+        hidden={!isMobileNav}
         style={{
           position: 'fixed', bottom: 20, left: 20, zIndex: 150,
           background: c.forest, color: c.ivory,
@@ -47,8 +71,8 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
         ☰
       </button>
 
-      {/* Mobile overlay */}
-      {open && (
+      {/* Mobile overlay (desktop never uses drawer; see MOBILE_NAV_QUERY) */}
+      {drawerOpen && (
         <div
           onClick={() => setOpen(false)}
           aria-hidden="true"
@@ -61,6 +85,7 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
 
       <nav
         id={id}
+        className={`dashboard-sidebar ${drawerOpen ? 'is-open' : ''}`}
         aria-label="Dashboard navigation"
         style={{
           background: c.forest,
