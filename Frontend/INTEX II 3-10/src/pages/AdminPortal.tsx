@@ -3449,7 +3449,6 @@ export default function AdminPortal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(true);
   const tabSlug = searchParams.get('tab');
-  const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(true);
 
   useEffect(() => {
     if (tabSlug === 'pipelines') {
