@@ -59,7 +59,9 @@ export function Footer() {
             </li>
           </ul>
         </nav>
-        <p style={{ fontSize: 12, color: c.muted }}>© 2025 Hiraya Haven. All rights reserved.</p>
+        <p style={{ fontSize: 12, color: c.muted }}>
+          © {new Date().getFullYear()} Hiraya Haven. All rights reserved.
+        </p>
       </div>
     </footer>
   );

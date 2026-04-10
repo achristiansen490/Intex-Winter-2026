@@ -732,7 +732,7 @@ function StaffDashboard({ role }: { role: string | null }) {
   const ops = (kpis as any)?.operations ?? {};
   const donor = (kpis as any)?.donor ?? {};
   const educationItems = ((okr as any)?.items as EducationAttendanceOkrItem[] | undefined ?? [])
-    .filter((item) => item.year < 2025 || (item.year === 2025 && item.quarter <= 1));
+    .filter((item) => item.year < 2026 || (item.year === 2026 && item.quarter <= 1));
   const latest = educationItems[0];
   const att = latest?.attendanceRateAvg;
   const tgt = latest?.targetAttendanceRate;
@@ -1545,13 +1545,11 @@ export default function StaffPortal() {
         id="staff-sidebar"
         items={navItems}
         active={activeNav}
-        setActive={setActiveNav}
+        setActive={setTab}
         badgeCounts={supervisor ? { 'Pending Approvals': pendingAuditCount } : undefined}
         user={`${user?.userName ?? 'Staff'} · ${displayRole}`}
         onLogout={handleLogout}
       />
-      <Sidebar id="staff-sidebar" items={navItems} active={activeNav} setActive={setTab}
-        user={`${user?.userName ?? 'Staff'} · ${displayRole}`} onLogout={handleLogout} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
         <section aria-label="Command center"
           style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>

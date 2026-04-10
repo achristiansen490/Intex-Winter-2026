@@ -379,9 +379,9 @@ static async Task SeedAsync(IServiceProvider services)
     //   dotnet user-secrets set "Seed:AdminPassword" "<password>"
     // All other roles share a single dev password (override with "Seed:DefaultPassword"):
     //   dotnet user-secrets set "Seed:DefaultPassword" "<password>"
-    // Default dev password (satisfies the 12-char policy): HirayaDev@2025!
+    // Default dev password (satisfies the 12-char policy): HirayaDev@2026!
 
-    var defaultPassword = config["Seed:DefaultPassword"] ?? "HirayaDev@2025!";
+    var defaultPassword = config["Seed:DefaultPassword"] ?? "HirayaDev@2026!";
 
     (string? PasswordConfigKey, string Email, string UserName, string Role)[] seedAccounts =
     [
@@ -444,11 +444,13 @@ static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
 {
     async Task EnsureAsync(string role, string resource, string action, string? scope = null)
     {
+        // SQLite (and many providers) cannot translate string.Equals(..., StringComparison).
+        var actionNorm = action.ToLowerInvariant();
         var exists = await db.RolePermissions.AnyAsync(p =>
             p.Role == role &&
             p.Resource == resource &&
             p.Action != null &&
-            p.Action.Equals(action, StringComparison.OrdinalIgnoreCase));
+            p.Action.ToLower() == actionNorm);
         if (exists) return;
 
         db.RolePermissions.Add(new RolePermission

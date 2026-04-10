@@ -1,14 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useId, useRef, lazy, Suspense, type ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Sidebar } from '../components/Sidebar';
-import { useAuth } from '../context/AuthContext';
-import { ADMIN_NAV_ITEMS } from '../admin/constants';
-import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
-import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
+import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { adminNavItemToSlug, adminSlugToNavItem } from '../lib/portalTabs';
 import { apiUrl } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey as chartMonthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
@@ -276,7 +271,7 @@ function AdminDashboard() {
   const ops = (kpis as any)?.operations ?? {};
   const donor = (kpis as any)?.donor ?? {};
   const outreach = (kpis as any)?.outreach ?? {};
-  const now = new Date(2025, 2, 1); // March 2025 cap for dashboard visuals
+  const now = new Date(2026, 2, 1); // March 2026 cap for dashboard visuals
   const quarterLabel = (year: number, quarter: number) => `Q${quarter} ${year}`;
   const buildDummyEducationItems = () =>
     [3, 2, 1, 0].map((offset) => {
@@ -296,7 +291,7 @@ function AdminDashboard() {
       } as EducationAttendanceOkrItem;
     });
   const educationItems = Array.isArray((okr as any)?.items) && (okr as any).items.length > 0
-    ? ((okr as any).items as EducationAttendanceOkrItem[]).filter((item) => item.year < 2025 || (item.year === 2025 && item.quarter <= 1))
+    ? ((okr as any).items as EducationAttendanceOkrItem[]).filter((item) => item.year < 2026 || (item.year === 2026 && item.quarter <= 1))
     : buildDummyEducationItems();
   const latest = educationItems[0];
   const att = latest?.attendanceRateAvg;
@@ -351,7 +346,7 @@ function AdminDashboard() {
   };
 
   const bridgeFallback = [11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((offset) => {
-    const d = new Date(2025, 2 - offset, 1); // ends at Mar 2025
+    const d = new Date(2026, 2 - offset, 1); // ends at Mar 2026
     return {
       month: d.toISOString(),
       posts_n: 8 + offset * 2,
@@ -366,8 +361,8 @@ function AdminDashboard() {
   });
   const bridgeDisplay = bridgeRows.length > 0 ? bridgeRows : bridgeFallback;
   const monthKey = (d: Date) => chartMonthKey(d);
-  const fixedCurrentMonth = new Date(2025, 2, 1); // Mar 2025
-  const trendWindowMonths = 12; // Apr 2024 -> Mar 2025
+  const fixedCurrentMonth = new Date(2026, 2, 1); // Mar 2026
+  const trendWindowMonths = 12; // Apr 2025 -> Mar 2026
   const monthWindow = Array.from({ length: trendWindowMonths }, (_, i) => {
     const d = new Date(fixedCurrentMonth.getFullYear(), fixedCurrentMonth.getMonth() - (trendWindowMonths - 1 - i), 1);
     return d;
@@ -395,7 +390,7 @@ function AdminDashboard() {
         total: Math.max(8, 28 + Math.round(Math.sin(i * 0.7) * 5) + i),
       }));
   const donationMonthWindow = buildMonthWindowEndingAtCap(8);
-  const socialPostWindowMonths = 6; // Oct 2024 -> Mar 2025
+  const socialPostWindowMonths = 6; // Oct 2025 -> Mar 2026
   const socialPostMonthWindow = Array.from({ length: socialPostWindowMonths }, (_, i) => {
     const d = new Date(fixedCurrentMonth.getFullYear(), fixedCurrentMonth.getMonth() - (socialPostWindowMonths - 1 - i), 1);
     return d;
@@ -1992,12 +1987,6 @@ type InsightBridgeRow = {
   avg_health: number;
 };
 
-type EngagementVsVanitySummary = {
-  totalPosts: number;
-  thresholds: { engagementScoreP75: number; donationReferralsP75: number };
-  segments: { segment: string; postCount: number }[];
-};
-
 type AnnualAccomplishmentReport = {
   year: number;
   generatedAtUtc: string;
@@ -3155,6 +3144,7 @@ export default function AdminPortal() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(true);
   const tabSlug = searchParams.get('tab');
 
   useEffect(() => {

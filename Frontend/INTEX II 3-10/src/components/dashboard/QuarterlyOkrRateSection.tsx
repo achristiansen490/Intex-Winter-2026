@@ -69,7 +69,7 @@ export function QuarterlyOkrRateSection({
   unitLabel: string;
 }) {
   const cappedItems = (response?.items ?? []).filter((item) =>
-    item.year < 2025 || (item.year === 2025 && item.quarter <= 1),
+    item.year < 2026 || (item.year === 2026 && item.quarter <= 1),
   );
   const latest = cappedItems[0];
   const rate = latest?.rate;

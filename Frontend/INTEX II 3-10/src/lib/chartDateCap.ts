@@ -1,4 +1,4 @@
-export const CHART_MAX_YEAR = 2025;
+export const CHART_MAX_YEAR = 2026;
 export const CHART_MAX_MONTH_INDEX = 2; // March (0-based)
 export const CHART_MAX_MONTH_START = new Date(CHART_MAX_YEAR, CHART_MAX_MONTH_INDEX, 1);
 
