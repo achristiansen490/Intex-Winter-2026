@@ -11,5 +11,4 @@ export const ADMIN_NAV_ITEMS = [
   'Reports',
   'Social Media Impact',
   'Pipelines',
-  'Settings',
 ] as const;

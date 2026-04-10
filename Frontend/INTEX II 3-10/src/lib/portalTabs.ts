@@ -21,7 +21,7 @@ export function getStaffNavItems(role: Role | null): string[] {
     case 'Supervisor':
       return ['Dashboard', 'Caseload', 'Donors', 'Session Notes', 'Visits & Conferences', 'Reports', 'Pending Approvals'];
     case 'CaseManager':
-      return ['Dashboard', 'Caseload', 'Session Notes', 'Visits & Conferences', 'Intervention Plans', 'Reports'];
+      return ['Dashboard', 'Caseload', 'Donors', 'Session Notes', 'Visits & Conferences', 'Intervention Plans', 'Reports'];
     case 'SocialWorker':
       return ['Dashboard', 'My Residents', 'Session Notes', 'Home Visits', 'Incident Reports'];
     case 'FieldWorker':
@@ -117,7 +117,6 @@ const ADMIN_NAV_TO_SLUG: Record<string, string> = {
   'Audit Log': 'audit-log',
   Reports: 'reports',
   'Social Media Impact': 'social-media-impact',
-  Settings: 'settings',
 };
 
 const ADMIN_SLUG_TO_NAV: Record<string, string> = Object.fromEntries(

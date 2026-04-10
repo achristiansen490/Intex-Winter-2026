@@ -197,11 +197,14 @@ type ResidentRow = {
   residentFirstName?: string;
   residentLastName?: string;
   caseControlNo: string;
+  safehouseId?: number | null;
   caseStatus: string;
+  caseCategory?: string;
   sex: string;
   dateOfAdmission: string;
   currentRiskLevel: string;
   reintegrationStatus: string;
+  referralSource?: string;
   assignedSocialWorker: string;
 };
 
@@ -214,6 +217,10 @@ function ResidentsPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [safehouseFilter, setSafehouseFilter] = useState('All');
+  const [caseCategoryFilter, setCaseCategoryFilter] = useState('All');
+  const [manageMode, setManageMode] = useState(false);
   const [selectedResident, setSelectedResident] = useState<ResidentRow | null>(null);
   const searchId = useId();
 
@@ -233,9 +240,9 @@ function ResidentsPanel({
 
   const columns = useMemo(() => ([
     { key: 'residentId', label: 'ID' }, { key: 'residentName', label: 'Name' }, { key: 'caseControlNo', label: 'Case No.' },
-    { key: 'caseStatus', label: 'Status' }, { key: 'sex', label: 'Sex' },
+    { key: 'safehouseId', label: 'Safehouse' }, { key: 'caseStatus', label: 'Status' }, { key: 'caseCategory', label: 'Category' }, { key: 'sex', label: 'Sex' },
     { key: 'dateOfAdmission', label: 'Admitted' }, { key: 'currentRiskLevel', label: 'Risk' },
-    { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'assignedSocialWorker', label: 'SW' },
+    { key: 'reintegrationStatus', label: 'Reintegration' }, { key: 'referralSource', label: 'Referral' }, { key: 'assignedSocialWorker', label: 'SW' },
   ]), []);
 
   const rowsWithName = useMemo(() => (
@@ -245,7 +252,21 @@ function ResidentsPanel({
     }))
   ), [rows]);
 
-  const filtered = useMemo(() => filterTableRows(rowsWithName as unknown as Record<string, unknown>[], columns, query) as unknown as (ResidentRow & { residentName: string })[], [rowsWithName, columns, query]);
+  const statusOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.caseStatus ?? '').trim()).filter(Boolean))).sort()], [rows]);
+  const safehouseOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.safehouseId ?? '').trim()).filter(Boolean))).sort((a, b) => Number(a) - Number(b))], [rows]);
+  const caseCategoryOptions = useMemo(() => ['All', ...Array.from(new Set(rows.map((r) => String(r.caseCategory ?? '').trim()).filter(Boolean))).sort()], [rows]);
+
+  const searched = useMemo(
+    () => filterTableRows(rowsWithName as unknown as Record<string, unknown>[], columns, query) as unknown as (ResidentRow & { residentName: string })[],
+    [rowsWithName, columns, query],
+  );
+
+  const filtered = useMemo(() => searched.filter((row) => {
+    if (statusFilter !== 'All' && String(row.caseStatus ?? '') !== statusFilter) return false;
+    if (safehouseFilter !== 'All' && String(row.safehouseId ?? '') !== safehouseFilter) return false;
+    if (caseCategoryFilter !== 'All' && String(row.caseCategory ?? '') !== caseCategoryFilter) return false;
+    return true;
+  }), [searched, statusFilter, safehouseFilter, caseCategoryFilter]);
 
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
@@ -253,6 +274,54 @@ function ResidentsPanel({
   const canCreate = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker' || role === 'FieldWorker';
   const canEdit = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager' || role === 'SocialWorker';
   const canDelete = role === 'Admin';
+  const canManageCaseload = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager';
+
+  if (manageMode && canManageCaseload) {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+          <SectionTitle>Caseload Inventory Management</SectionTitle>
+          <button
+            onClick={() => setManageMode(false)}
+            style={{ background: c.white, color: c.forest, border: `1px solid ${c.sage}`, borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Back to resident list
+          </button>
+        </div>
+        <CrudDataPanel
+          title="Resident Profiles"
+          url="/api/residents"
+          keyField="residentId"
+          canCreate
+          canUpdate
+          columns={[
+            { key: 'residentId', label: 'ID' },
+            { key: 'residentFirstName', label: 'First Name' },
+            { key: 'residentLastName', label: 'Last Name' },
+            { key: 'caseControlNo', label: 'Case No.' },
+            { key: 'safehouseId', label: 'Safehouse' },
+            { key: 'caseStatus', label: 'Status' },
+            { key: 'caseCategory', label: 'Case Category' },
+            { key: 'subCatTrafficked', label: 'Trafficked' },
+            { key: 'subCatPhysicalAbuse', label: 'Physical Abuse' },
+            { key: 'subCatSexualAbuse', label: 'Sexual Abuse' },
+            { key: 'subCatAtRisk', label: 'At Risk' },
+            { key: 'isPwd', label: 'PWD' },
+            { key: 'hasSpecialNeeds', label: 'Special Needs' },
+            { key: 'familyIs4ps', label: '4Ps' },
+            { key: 'familySoloParent', label: 'Solo Parent' },
+            { key: 'familyIndigenous', label: 'Indigenous Group' },
+            { key: 'familyInformalSettler', label: 'Informal Settler' },
+            { key: 'dateOfAdmission', label: 'Admission Date' },
+            { key: 'referralSource', label: 'Referral Source' },
+            { key: 'assignedSocialWorker', label: 'Assigned SW' },
+            { key: 'reintegrationStatus', label: 'Reintegration' },
+            { key: 'currentRiskLevel', label: 'Risk' },
+          ]}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -260,10 +329,46 @@ function ResidentsPanel({
       <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
         Click a resident to view their Process Recordings timeline (and create/edit if permitted).
       </p>
+      {canManageCaseload && (
+        <div style={{ marginBottom: 10 }}>
+          <button
+            onClick={() => setManageMode(true)}
+            style={{ background: c.forest, color: c.white, border: 'none', borderRadius: 7, padding: '8px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+          >
+            Manage resident records
+          </button>
+        </div>
+      )}
 
       <DataSearchBar id={searchId} value={query} onChange={setQuery} placeholder="Search residents…" />
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <label style={{ fontSize: 11, color: c.muted }}>
+          Status
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ marginLeft: 6, padding: '5px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {statusOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: 11, color: c.muted }}>
+          Safehouse
+          <select value={safehouseFilter} onChange={(e) => setSafehouseFilter(e.target.value)}
+            style={{ marginLeft: 6, padding: '5px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {safehouseOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: 11, color: c.muted }}>
+          Case category
+          <select value={caseCategoryFilter} onChange={(e) => setCaseCategoryFilter(e.target.value)}
+            style={{ marginLeft: 6, padding: '5px 8px', borderRadius: 6, border: `1px solid ${c.sageLight}`, background: c.white }}>
+            {caseCategoryOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+      </div>
 
       <div style={{ overflowX: 'auto' }}>
+        <p style={{ fontSize: 12, color: c.muted, marginBottom: 6 }}>
+          {filtered.length === rows.length ? `${rows.length} records` : `${filtered.length} of ${rows.length} records shown`}
+        </p>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
@@ -288,11 +393,14 @@ function ResidentsPanel({
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.residentId}</td>
                 <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.residentName}</td>
                 <td style={{ padding: '8px 12px' }}>{row.caseControlNo ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.safehouseId ?? '—'}</td>
                 <td style={{ padding: '8px 12px' }}>{row.caseStatus ?? '—'}</td>
+                <td style={{ padding: '8px 12px' }}>{row.caseCategory ?? '—'}</td>
                 <td style={{ padding: '8px 12px' }}>{row.sex ?? '—'}</td>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.dateOfAdmission ?? '—'}</td>
                 <td style={{ padding: '8px 12px' }}>{row.currentRiskLevel ?? '—'}</td>
                 <td style={{ padding: '8px 12px' }}>{row.reintegrationStatus ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: c.muted }}>{row.referralSource ?? '—'}</td>
                 <td style={{ padding: '8px 12px', color: c.muted }}>{row.assignedSocialWorker ?? '—'}</td>
               </tr>
             ))}
@@ -665,6 +773,227 @@ function CrudDataPanel({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function VisitsAndConferencesPanel({ role }: { role: string | null }) {
+  const [plans, setPlans] = useState<Record<string, unknown>[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [plansError, setPlansError] = useState('');
+
+  const canUpdateVisits = role !== 'FieldWorker';
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoadingPlans(true);
+      setPlansError('');
+      try {
+        const data = await jsonIfOk(await api('/api/interventionplans'), []);
+        if (!mounted) return;
+        setPlans(Array.isArray(data) ? data : []);
+      } catch {
+        if (mounted) setPlansError('Failed to load case conference history.');
+      } finally {
+        if (mounted) setLoadingPlans(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const today = new Date();
+  const parseDate = (raw: unknown) => {
+    if (raw == null) return null;
+    const d = new Date(String(raw));
+    if (Number.isNaN(d.getTime())) return null;
+    return d;
+  };
+
+  const datedPlans = useMemo(
+    () =>
+      plans
+        .map((p) => ({ ...p, _conferenceDate: parseDate(p.caseConferenceDate) }))
+        .filter((p) => p._conferenceDate != null) as (Record<string, unknown> & { _conferenceDate: Date })[],
+    [plans],
+  );
+
+  const upcoming = useMemo(
+    () =>
+      [...datedPlans]
+        .filter((p) => p._conferenceDate >= today)
+        .sort((a, b) => a._conferenceDate.getTime() - b._conferenceDate.getTime())
+        .slice(0, 12),
+    [datedPlans, today],
+  );
+
+  const history = useMemo(
+    () =>
+      [...datedPlans]
+        .filter((p) => p._conferenceDate < today)
+        .sort((a, b) => b._conferenceDate.getTime() - a._conferenceDate.getTime())
+        .slice(0, 12),
+    [datedPlans, today],
+  );
+
+  return (
+    <div>
+      <CrudDataPanel
+        title="Home Visits"
+        url="/api/homevisitations"
+        keyField="visitationId"
+        canCreate
+        canUpdate={canUpdateVisits}
+        columns={[
+          { key: 'visitationId', label: 'ID' },
+          { key: 'visitDate', label: 'Date' },
+          { key: 'residentId', label: 'Resident' },
+          { key: 'socialWorker', label: 'Social Worker' },
+          { key: 'visitType', label: 'Visit Type' },
+          { key: 'locationVisited', label: 'Location' },
+          { key: 'observations', label: 'Home Environment' },
+          { key: 'familyCooperationLevel', label: 'Family Cooperation' },
+          { key: 'safetyConcernsNoted', label: 'Safety Concern' },
+          { key: 'followUpNeeded', label: 'Follow-up Needed' },
+          { key: 'followUpNotes', label: 'Follow-up Actions' },
+          { key: 'visitOutcome', label: 'Outcome' },
+        ]}
+      />
+
+      <SectionTitle>Case Conferences</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Conference schedule and history pulled from intervention plans with conference dates.
+      </p>
+
+      {loadingPlans ? (
+        <Loading />
+      ) : plansError ? (
+        <ApiError msg={plansError} retry={() => window.location.reload()} />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 12 }}>
+          <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 10, padding: '0.75rem 1rem' }}>
+            <p style={{ margin: 0, marginBottom: 8, fontSize: 12, fontWeight: 700, color: c.forest }}>Upcoming Conferences</p>
+            {upcoming.length === 0 ? (
+              <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>No upcoming conferences scheduled.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {upcoming.map((row, i) => (
+                  <div key={`${String(row.planId ?? i)}-upcoming`} style={{ border: `1px solid ${c.sageLight}`, borderRadius: 8, background: c.ivory, padding: '8px 10px' }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: c.forest }}>
+                      Resident #{String(row.residentId ?? '—')} · {String(row.planCategory ?? 'Case Conference')}
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: 12, color: c.text }}>
+                      {row._conferenceDate.toLocaleDateString()} · Status: {String(row.status ?? '—')}
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: 11, color: c.muted }}>
+                      Target: {String(row.targetDate ?? '—')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ background: c.white, border: `1px solid ${c.sageLight}`, borderRadius: 10, padding: '0.75rem 1rem' }}>
+            <p style={{ margin: 0, marginBottom: 8, fontSize: 12, fontWeight: 700, color: c.forest }}>Conference History</p>
+            {history.length === 0 ? (
+              <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>No conference history available yet.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {history.map((row, i) => (
+                  <div key={`${String(row.planId ?? i)}-history`} style={{ border: `1px solid ${c.sageLight}`, borderRadius: 8, background: c.white, padding: '8px 10px' }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: c.forest }}>
+                      Resident #{String(row.residentId ?? '—')} · {String(row.planCategory ?? 'Case Conference')}
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: 12, color: c.text }}>
+                      {row._conferenceDate.toLocaleDateString()} · Status: {String(row.status ?? '—')}
+                    </p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: 11, color: c.muted }}>
+                      Notes: {String(row.planDescription ?? '—')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DonorsContributionsPanel({ role }: { role: string | null }) {
+  const canManage = role === 'Admin' || role === 'Supervisor' || role === 'CaseManager';
+
+  return (
+    <div>
+      <SectionTitle>Donors & Contributions</SectionTitle>
+      <p style={{ fontSize: 12, color: c.muted, marginTop: -4, marginBottom: 12 }}>
+        Manage supporter profiles by type/status, track all contribution types, and review allocations by safehouse and program area.
+      </p>
+
+      <CrudDataPanel
+        title="Supporter Profiles"
+        url="/api/supporters"
+        keyField="supporterId"
+        canCreate={canManage}
+        canUpdate={canManage}
+        columns={[
+          { key: 'supporterId', label: 'ID' },
+          { key: 'displayName', label: 'Display Name' },
+          { key: 'supporterType', label: 'Type' },
+          { key: 'status', label: 'Status' },
+          { key: 'relationshipType', label: 'Relationship' },
+          { key: 'organizationName', label: 'Organization' },
+          { key: 'email', label: 'Email' },
+          { key: 'phone', label: 'Phone' },
+          { key: 'country', label: 'Country' },
+          { key: 'region', label: 'Region' },
+          { key: 'acquisitionChannel', label: 'Acquisition Channel' },
+          { key: 'firstDonationDate', label: 'First Donation' },
+        ]}
+      />
+
+      <CrudDataPanel
+        title="Contribution Activity"
+        url="/api/donations"
+        keyField="donationId"
+        canCreate={canManage}
+        canUpdate={canManage}
+        columns={[
+          { key: 'donationId', label: 'ID' },
+          { key: 'supporterId', label: 'Supporter' },
+          { key: 'donationDate', label: 'Date' },
+          { key: 'donationType', label: 'Contribution Type' },
+          { key: 'amount', label: 'Amount' },
+          { key: 'estimatedValue', label: 'Estimated Value' },
+          { key: 'currencyCode', label: 'Currency' },
+          { key: 'impactUnit', label: 'Impact Unit' },
+          { key: 'campaignName', label: 'Campaign' },
+          { key: 'channelSource', label: 'Channel' },
+          { key: 'isRecurring', label: 'Recurring' },
+          { key: 'notes', label: 'Notes' },
+        ]}
+      />
+
+      <CrudDataPanel
+        title="Donation Allocations"
+        url="/api/donationallocations"
+        keyField="allocationId"
+        canCreate={canManage}
+        canUpdate={canManage}
+        columns={[
+          { key: 'allocationId', label: 'ID' },
+          { key: 'donationId', label: 'Donation' },
+          { key: 'safehouseId', label: 'Safehouse' },
+          { key: 'programArea', label: 'Program Area' },
+          { key: 'amountAllocated', label: 'Allocated Amount' },
+          { key: 'allocationDate', label: 'Allocation Date' },
+          { key: 'allocationNotes', label: 'Allocation Notes' },
+        ]}
+      />
     </div>
   );
 }
@@ -1467,20 +1796,7 @@ export default function StaffPortal() {
 
       case 'Visits & Conferences':
       case 'Home Visits':
-        return <CrudDataPanel
-          title="Home Visits"
-          url="/api/homevisitations"
-          keyField="visitationId"
-          canCreate
-          canUpdate={role !== 'FieldWorker'}
-          columns={[
-          { key: 'visitationId', label: 'ID' }, { key: 'visitDate', label: 'Date' },
-          { key: 'residentId', label: 'Resident' }, { key: 'socialWorker', label: 'Social Worker' },
-          { key: 'visitType', label: 'Type' }, { key: 'locationVisited', label: 'Location' },
-          { key: 'familyCooperationLevel', label: 'Cooperation' }, { key: 'safetyConcernsNoted', label: 'Safety Concerns' },
-          { key: 'visitOutcome', label: 'Outcome' },
-          ]}
-        />;
+        return <VisitsAndConferencesPanel role={role} />;
 
       case 'Intervention Plans':
         return <CrudDataPanel title="Intervention Plans" url="/api/interventionplans" keyField="planId" canCreate canUpdate columns={[
@@ -1523,12 +1839,7 @@ export default function StaffPortal() {
         ]} />;
 
       case 'Donors':
-        return <DataPanel title="Supporters & Donors" url="/api/supporters" keyField="supporterId" columns={[
-          { key: 'supporterId', label: 'ID' }, { key: 'displayName', label: 'Name' },
-          { key: 'supporterType', label: 'Type' }, { key: 'email', label: 'Email' },
-          { key: 'country', label: 'Country' }, { key: 'status', label: 'Status' },
-          { key: 'firstDonationDate', label: 'First Donation' }, { key: 'acquisitionChannel', label: 'Channel' },
-        ]} />;
+        return <DonorsContributionsPanel role={role} />;
 
       case 'Reports': return <StaffReports />;
       case 'Pending Approvals': return <StaffPendingApprovals onQueueChanged={refreshPendingAuditCount} />;

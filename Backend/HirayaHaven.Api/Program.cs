@@ -324,14 +324,16 @@ static async Task SeedAsync(IServiceProvider services)
         // Admin — full CRUD on everything
         foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports", "intervention_plans", "donations", "users", "staff",
-            "safehouses", "reports", "audit_log", "organization", "supporters" })
+            "safehouses", "reports", "audit_log", "organization", "supporters", "donation_allocations" })
             Allow("Admin", res, "Create,Read,Update,Delete");
 
         // Supervisor
         foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports", "intervention_plans" })
             Allow("Supervisor", res, "Create,Read,Update", "Own safehouse");
-        Allow("Supervisor", "donations", "Read");
+        Allow("Supervisor", "donations", "Create,Read,Update", "Own safehouse");
+        Allow("Supervisor", "supporters", "Create,Read,Update", "Own safehouse");
+        Allow("Supervisor", "donation_allocations", "Create,Read,Update", "Own safehouse");
         Allow("Supervisor", "users", "Create,Read,Update", "Resident accounts only");
         Allow("Supervisor", "staff", "Read,Update", "Own safehouse");
         Allow("Supervisor", "safehouses", "Read,Update", "Own safehouse");
@@ -343,6 +345,9 @@ static async Task SeedAsync(IServiceProvider services)
         foreach (var res in new[] { "residents", "health_records", "education_records", "process_recordings",
             "home_visitations", "incident_reports", "intervention_plans" })
             Allow("CaseManager", res, "Create,Read,Update", "Own safehouse");
+        Allow("CaseManager", "donations", "Create,Read,Update", "Own safehouse");
+        Allow("CaseManager", "supporters", "Create,Read,Update", "Own safehouse");
+        Allow("CaseManager", "donation_allocations", "Create,Read,Update", "Own safehouse");
         Allow("CaseManager", "staff", "Read");
         Allow("CaseManager", "safehouses", "Read");
         Allow("CaseManager", "reports", "Create,Read");
@@ -502,7 +507,18 @@ static async Task UpsertSupportersPermissionsIfMissingAsync(HirayaContext db)
     foreach (var a in new[] { "Create", "Read", "Update", "Delete" })
         EnsureRow("Admin", "supporters", a, null);
 
-    EnsureRow("Supervisor", "supporters", "Read", "Own safehouse");
+    foreach (var action in new[] { "Create", "Read", "Update" })
+    {
+        EnsureRow("Supervisor", "supporters", action, "Own safehouse");
+        EnsureRow("CaseManager", "supporters", action, "Own safehouse");
+        EnsureRow("Supervisor", "donations", action, "Own safehouse");
+        EnsureRow("CaseManager", "donations", action, "Own safehouse");
+        EnsureRow("Supervisor", "donation_allocations", action, "Own safehouse");
+        EnsureRow("CaseManager", "donation_allocations", action, "Own safehouse");
+    }
+
+    foreach (var action in new[] { "Create", "Read", "Update", "Delete" })
+        EnsureRow("Admin", "donation_allocations", action, null);
 
     if (changed)
         await db.SaveChangesAsync();
