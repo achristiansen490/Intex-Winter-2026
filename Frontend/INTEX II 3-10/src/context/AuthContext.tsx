@@ -58,10 +58,22 @@ function getPrimaryRole(roles: Role[]): Role | null {
   return ROLE_PRIORITY.find((r) => roles.includes(r)) ?? null;
 }
 
+function networkErrorMessage(): string {
+  if (import.meta.env.DEV) {
+    return ' Could not connect. Run the API (e.g. dotnet run in Backend/HirayaHaven.Api; default http://127.0.0.1:5051). The Vite dev server proxies /api to that address — see vite.config.ts.';
+  }
+  return ' Could not connect to the API. Confirm it is online and that the site was built with the correct VITE_API_BASE_URL if you use a custom backend.';
+}
+
 async function fetchMe(token: string): Promise<AuthUser> {
-  const res = await fetch(apiUrl('/api/auth/me'), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let res: Response;
+  try {
+    res = await fetch(apiUrl('/api/auth/me'), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error(`Network error.${networkErrorMessage()}`);
+  }
   if (!res.ok) throw new Error('Token invalid');
   return res.json();
 }
@@ -97,11 +109,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * resolved primary role so the caller can navigate immediately.
    */
   const login = useCallback(async (email: string, password: string): Promise<Role | null> => {
-    const res = await fetch(apiUrl('/api/auth/login'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(apiUrl('/api/auth/login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      throw new Error(`Network error.${networkErrorMessage()}`);
+    }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
