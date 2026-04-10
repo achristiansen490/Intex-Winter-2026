@@ -1,14 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useId, useRef, lazy, Suspense, type ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Sidebar } from '../components/Sidebar';
-import { useAuth } from '../context/AuthContext';
-import { ADMIN_NAV_ITEMS } from '../admin/constants';
-import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
-import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
+import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
 import { adminNavItemToSlug, adminSlugToNavItem } from '../lib/portalTabs';
 import { apiUrl } from '../lib/api';
 import { buildMonthWindowEndingAtCap, capRowsAtChartMaxMonth, monthKey as chartMonthKey, parseMonthStart, sortRowsByMonthAsc } from '../lib/chartDateCap';
@@ -1992,12 +1987,6 @@ type InsightBridgeRow = {
   avg_health: number;
 };
 
-type EngagementVsVanitySummary = {
-  totalPosts: number;
-  thresholds: { engagementScoreP75: number; donationReferralsP75: number };
-  segments: { segment: string; postCount: number }[];
-};
-
 type AnnualAccomplishmentReport = {
   year: number;
   generatedAtUtc: string;
@@ -3038,22 +3027,119 @@ export function AdminResidents() {
 // ── Donations with recurring filter + pagination ──────────────────────────────
 
 type DonationRow = {
-  donationId: number; donationDate: string; donationType: string;
-  campaignName: string; amount: number | null; currencyCode: string;
-  channelSource: string; isRecurring: boolean | null;
+  donationId: number;
+  supporterId: number;
+  donationDate: string;
+  donationType: string;
+  campaignName: string;
+  amount: number | null;
+  currencyCode: string;
+  channelSource: string;
+  isRecurring: boolean | null;
+  recurringSeriesKey?: string | null;
+  estimatedValue?: number | null;
+  impactUnit?: string | null;
+  notes?: string | null;
+  referralPostId?: number | null;
 };
 
 type RecurringFilter = 'all' | 'recurring' | 'one-time';
+type DonationModal = 'create' | 'edit' | null;
+type DonationForm = {
+  supporterId: string;
+  donationDate: string;
+  donationType: string;
+  campaignName: string;
+  amount: string;
+  estimatedValue: string;
+  currencyCode: string;
+  channelSource: string;
+  isRecurring: boolean;
+  recurringSeriesKey: string;
+  impactUnit: string;
+  notes: string;
+  referralPostId: string;
+};
+
+const DONATION_TYPES = ['Monetary', 'In-Kind', 'Pledge', 'Grant'] as const;
+const CURRENCY_CODES = ['PHP', 'USD', 'EUR'] as const;
+
+const DONATION_FORM_BLANK: DonationForm = {
+  supporterId: '',
+  donationDate: '',
+  donationType: 'Monetary',
+  campaignName: '',
+  amount: '',
+  estimatedValue: '',
+  currencyCode: 'PHP',
+  channelSource: '',
+  isRecurring: false,
+  recurringSeriesKey: '',
+  impactUnit: '',
+  notes: '',
+  referralPostId: '',
+};
+
+function toDonationForm(row: DonationRow): DonationForm {
+  return {
+    supporterId: String(row.supporterId ?? ''),
+    donationDate: String(row.donationDate ?? '').slice(0, 10),
+    donationType: row.donationType ?? 'Monetary',
+    campaignName: row.campaignName ?? '',
+    amount: row.amount == null ? '' : String(row.amount),
+    estimatedValue: row.estimatedValue == null ? '' : String(row.estimatedValue),
+    currencyCode: row.currencyCode ?? 'PHP',
+    channelSource: row.channelSource ?? '',
+    isRecurring: row.isRecurring === true,
+    recurringSeriesKey: row.recurringSeriesKey ?? '',
+    impactUnit: row.impactUnit ?? '',
+    notes: row.notes ?? '',
+    referralPostId: row.referralPostId == null ? '' : String(row.referralPostId),
+  };
+}
+
+function toDonationPayload(form: DonationForm) {
+  const amount = form.amount.trim();
+  const estimated = form.estimatedValue.trim();
+  const referralPostId = form.referralPostId.trim();
+  const recurringSeriesKey = form.recurringSeriesKey.trim();
+
+  return {
+    supporterId: Number(form.supporterId),
+    donationDate: form.donationDate.trim() || null,
+    donationType: form.donationType.trim() || null,
+    campaignName: form.campaignName.trim() || null,
+    amount: amount === '' ? null : Number(amount),
+    estimatedValue: estimated === '' ? null : Number(estimated),
+    currencyCode: form.currencyCode.trim() || null,
+    channelSource: form.channelSource.trim() || null,
+    isRecurring: form.isRecurring,
+    recurringSeriesKey: form.isRecurring ? (recurringSeriesKey || null) : null,
+    impactUnit: form.impactUnit.trim() || null,
+    notes: form.notes.trim() || null,
+    referralPostId: referralPostId === '' ? null : Number(referralPostId),
+  };
+}
 
 function AdminDonations() {
   const [rows, setRows] = useState<DonationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
   const [query, setQuery] = useState('');
   const [recurringFilter, setRecurringFilter] = useState<RecurringFilter>('all');
   const [perPage, setPerPage] = useState(25);
   const [page, setPage] = useState(1);
+  const [modal, setModal] = useState<DonationModal>(null);
+  const [editRow, setEditRow] = useState<DonationRow | null>(null);
+  const [form, setForm] = useState<DonationForm>(DONATION_FORM_BLANK);
   const searchId = useId();
+
+  const notify = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2400);
+  };
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -3088,12 +3174,111 @@ function AdminDonations() {
     'one-time': rows.filter(r => r.isRecurring !== true).length,
   }), [rows]);
 
+  const openCreate = () => {
+    setForm(DONATION_FORM_BLANK);
+    setEditRow(null);
+    setModal('create');
+  };
+
+  const openEdit = (row: DonationRow) => {
+    setEditRow(row);
+    setForm(toDonationForm(row));
+    setModal('edit');
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setModal(null);
+    setEditRow(null);
+  };
+
+  const validate = () => {
+    const supporterId = Number(form.supporterId);
+    if (!Number.isInteger(supporterId) || supporterId <= 0) {
+      notify('Supporter ID is required.');
+      return false;
+    }
+    if (form.amount.trim() !== '' && Number.isNaN(Number(form.amount))) {
+      notify('Amount must be numeric.');
+      return false;
+    }
+    if (form.estimatedValue.trim() !== '' && Number.isNaN(Number(form.estimatedValue))) {
+      notify('Estimated value must be numeric.');
+      return false;
+    }
+    if (form.referralPostId.trim() !== '' && (!Number.isInteger(Number(form.referralPostId)) || Number(form.referralPostId) <= 0)) {
+      notify('Referral Post ID must be a positive whole number.');
+      return false;
+    }
+    return true;
+  };
+
+  const saveCreate = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const r = await api('/api/donations', { method: 'POST', body: JSON.stringify(toDonationPayload(form)) });
+      if (r.ok) {
+        notify('✓ Donation created.');
+        closeModal();
+        await load();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        notify((err as { message?: string }).message ?? 'Create failed.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editRow || !validate()) return;
+    setSaving(true);
+    try {
+      const body = { donationId: editRow.donationId, ...toDonationPayload(form) };
+      const r = await api(`/api/donations/${editRow.donationId}`, { method: 'PUT', body: JSON.stringify(body) });
+      if (r.ok) {
+        notify('✓ Donation updated.');
+        closeModal();
+        await load();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        notify((err as { message?: string }).message ?? 'Update failed.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (row: DonationRow) => {
+    if (!window.confirm(`Delete donation #${row.donationId}? This cannot be undone.`)) return;
+    setSaving(true);
+    try {
+      const r = await api(`/api/donations/${row.donationId}`, { method: 'DELETE' });
+      if (r.ok) {
+        notify('✓ Donation deleted.');
+        await load();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        notify((err as { message?: string }).message ?? 'Delete failed.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <Loading />;
   if (error) return <ApiError msg={error} retry={load} />;
 
   return (
     <div>
-      <SectionTitle>Donations ({rows.length})</SectionTitle>
+      {toast && <div style={{ background: c.sageLight, color: c.forest, borderRadius: 8, padding: '10px 16px', marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{toast}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <SectionTitle>Donations ({rows.length})</SectionTitle>
+        <button onClick={openCreate} style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          + Add Donation
+        </button>
+      </div>
 
       {/* Recurring filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -3121,7 +3306,7 @@ function AdminDonations() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: c.sageLight }}>
-              {['ID', 'Date', 'Type', 'Campaign', 'Amount', 'Currency', 'Channel', 'Recurring'].map(h => (
+              {['ID', 'Date', 'Type', 'Campaign', 'Amount', 'Currency', 'Channel', 'Recurring', 'Actions'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: c.forest, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -3141,12 +3326,119 @@ function AdminDonations() {
                     ? <span style={{ background: c.sageLight, color: c.forest, borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>Yes</span>
                     : <span style={{ background: c.ivory, color: c.muted, borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>No</span>}
                 </td>
+                <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                  <button onClick={() => openEdit(row)} style={{ background: c.goldLight, color: c.text, border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, marginRight: 6 }}>
+                    Edit
+                  </button>
+                  <button onClick={() => remove(row)} disabled={saving}
+                    style={{ background: c.roseLight, color: c.rose, border: `1px solid ${c.rose}`, borderRadius: 5, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600, opacity: saving ? 0.6 : 1 }}>
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
+
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: c.white, borderRadius: 12, padding: '1.5rem 2rem', width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', color: c.forest, margin: '0 0 1rem' }}>
+              {modal === 'create' ? 'Add Donation' : `Edit Donation #${editRow?.donationId ?? ''}`}
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Supporter ID</span>
+                <input type="number" min={1} value={form.supporterId} onChange={(e) => setForm((f) => ({ ...f, supporterId: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Donation Date</span>
+                <input type="date" value={form.donationDate} onChange={(e) => setForm((f) => ({ ...f, donationDate: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Donation Type</span>
+                <select value={form.donationType} onChange={(e) => setForm((f) => ({ ...f, donationType: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+                  {DONATION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Campaign Name</span>
+                <input type="text" value={form.campaignName} onChange={(e) => setForm((f) => ({ ...f, campaignName: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Amount</span>
+                <input type="number" step="0.01" min={0} value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Estimated Value</span>
+                <input type="number" step="0.01" min={0} value={form.estimatedValue} onChange={(e) => setForm((f) => ({ ...f, estimatedValue: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Currency</span>
+                <select value={form.currencyCode} onChange={(e) => setForm((f) => ({ ...f, currencyCode: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13 }}>
+                  {CURRENCY_CODES.map((code) => <option key={code} value={code}>{code}</option>)}
+                </select>
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Channel Source</span>
+                <input type="text" value={form.channelSource} onChange={(e) => setForm((f) => ({ ...f, channelSource: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Impact Unit</span>
+                <input type="text" value={form.impactUnit} onChange={(e) => setForm((f) => ({ ...f, impactUnit: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+              <label style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Referral Post ID</span>
+                <input type="number" min={1} value={form.referralPostId} onChange={(e) => setForm((f) => ({ ...f, referralPostId: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <input type="checkbox" checked={form.isRecurring} onChange={(e) => setForm((f) => ({ ...f, isRecurring: e.target.checked }))} />
+              <span style={{ fontSize: 13, color: c.text }}>Recurring donation</span>
+            </label>
+
+            {form.isRecurring && (
+              <label style={{ display: 'block', marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Recurring Series Key (optional)</span>
+                <input type="text" value={form.recurringSeriesKey} onChange={(e) => setForm((f) => ({ ...f, recurringSeriesKey: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box' }} />
+              </label>
+            )}
+
+            <label style={{ display: 'block', marginBottom: 16 }}>
+              <span style={{ display: 'block', fontSize: 11, color: c.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</span>
+              <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={3}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${c.sageLight}`, fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }} />
+            </label>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={closeModal} disabled={saving}
+                style={{ background: c.ivory, color: c.text, border: `1px solid ${c.sageLight}`, borderRadius: 6, padding: '8px 20px', fontSize: 13, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                Cancel
+              </button>
+              <button onClick={modal === 'create' ? saveCreate : saveEdit} disabled={saving}
+                style={{ background: c.forest, color: c.ivory, border: 'none', borderRadius: 6, padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3156,6 +3448,7 @@ export default function AdminPortal() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabSlug = searchParams.get('tab');
+  const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(true);
 
   useEffect(() => {
     if (tabSlug === 'pipelines') {
