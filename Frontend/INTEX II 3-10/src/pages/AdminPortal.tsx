@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useId, useRef, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { ADMIN_NAV_ITEMS } from '../admin/constants';
@@ -287,7 +288,7 @@ function AdminDashboard() {
       } as EducationAttendanceOkrItem;
     });
   const educationItems = Array.isArray((okr as any)?.items) && (okr as any).items.length > 0
-    ? ((okr as any).items as EducationAttendanceOkrItem[]).filter((item) => item.year < 2026 || (item.year === 2026 && item.quarter <= 1))
+    ? ((okr as any).items as EducationAttendanceOkrItem[])
     : buildDummyEducationItems();
   const latest = educationItems[0];
   const att = latest?.attendanceRateAvg;
@@ -3521,30 +3522,31 @@ export default function AdminPortal() {
   };
 
   return (
-    <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar
-        id="admin-sidebar"
-        items={navItems}
-        active={activeNav}
-        onSelectNavItem={(item) => {
-          if (item === 'Pipelines') navigate('/admin/pipelines');
-          else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
-        }}
-        badgeCounts={{ 'Pending Approvals': pendingAuditCount }}
-        user={`${user?.userName ?? 'Admin'} · Admin`}
-        onLogout={handleLogout}
-      />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
-        <section aria-label="Admin dashboard"
-          style={{ background: ADMIN_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Admin Dashboard</p>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Admin'}</h1>
-          </div>
-          <button onClick={handleLogout} style={{ background: c.white, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>Logout</button>
-        </section>
-        {renderContent()}
-      </div>
-    </main>
+    <DashboardLayout
+      sidebar={
+        <Sidebar
+          id="admin-sidebar"
+          items={navItems}
+          active={activeNav}
+          onSelectNavItem={(item) => {
+            if (item === 'Pipelines') navigate('/admin/pipelines');
+            else setSearchParams({ tab: adminNavItemToSlug(item) }, { replace: true });
+          }}
+          badgeCounts={{ 'Pending Approvals': pendingAuditCount }}
+          user={`${user?.userName ?? 'Admin'} · Admin`}
+          onLogout={handleLogout}
+        />
+      }
+    >
+      <section aria-label="Admin dashboard"
+        style={{ background: ADMIN_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>Admin Dashboard</p>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>Welcome, {user?.userName ?? 'Admin'}</h1>
+        </div>
+        <button onClick={handleLogout} style={{ background: c.white, color: c.forest, fontSize: 13, fontWeight: 600, padding: '10px 22px', borderRadius: 24, border: 'none', cursor: 'pointer' }}>Logout</button>
+      </section>
+      {renderContent()}
+    </DashboardLayout>
   );
 }

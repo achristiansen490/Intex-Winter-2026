@@ -69,7 +69,12 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
           flexDirection: 'column',
           padding: '1.25rem 0',
           flexShrink: 0,
-          minHeight: 'calc(100vh - 56px)',
+          alignSelf: 'flex-start',
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          maxHeight: '100vh',
+          overflow: 'hidden',
         }}
       >
         <button
@@ -88,6 +93,7 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
 
         <div
           style={{
+            flexShrink: 0,
             padding: '0 1rem 1.25rem',
             borderBottom: '0.5px solid rgba(255,255,255,0.1)',
             marginBottom: '0.75rem',
@@ -103,7 +109,17 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
           </Link>
         </div>
 
-        <ul style={{ listStyle: 'none', flex: 1, margin: 0, padding: 0 }}>
+        <ul
+          style={{
+            listStyle: 'none',
+            flex: 1,
+            minHeight: 0,
+            margin: 0,
+            padding: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
           {items.map((item) => {
             const badge = badgeCounts?.[item];
             const showBadge = typeof badge === 'number' && badge > 0;
@@ -169,11 +185,12 @@ export function Sidebar({ id, items, active, setActive, onSelectNavItem, badgeCo
 
         <div
           style={{
+            flexShrink: 0,
             padding: '0.75rem 1rem',
             borderTop: '0.5px solid rgba(255,255,255,0.1)',
             fontSize: 12,
             color: 'rgba(251,248,242,0.5)',
-            textAlign: 'center',
+            textAlign: 'left',
           }}
         >
           {onLogout && (

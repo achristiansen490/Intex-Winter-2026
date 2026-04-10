@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useId, lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { usePendingAuditApprovalCount } from '../hooks/usePendingAuditApprovalCount';
@@ -18,7 +19,7 @@ const c = {
   roseLight: '#F0D8D4', sage: '#7FA89C', sageLight: '#E0EBE8', goldLight: '#F5E6C8',
   text: '#2C2B28', muted: '#7A786F', white: '#FFFFFF',
 };
-const STAFF_BANNER_BG = 'linear-gradient(135deg, #6B9E8E 0%, #8BB5A8 55%, #A7C8BC 100%)';
+const STAFF_BANNER_BG = '#2A4A35';
 
 function filterTableRows(
   rows: Record<string, unknown>[],
@@ -727,8 +728,7 @@ function StaffDashboard({ role }: { role: string | null }) {
 
   const ops = (kpis as any)?.operations ?? {};
   const donor = (kpis as any)?.donor ?? {};
-  const educationItems = ((okr as any)?.items as EducationAttendanceOkrItem[] | undefined ?? [])
-    .filter((item) => item.year < 2026 || (item.year === 2026 && item.quarter <= 1));
+  const educationItems = ((okr as any)?.items as EducationAttendanceOkrItem[] | undefined ?? []);
   const latest = educationItems[0];
   const att = latest?.attendanceRateAvg;
   const tgt = latest?.targetAttendanceRate;
@@ -1439,6 +1439,8 @@ export default function StaffPortal() {
   const setTab = (item: string) => setSearchParams({ tab: staffNavItemToSlug(item) }, { replace: true });
   const displayRole = role ?? 'Staff';
   const supervisor = role === 'Supervisor';
+  /** Shown in staff portal welcome + sidebar when logged in as Supervisor. */
+  const staffDisplayName = supervisor ? 'Lourdes' : (user?.userName ?? 'Staff');
   const { count: pendingAuditCount, refresh: refreshPendingAuditCount } = usePendingAuditApprovalCount(supervisor);
   const handleLogout = () => {
     logout();
@@ -1536,28 +1538,29 @@ export default function StaffPortal() {
   };
 
   return (
-    <main id="main-content" style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
-      <Sidebar
-        id="staff-sidebar"
-        items={navItems}
-        active={activeNav}
-        setActive={setTab}
-        badgeCounts={supervisor ? { 'Pending Approvals': pendingAuditCount } : undefined}
-        user={`${user?.userName ?? 'Staff'} · ${displayRole}`}
-        onLogout={handleLogout}
-      />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
-        <section aria-label="Command center"
-          style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
-          <div>
-            <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>{displayRole} Dashboard</p>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
-              Welcome, {user?.userName ?? 'Staff'}
-            </h1>
-          </div>
-        </section>
-        {renderContent()}
-      </div>
-    </main>
+    <DashboardLayout
+      sidebar={
+        <Sidebar
+          id="staff-sidebar"
+          items={navItems}
+          active={activeNav}
+          setActive={setTab}
+          badgeCounts={supervisor ? { 'Pending Approvals': pendingAuditCount } : undefined}
+          user={`${staffDisplayName} · ${displayRole}`}
+          onLogout={handleLogout}
+        />
+      }
+    >
+      <section aria-label="Command center"
+        style={{ background: STAFF_BANNER_BG, borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
+        <div>
+          <p style={{ fontSize: 12, color: 'rgba(251,248,242,0.72)', marginBottom: 3 }}>{displayRole} Dashboard</p>
+          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: c.ivory, fontWeight: 400, margin: 0 }}>
+            Welcome, {staffDisplayName}
+          </h1>
+        </div>
+      </section>
+      {renderContent()}
+    </DashboardLayout>
   );
 }
